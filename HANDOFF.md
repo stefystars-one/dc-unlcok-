@@ -9,12 +9,12 @@ Aplicação desktop C++ / WebView2 para personalização e otimização do Disco
 - **Versão Atual**: `8.6`
 - **Compilação**: `[FUNCIONANDO]` — MSVC C++20 via `C:\unlock beta tester\build.ps1`. Todos os binários compilam com código 0.
 - **Deploy**: `[FUNCIONANDO]` — Binários e assets atualizados em `C:\DiscordUnlock\`:
-  - `DiscordUnlock.exe` (SHA256: `fe895e740c7b485d9e612ba5fb9dade7d2089926ed97ad038235314fc6a5880c`)
-  - `DiscordUnlock_Special.exe` (SHA256: `fd63aa0b74559ac6e13f8a71fcd4e2d5b6516e7eec61ad5fb60ce3ef09cfe2e1`)
+  - `DiscordUnlock.exe` (SHA256: `f0dfd9559fa628614caabcdbf67443a4f231f97a15d4d959449c3c8d55ed2eef`)
+  - `DiscordUnlock_Special.exe` (SHA256: `cd1950e2a43eb754f0754513adc49640b4ded264c97b32bf996bec61806b72f5`)
   - `wallpaper_engine_renderer.html`
 - **GitHub**:
   - Repositório `https://github.com/stefystars-one/dc-unlcok-` sincronizado na branch `main`.
-  - Release `v8.6` publicada com executáveis carregados.
+  - Release `v8.6` publicada com todos os assets anexados (`update-manifest.json`, `DiscordUnlock.exe`, `DiscordUnlock_Special.exe`, `DiscordUnlock_Instalar.ps1`, `themes_catalog.json`, `version.txt`, `version_sha256.txt`).
 
 ## 3. Status das Solicitações do Usuário
 1. `[RESOLVIDO]` **Ocultar botão de pausa em temas Wallpaper Engine**: `isAnimatedTheme` no frontend agora valida `!isEngine`, evitando que o botão ⏸ apareça nos cards da aba de Engine.
