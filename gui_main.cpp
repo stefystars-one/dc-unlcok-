@@ -16270,9 +16270,25 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
     }
 
     function setCrosshairNumber(key, value) {
-      perfOverlayConfig[key] = parseInt(value, 10) || 0;
+      const num = parseInt(value, 10) || 0;
+      perfOverlayConfig[key] = num;
       const label = document.getElementById(`${key}Val`);
-      if (label) label.innerText = `${perfOverlayConfig[key]} px`;
+      if (label) label.innerText = `${num} px`;
+
+      if (key === 'crosshairSize') {
+        perfOverlayConfig.crosshairCustomArmLength = num;
+        const armInput = document.getElementById('crosshairCustomArmLength');
+        const armLabel = document.getElementById('crosshairCustomArmLengthVal');
+        if (armInput) armInput.value = num;
+        if (armLabel) armLabel.innerText = `${num} px`;
+      } else if (key === 'crosshairCustomArmLength') {
+        perfOverlayConfig.crosshairSize = num;
+        const sizeInput = document.getElementById('crosshairSize');
+        const sizeLabel = document.getElementById('crosshairSizeVal');
+        if (sizeInput) sizeInput.value = num;
+        if (sizeLabel) sizeLabel.innerText = `${num} px`;
+      }
+
       syncOverlaySettings();
     }
     function setOvMode(mode) {
@@ -32380,7 +32396,10 @@ void updateNativeCrosshairWindow() {
   const int cx = width / 2, cy = height / 2;
   auto put = [&](int x, int y) { if (x >= 0 && x < width && y >= 0 && y < height) pixels[size_t(y) * size_t(width) + size_t(x)] = pixel; };
   auto rect = [&](int x, int y, int w, int h) { for (int yy = y; yy < y + h; ++yy) for (int xx = x; xx < x + w; ++xx) put(xx, yy); };
-  auto dot = [&]() { rect(cx - thickness / 2, cy - thickness / 2, thickness, thickness); };
+  auto dot = [&](int dotDim = -1) {
+    const int d = (dotDim > 0) ? dotDim : thickness;
+    rect(cx - d / 2, cy - d / 2, d, d);
+  };
   auto arms = [&](bool top, bool right, bool bottom, bool left, int armLength) {
     if (right) rect(cx + gap, cy - thickness / 2, armLength, thickness);
     if (left) rect(cx - gap - armLength, cy - thickness / 2, armLength, thickness);
@@ -32397,10 +32416,11 @@ void updateNativeCrosshairWindow() {
       if (distance2 <= radius * radius && distance2 >= inner * inner) put(cx + x, cy + y);
     }
   } else if (preset == "dot") {
-    dot();
+    dot(size);
   } else if (preset == "custom") {
-    if (duJsonBool(cfg, "crosshairCenterDot", true)) dot();
-    arms(duJsonBool(cfg, "crosshairArmTop", true), duJsonBool(cfg, "crosshairArmRight", true), duJsonBool(cfg, "crosshairArmBottom", true), duJsonBool(cfg, "crosshairArmLeft", true), (std::max)(4, (std::min)(80, duJsonInt(cfg, "crosshairCustomArmLength", size))));
+    if (duJsonBool(cfg, "crosshairCenterDot", true)) dot(thickness);
+    const int armLen = (std::max)(4, (std::min)(80, duJsonInt(cfg, "crosshairCustomArmLength", size)));
+    arms(duJsonBool(cfg, "crosshairArmTop", true), duJsonBool(cfg, "crosshairArmRight", true), duJsonBool(cfg, "crosshairArmBottom", true), duJsonBool(cfg, "crosshairArmLeft", true), armLen);
   } else {
     const int armLength = size + (preset == "cross" ? (std::max)(2, size * 45 / 100) : 0);
     arms(true, true, true, true, armLength);
