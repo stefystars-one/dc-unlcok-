@@ -15092,9 +15092,9 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       } else if (msg.type === 'cloud_file_selected') {
         if (msg.filePath) {
           const input = document.getElementById('cloudFilePath');
-          if (input) input.value = msg.filePath;
+          if (input) { input.value = msg.filePath; try { input.dispatchEvent(new Event('input')); input.dispatchEvent(new Event('change')); } catch(e){} }
           const inputTab = document.getElementById('cloudFilePathTab');
-          if (inputTab) inputTab.value = msg.filePath;
+          if (inputTab) { inputTab.value = msg.filePath; try { inputTab.dispatchEvent(new Event('input')); inputTab.dispatchEvent(new Event('change')); } catch(e){} }
           const fileName = msg.filePath.split(/[\\/]/).pop();
           showToast('Arquivo selecionado: ' + fileName);
         }
@@ -26724,13 +26724,7 @@ void openCloudFilePickerAsync(HWND hWnd, const std::string &eventType = "cloud_f
   ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR | OFN_EXPLORER | OFN_HIDEREADONLY;
   if (GetOpenFileNameW(&ofn)) {
     std::string pathUtf8 = toUtf8(szFile);
-    std::string escaped;
-    for (char c : pathUtf8) {
-      if (c == '\\') escaped += "\\";
-      else if (c == '"') escaped += "\\\"";
-      else escaped += c;
-    }
-    postJsonToUI(std::string(R"({"type":")") + eventType + R"(","filePath":")" + escaped + "\"}");
+    postJsonToUI(std::string(R"({"type":")") + eventType + R"(","filePath":")" + escapeJsonString(pathUtf8) + "\"}");
   } else {
     const DWORD dialogError = CommDlgExtendedError();
     if (dialogError != 0) {
