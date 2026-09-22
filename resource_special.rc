@@ -13,8 +13,8 @@ IDI_ICON1 ICON "app_icon_special.ico"
 112 RCDATA "wallpaper_engine_renderer.html"
 
 1 VERSIONINFO
-FILEVERSION 8,3,0,0
-PRODUCTVERSION 8,3,0,0
+FILEVERSION 8,6,0,0
+PRODUCTVERSION 8,6,0,0
 FILEFLAGSMASK 0x3fL
 FILEFLAGS 0x0L
 FILEOS 0x40004L
@@ -26,13 +26,13 @@ BEGIN
         BLOCK "041604b0"
         BEGIN
             VALUE "CompanyName", "Discord Unlock"
-            VALUE "FileDescription", "Discord Unlock 8.3.0 Special Edition"
-            VALUE "FileVersion", "8.3.0.0"
+            VALUE "FileDescription", "Discord Unlock 8.6.0 Special Edition"
+            VALUE "FileVersion", "8.6.0.0"
             VALUE "InternalName", "DiscordUnlock_Special"
             VALUE "LegalCopyright", "Copyright (C) 2026"
             VALUE "OriginalFilename", "DiscordUnlock_Special.exe"
-            VALUE "ProductName", "Discord Unlock 8.3.0 Special Edition"
-            VALUE "ProductVersion", "8.3.0.0"
+            VALUE "ProductName", "Discord Unlock 8.6.0 Special Edition"
+            VALUE "ProductVersion", "8.6.0.0"
         END
     END
     BLOCK "VarFileInfo"
