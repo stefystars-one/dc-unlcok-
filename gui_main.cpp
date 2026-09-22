@@ -1503,18 +1503,21 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
     }
     .btn-apply-theme {
       flex: 1;
+      height: 36px;
+      box-sizing: border-box;
       background: linear-gradient(135deg, #5865F2 0%, #4752c4 100%);
       color: #ffffff;
       border: 1px solid rgba(88, 101, 242, 0.5);
-      padding: 9px 12px;
+      padding: 0 12px;
       border-radius: 8px;
       font-weight: 600;
       font-size: 12.5px;
       cursor: pointer;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
+      line-height: 1;
       box-shadow: 0 4px 12px rgba(88, 101, 242, 0.3);
       transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
     }
@@ -1529,24 +1532,53 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       color: #4ade80 !important;
       box-shadow: 0 0 15px rgba(34, 197, 94, 0.25) !important;
     }
+    .btn-engine-settings {
+      width: 36px;
+      min-width: 36px;
+      height: 36px;
+      box-sizing: border-box;
+      background: rgba(168, 85, 247, 0.18);
+      border: 1px solid rgba(168, 85, 247, 0.45);
+      color: #e9d5ff;
+      border-radius: 8px;
+      padding: 0;
+      margin: 0;
+      cursor: pointer;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      transition: all 0.2s ease;
+    }
+    .btn-engine-settings:hover {
+      background: rgba(168, 85, 247, 0.35);
+      border-color: #a855f7;
+      transform: translateY(-2px);
+    }
     .btn-delete-theme {
+      width: 36px;
+      min-width: 36px;
+      height: 36px;
+      box-sizing: border-box;
       background: rgba(239, 68, 68, 0.15);
       border: 1px solid rgba(239, 68, 68, 0.35);
       color: #f87171;
       border-radius: 8px;
-      padding: 0 10px;
-      height: 36px;
+      padding: 0;
+      margin: 0;
       cursor: pointer;
       font-size: 13px;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
+      line-height: 1;
       transition: all 0.2s ease;
     }
     .btn-delete-theme:hover {
       background: rgba(239, 68, 68, 0.3);
       border-color: #ef4444;
-      transform: scale(1.05);
+      transform: translateY(-2px);
     }
     .theme-progress-box {
       width: 100%;
@@ -10691,9 +10723,9 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
             const isCurrent = (t.id === currentTheme && currentTheme !== 'default');
             const deleteBtn = (!t.isStatic && (theFn || rawId)) ? `<button class="btn-delete-theme" onclick="event.stopPropagation(); deleteThemeAsset('${t.id}', '${theFn}')" title="Excluir arquivo local">🗑️</button>` : '';
             const isEngine = rawId.startsWith('local_engine_');
-            const engineBtn = isEngine ? `<button class="btn-engine-settings" onclick="event.stopPropagation(); openEngineSettings('${t.id}')" title="Configurações do Motor" style="background: rgba(168,85,247,0.2); border: 1px solid rgba(168,85,247,0.4); color: #e9d5ff; font-size: 14px; padding: 6px 10px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;">⚙️</button>` : '';
+            const engineBtn = isEngine ? `<button class="btn-engine-settings" onclick="event.stopPropagation(); openEngineSettings('${t.id}')" title="Configurações do Motor">⚙️</button>` : '';
             actionButtonsHtml = `
-              <div style="display: flex; gap: 6px; width: 100%;">
+              <div style="display: flex; align-items: center; gap: 6px; width: 100%;">
                 <button class="btn-apply-theme ${isCurrent ? 'active-theme-btn' : ''}" onclick="event.stopPropagation(); applyTheme('${t.id}')">
                   ${isCurrent ? '✅ Tema Ativo' : '⚡ Aplicar Tema'}
                 </button>

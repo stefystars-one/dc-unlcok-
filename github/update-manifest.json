@@ -2,11 +2,11 @@
     "version":  "8.5",
     "artifacts":  {
                       "DiscordUnlock.exe":  {
-                                                "sha256":  "f0424a0c89d6a8ad88bd7526fad69506ea8a56442d95fa476500502529cfd112",
+                                                "sha256":  "c6775764e61d57fd22530d9d83f08ca41f11d534206589aaa58173306289d109",
                                                 "url":  "https://github.com/stefystars-one/dc-unlcok-/releases/download/v8.5/DiscordUnlock.exe"
                                             },
                       "DiscordUnlock_Special.exe":  {
-                                                        "sha256":  "01700ee786e886d0c90bb5d596bfbae8e47941b2bac1c6b8bf927ebfa74568cd",
+                                                        "sha256":  "e46cc377ada28e020f40c05dc5d1b308055a323e73dd751647bf21f2aecf5d26",
                                                         "url":  "https://github.com/stefystars-one/dc-unlcok-/releases/download/v8.5/DiscordUnlock_Special.exe"
                                                     }
                   }
