@@ -5372,9 +5372,20 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
 
         <div id="dynamicWallpaperTags" aria-label="Categorias de wallpapers" style="display: flex; flex-wrap: wrap; gap: 7px; margin: -4px 0 16px;"></div>
 
+        <div id="engineFooter" style="display:none; margin: 0 0 16px; padding: 14px 16px; background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 10px; font-size: 11.5px; color: #c4b5fd; line-height: 1.6;">
+          <div style="font-weight: 700; margin-bottom: 4px; color: #e9d5ff;">🎮 Motor de Renderização WebGL — Beta</div>
+          <div style="color: #a1a1aa;">Os wallpapers do Wallpaper Engine são renderizados em tempo real utilizando engenharia reversa. Alguns efeitos visuais podem variar em relação ao original.</div>
+          <div style="margin-top: 8px; color: #94a3b8;">
+            <b style="color:#e9d5ff;">Não vê nenhum tema?</b> Instale o <a href="#" onclick="event.preventDefault(); window.chrome?.webview?.postMessage(JSON.stringify({action:'open_url',url:'https://store.steampowered.com/app/431960/Wallpaper_Engine/'}))" style="color:#38bdf8; text-decoration:underline;">Wallpaper Engine</a> pela Steam e inscreva-se em wallpapers do Workshop. Eles aparecerão automaticamente aqui.
+          </div>
+        </div>
+
+
         <div class="theme-grid" id="themesGrid">
           <!-- Populated by JS -->
         </div>
+
+
       </div>
 
       <!-- TAB 5: PLUGINS SECTION -->
@@ -10485,6 +10496,11 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
     ]);
 
     function getWallpaperTags(theme) {
+      const tid = String(theme?.id || '').toLowerCase();
+      const rawTid = tid.replace(/^custom_theme_/, '').replace(/^theme_/, '');
+      if (theme?.isEngineLocal || rawTid.startsWith('local_engine_') || tid.startsWith('local_engine_') || String(theme?.tags || '').toLowerCase().includes('wallpaper engine')) {
+        return ['Wallpaper Engine'];
+      }
       if (theme?.isCustom) return ['Meus temas'];
       if (theme?.isStatic) return ['Cores'];
       let tags = [];
@@ -10674,26 +10690,29 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
           } else if (isLocal) {
             const isCurrent = (t.id === currentTheme && currentTheme !== 'default');
             const deleteBtn = (!t.isStatic && (theFn || rawId)) ? `<button class="btn-delete-theme" onclick="event.stopPropagation(); deleteThemeAsset('${t.id}', '${theFn}')" title="Excluir arquivo local">🗑️</button>` : '';
+            const isEngine = rawId.startsWith('local_engine_');
+            const engineBtn = isEngine ? `<button class="btn-engine-settings" onclick="event.stopPropagation(); openEngineSettings('${t.id}')" title="Configurações do Motor" style="background: rgba(168,85,247,0.2); border: 1px solid rgba(168,85,247,0.4); color: #e9d5ff; font-size: 14px; padding: 6px 10px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;">⚙️</button>` : '';
             actionButtonsHtml = `
               <div style="display: flex; gap: 6px; width: 100%;">
                 <button class="btn-apply-theme ${isCurrent ? 'active-theme-btn' : ''}" onclick="event.stopPropagation(); applyTheme('${t.id}')">
                   ${isCurrent ? '✅ Tema Ativo' : '⚡ Aplicar Tema'}
                 </button>
+                ${engineBtn}
                 ${deleteBtn}
               </div>
             `;
           } else if (t.isEngineLocal) {
             const engineCanAnimate = t.isAnimated === true;
             const engineNotice = engineCanAnimate
-              ? '<div style="margin-bottom:7px;font-size:10.5px;color:#86efac;font-weight:700;">🎬 Mídia animada local detectada</div>'
-              : '<div style="margin-bottom:7px;font-size:10.5px;color:#fbbf24;line-height:1.35;">🖼️ Esta cena usa shaders. Será importada como imagem estática.</div>';
+              ? '<div style="margin-bottom:7px;font-size:10.5px;color:#86efac;font-weight:700;">🎬 Mídia animada detectada</div>'
+              : '<div style="margin-bottom:7px;font-size:10.5px;color:#c4b5fd;line-height:1.35;">🎮 Cena com shaders. Será renderizada em tempo real via WebGL.</div>';
             actionButtonsHtml = `
               ${engineNotice}
               <button class="btn-download-theme"
                 data-tid="${t.id}"
                 data-source="${(t.source_path || '').replace(/"/g, '&quot;')}"
                 onclick="event.stopPropagation(); startLocalEngineImport(this.dataset.tid, this.dataset.source)">
-                ${engineCanAnimate ? '🎬 Importar animação' : '🖼️ Importar imagem estática'}
+                ${engineCanAnimate ? '🎬 Importar animação' : '🎮 Importar cena'}
               </button>
             `;
           } else {
@@ -10712,7 +10731,7 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
             `;
           }
 
-          const sizeInfo = (t.size_mb && !t.isStatic) ? `<div style="font-size:10.5px;color:#64748b;margin-top:2px;">${t.isEngineLocal ? (t.isAnimated === true ? '🎬 Vídeo/GIF local' : '🖼️ Cena extraída como imagem') : (t.engine_package ? '📦 Pacote Wallpaper Engine' : '🎬 MP4')} • ${t.size_mb} MB</div>` : '';
+          const sizeInfo = (t.size_mb && !t.isStatic) ? `<div style="font-size:10.5px;color:#64748b;margin-top:2px;">${t.isEngineLocal ? (t.isAnimated === true ? '🎬 Mídia animada' : '🎮 Cena WebGL') : (t.engine_package ? '📦 Pacote Wallpaper Engine' : '🎬 MP4')} • ${t.size_mb} MB</div>` : '';
 
           card.innerHTML = `
             ${previewHtml}
@@ -10740,13 +10759,29 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
     function filterDynamicWallpapers(query) {
       const q = (query || '').toLowerCase().trim();
       const selectedTag = String(activeWallpaperTag || 'Todos').toLowerCase();
+      const isEngineTag = selectedTag === 'wallpaper engine';
       const cards = document.querySelectorAll('#themesGrid .theme-card');
       let visible = 0;
       cards.forEach(card => {
         const searchable = card.dataset.search || (card.querySelector('.theme-title')?.innerText || card.getAttribute('data-theme') || '').toLowerCase();
         const tags = String(card.dataset.tags || '').split('|').filter(Boolean);
+        const cardThemeId = (card.getAttribute('data-theme') || '').toLowerCase();
+        const rawCardId = cardThemeId.replace(/^custom_theme_/, '').replace(/^theme_/, '');
+        const isEngine = tags.includes('wallpaper engine') || cardThemeId.startsWith('local_engine_') || rawCardId.startsWith('local_engine_');
         const textMatches = !q || searchable.includes(q);
-        const tagMatches = selectedTag === 'todos' || tags.includes(selectedTag);
+        let tagMatches = false;
+        if (isEngineTag) {
+          tagMatches = isEngine;
+        } else {
+          // In ANY other tab, engine themes must NEVER be displayed!
+          if (isEngine) {
+            tagMatches = false;
+          } else if (selectedTag === 'todos') {
+            tagMatches = true;
+          } else {
+            tagMatches = tags.includes(selectedTag);
+          }
+        }
         if (textMatches && tagMatches) {
           card.style.display = '';
           visible++;
@@ -10756,11 +10791,105 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       });
       const badge = document.getElementById('wallpapersCountBadge');
       if (badge) badge.innerText = String(visible) + ' de ' + String(cards.length) + ' Wallpapers';
+      // Show/hide engine footer
+      const engineFooter = document.getElementById('engineFooter');
+      if (engineFooter) engineFooter.style.display = isEngineTag ? '' : 'none';
     }
 
     function scrollThemesToTop() {
       const content = document.querySelector('.content-area');
       if (content) content.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Engine settings storage & popup
+    const engineSettings = {};
+    function getEngineSettings(id) {
+      if (!engineSettings[id]) engineSettings[id] = { flip: false, fps: 60, quality: 1.0, paused: false };
+      return engineSettings[id];
+    }
+
+    function sendEngineControl(data) {
+      // Send to C++ to forward to Discord's renderer iframe
+      if (window.chrome?.webview) {
+        window.chrome.webview.postMessage(JSON.stringify({ action: 'engine_control', ...data }));
+      }
+    }
+
+    function openEngineSettings(themeId) {
+      // Remove existing popup
+      const existing = document.getElementById('engineSettingsPopup');
+      if (existing) existing.remove();
+
+      const s = getEngineSettings(themeId);
+      const overlay = document.createElement('div');
+      overlay.id = 'engineSettingsPopup';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);';
+      overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+
+      overlay.innerHTML = `
+        <div style="background:#1a1b2e;border:1px solid rgba(168,85,247,0.4);border-radius:14px;padding:22px 26px;min-width:340px;max-width:420px;color:#e2e8f0;font-family:var(--font-main);box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div style="font-size:15px;font-weight:700;color:#e9d5ff;">⚙️ Motor Wallpaper Engine</div>
+            <button onclick="this.closest('#engineSettingsPopup').remove()" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer;">✕</button>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <!-- Flip -->
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-size:12px;font-weight:600;">🔄 Inverter Verticalmente</div>
+                <div style="font-size:10.5px;color:#94a3b8;">Corrige temas de cabeça pra baixo</div>
+              </div>
+              <label style="position:relative;width:42px;height:22px;cursor:pointer;">
+                <input type="checkbox" id="esFlip" ${s.flip ? 'checked' : ''} onchange="engineSettingsUpdate('${themeId}','flip',this.checked)" style="opacity:0;width:0;height:0;">
+                <span style="position:absolute;inset:0;background:${s.flip?'#a855f7':'#334155'};border-radius:11px;transition:0.2s;"></span>
+                <span style="position:absolute;top:2px;left:${s.flip?'22px':'2px'};width:18px;height:18px;background:#fff;border-radius:50%;transition:0.2s;"></span>
+              </label>
+            </div>
+
+            <!-- FPS -->
+            <div>
+              <div style="font-size:12px;font-weight:600;margin-bottom:6px;">🎞️ FPS: <span id="esFpsVal">${s.fps}</span></div>
+              <input type="range" id="esFps" min="10" max="60" step="5" value="${s.fps}" oninput="document.getElementById('esFpsVal').textContent=this.value;engineSettingsUpdate('${themeId}','fps',Number(this.value))" style="width:100%;accent-color:#a855f7;">
+              <div style="display:flex;justify-content:space-between;font-size:9px;color:#64748b;"><span>10</span><span>30</span><span>60</span></div>
+            </div>
+
+            <!-- Quality -->
+            <div>
+              <div style="font-size:12px;font-weight:600;margin-bottom:6px;">📐 Qualidade: <span id="esQualVal">${Math.round(s.quality*100)}%</span></div>
+              <input type="range" id="esQual" min="25" max="100" step="5" value="${Math.round(s.quality*100)}" oninput="document.getElementById('esQualVal').textContent=this.value+'%';engineSettingsUpdate('${themeId}','quality',Number(this.value)/100)" style="width:100%;accent-color:#a855f7;">
+              <div style="display:flex;justify-content:space-between;font-size:9px;color:#64748b;"><span>25%</span><span>50%</span><span>100%</span></div>
+            </div>
+
+            <!-- Pause -->
+            <button id="esPauseBtn" onclick="engineSettingsUpdate('${themeId}','paused',!getEngineSettings('${themeId}').paused);this.innerHTML=getEngineSettings('${themeId}').paused?'▶️ Retomar Animação':'⏸️ Pausar Animação'" style="width:100%;padding:10px;background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);border-radius:8px;color:#e9d5ff;font-size:12px;font-weight:600;cursor:pointer;">
+              ${s.paused ? '▶️ Retomar Animação' : '⏸️ Pausar Animação'}
+            </button>
+          </div>
+
+          <div style="margin-top:14px;font-size:10px;color:#64748b;text-align:center;">Configurações aplicadas em tempo real</div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+    }
+
+    function engineSettingsUpdate(themeId, key, value) {
+      const s = getEngineSettings(themeId);
+      s[key] = value;
+      sendEngineControl({ themeId, [key]: value });
+      // Update toggle visual if it's the flip switch
+      if (key === 'flip') {
+        const popup = document.getElementById('engineSettingsPopup');
+        if (popup) {
+          const cb = popup.querySelector('#esFlip');
+          if (cb) {
+            const span1 = cb.nextElementSibling;
+            const span2 = span1?.nextElementSibling;
+            if (span1) span1.style.background = value ? '#a855f7' : '#334155';
+            if (span2) span2.style.left = value ? '22px' : '2px';
+          }
+        }
+      }
     }
 
     function updateThemeDownloadCard(themeId) {
@@ -14787,6 +14916,7 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
             if (!th || !th.id) continue;
             const k = String(th.id).trim().toLowerCase();
             const fn = (th.fileName || th.file_name || '').trim().toLowerCase();
+            if (k.startsWith('local_engine_') || k.startsWith('custom_theme_local_engine_') || fn.startsWith('local_engine_') || fn.includes('_engine')) continue;
             const customKey = fn ? ('file:' + fn) : ('id:' + k);
             if (!seen.has(k) && !seen.has(customKey)) {
               seen.add(k);
@@ -14847,7 +14977,7 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
           }
         }
         if (msg.animated === true) showToast('Animação importada e pronta para aplicar!');
-        else if (msg.animated === false) showToast('Cena importada como imagem estática. O RePKG não executa shaders do Wallpaper Engine.');
+        else if (msg.animated === false) showToast('Cena importada! Será renderizada em tempo real via WebGL.');
         else showToast('Tema baixado com sucesso!');
       } else if (msg.type === 'theme_download_cancelled') {
         delete themeDownloadProgressMap[msg.themeId];
@@ -14960,11 +15090,13 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
           showToast('⚠️ Erro ao enviar relatório. Verifique sua conexão.', false);
         }
       } else if (msg.type === 'cloud_file_selected') {
-        const input = document.getElementById('cloudFilePath');
-        if (input && msg.filePath) {
-          input.value = msg.filePath;
+        if (msg.filePath) {
+          const input = document.getElementById('cloudFilePath');
+          if (input) input.value = msg.filePath;
+          const inputTab = document.getElementById('cloudFilePathTab');
+          if (inputTab) inputTab.value = msg.filePath;
           const fileName = msg.filePath.split(/[\\/]/).pop();
-          showToast('Arquivo selecionado: ' + fileName); const inputTab = document.getElementById('cloudFilePathTab'); if (inputTab) inputTab.value = msg.filePath;
+          showToast('Arquivo selecionado: ' + fileName);
         }
       } else if (msg.type === 'recorder_upload_progress') {
         updateRecorderCloudUploadProgress(msg);
@@ -17154,6 +17286,8 @@ const char EMBEDDED_OVERLAY_HTML[] = R"raw_overlay_html(
 #include <wrl/client.h>
 #include <wrl/event.h>
 #include <wincrypt.h>
+#include <gdiplus.h>
+#pragma comment(lib, "gdiplus.lib")
 #include <regex>
 #include "WebView2.h"
 #include <psapi.h>
@@ -17208,7 +17342,7 @@ const char EMBEDDED_OVERLAY_HTML[] = R"raw_overlay_html(
 using namespace Microsoft::WRL;
 namespace fs = std::filesystem;
 
-const std::string CURRENT_VERSION = "8.4";
+const std::string CURRENT_VERSION = "8.5";
 const std::wstring CLOUD_API_HOST = L"discord-unlock-api.st4rs.workers.dev";
 const std::wstring THEMES_CATALOG_HOST = L"script.google.com";
 const std::wstring THEMES_CATALOG_PATH = L"/macros/s/AKfycbxJeT0t6WzljXxQH5FoyBhQkNad8oQWm7Wzf0aa40oh2fAO3XriJJWHmps3bLAtbpJgdA/exec";
@@ -21698,6 +21832,13 @@ inline void updateDiscordBypassSettings(const ServerProfile &prof, bool enabled 
 
 void installDiscordThemeHook(const std::wstring &discordExe) {
   ensureBetterDiscordRuntime();
+
+  // Deploy wallpaper_engine_renderer.html to %APPDATA%/DiscordUnlock/
+  try {
+    fs::path rendererDest = getAppDataDirectory() / "wallpaper_engine_renderer.html";
+    extractResourceToFile(112, rendererDest);
+  } catch(...) {}
+
   try {
     std::string masterCoreHookCode = R"HOOK_JS(// Discord Unlock Master Core Hook v3.7
 const fs = require('fs');
@@ -22069,7 +22210,7 @@ function dispatchRealStatusScopeAction(scope) {
 function dispatchDMTypographyAction() {
   try {
     hookLog('dispatchDMTypographyAction called');
-    const cfgPath = path.join(appDataDir || 'C:/Users/Stefany/AppData/Roaming', 'DiscordUnlock', 'dm_typography.json');
+    const cfgPath = path.join(appDataDir || (process.env.APPDATA || ''), 'DiscordUnlock', 'dm_typography.json');
     let cfg = { enabled: false };
     if (fs.existsSync(cfgPath)) {
       try { cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8')); } catch(e) {}
@@ -22249,6 +22390,12 @@ try {
         else if (ext === '.jpg' || ext === '.jpeg') mime = 'image/jpeg';
         else if (ext === '.gif') mime = 'image/gif';
         else if (ext === '.css') mime = 'text/css';
+        else if (ext === '.json' || ext === '.tex-json') mime = 'application/json';
+        else if (ext === '.html' || ext === '.htm') mime = 'text/html';
+        else if (ext === '.js') mime = 'application/javascript';
+        else if (ext === '.frag' || ext === '.vert' || ext === '.glsl') mime = 'text/plain';
+        else if (ext === '.svg') mime = 'image/svg+xml';
+        else if (ext === '.webp') mime = 'image/webp';
 
         const stat = fs.statSync(filePath);
         const range = req.headers.range;
@@ -22333,6 +22480,32 @@ try {
       if (reqUrl.pathname === '/ping') {
         res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
         return res.end(JSON.stringify({ ok: true, version: '3.6' }));
+      }
+      // WebGL Engine renderer for Wallpaper Engine shader scenes
+      if (reqUrl.pathname === '/engine') {
+        // Serve the renderer HTML page
+        const possiblePaths = [
+          path.join(appDataDir, 'DiscordUnlock', 'wallpaper_engine_renderer.html'),
+          path.join(process.cwd(), 'wallpaper_engine_renderer.html'),
+          path.join(__dirname, 'wallpaper_engine_renderer.html'),
+          'C:\\DiscordUnlock\\wallpaper_engine_renderer.html',
+          'C:\\unlock beta tester\\wallpaper_engine_renderer.html'
+        ];
+        let rendererPath = null;
+        for (const p of possiblePaths) {
+          try { if (fs.existsSync(p)) { rendererPath = p; break; } } catch {}
+        }
+        if (!rendererPath) {
+          res.writeHead(404, { 'Access-Control-Allow-Origin': '*' });
+          return res.end('Engine renderer not found');
+        }
+        const html = fs.readFileSync(rendererPath, 'utf8');
+        res.writeHead(200, {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'no-cache'
+        });
+        return res.end(html);
       }
       res.writeHead(404);
       res.end();
@@ -22617,11 +22790,41 @@ function injectTheme(win) {
 
           let videoEl = document.getElementById('du-custom-wallpaper-video');
           let gifEl = document.getElementById('du-custom-wallpaper-gif');
+          let engineEl = document.getElementById('du-custom-wallpaper-engine');
           const isGif = wpConfig && wpConfig.isVideo && wpConfig.videoUri && wpConfig.videoUri.toLowerCase().includes('.gif');
+          const isEngine = wpConfig && wpConfig.isVideo && wpConfig.videoUri && wpConfig.videoUri.includes('/engine?');
 
-          if (wpConfig && wpConfig.isVideo && wpConfig.videoUri && isGif) {
+          if (wpConfig && wpConfig.isVideo && wpConfig.videoUri && isEngine) {
+            // WebGL Engine scene: use <iframe> for real-time shader rendering
+            if (videoEl) { videoEl.remove(); videoEl = null; }
+            if (gifEl) { gifEl.remove(); gifEl = null; }
+            if (!engineEl) {
+              engineEl = document.createElement('iframe');
+              engineEl.id = 'du-custom-wallpaper-engine';
+              engineEl.style.position = 'fixed';
+              engineEl.style.top = '0';
+              engineEl.style.left = '0';
+              engineEl.style.width = '100vw';
+              engineEl.style.height = '100vh';
+              engineEl.style.border = 'none';
+              engineEl.style.zIndex = '0';
+              engineEl.style.pointerEvents = 'none';
+              engineEl.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+              document.body.prepend(engineEl);
+              const appMount = document.getElementById('app-mount');
+              if (appMount) {
+                appMount.style.position = 'relative';
+                appMount.style.zIndex = '1';
+                appMount.style.background = 'transparent';
+              }
+            }
+            if (engineEl.src !== wpConfig.videoUri) {
+              engineEl.src = wpConfig.videoUri;
+            }
+          } else if (wpConfig && wpConfig.isVideo && wpConfig.videoUri && isGif) {
             // GIF wallpaper: use <img> tag (Chromium <video> cannot play GIFs)
             if (videoEl) { videoEl.remove(); videoEl = null; }
+            if (engineEl) { engineEl.remove(); engineEl = null; }
             if (!gifEl) {
               gifEl = document.createElement('img');
               gifEl.id = 'du-custom-wallpaper-gif';
@@ -22644,9 +22847,12 @@ function injectTheme(win) {
             if (gifEl.src !== wpConfig.videoUri) {
               gifEl.src = wpConfig.videoUri;
             }
+            // Apply engine settings to native GIF
+            gifEl.style.transform = wpConfig.engineFlip ? 'scaleY(-1)' : '';
           } else if (wpConfig && wpConfig.isVideo && wpConfig.videoUri && !isGif) {
             // Video wallpaper: use <video> tag for mp4/webm
             if (gifEl) { gifEl.remove(); gifEl = null; }
+            if (engineEl) { engineEl.remove(); engineEl = null; }
             if (!videoEl) {
               videoEl = document.createElement('video');
               videoEl.id = 'du-custom-wallpaper-video';
@@ -22668,6 +22874,7 @@ function injectTheme(win) {
               videoEl.style.pointerEvents = 'none';
               videoEl.preload = 'auto';
               const resume = () => {
+                if (window.__duEnginePaused) return;
                 if (!videoEl || !document.body.contains(videoEl)) return;
                 videoEl.muted = true;
                 videoEl.defaultMuted = true;
@@ -22688,32 +22895,41 @@ function injectTheme(win) {
             if (videoEl.src !== wpConfig.videoUri) {
               videoEl.src = wpConfig.videoUri;
             }
+            // Apply engine settings to native video
+            videoEl.style.transform = wpConfig.engineFlip ? 'scaleY(-1)' : '';
+            window.__duEnginePaused = !!(wpConfig.enginePaused);
+            if (wpConfig.enginePaused) {
+              videoEl.pause();
+            }
             const syncWallpaperPlayback = () => {
+              if (window.__duEnginePaused) return;
               videoEl.muted = true;
               videoEl.play().catch(() => {});
             };
             if (!window.__duWallpaperVisibilityHook) {
               window.__duWallpaperVisibilityHook = true;
               document.addEventListener('visibilitychange', () => {
+                if (window.__duEnginePaused) return;
                 const current = document.getElementById('du-custom-wallpaper-video');
                 if (!current) return;
                 current.muted = true;
                 current.play().catch(() => {});
               });
             }
-            if (!window.__duWallpaperKeepAliveTimer) {
-              window.__duWallpaperKeepAliveTimer = setInterval(() => {
-                const current = document.getElementById('du-custom-wallpaper-video');
-                if (current && current.paused) {
-                  current.muted = true;
-                  current.play().catch(() => {});
-                }
-              }, 1000);
-            }
+            if (window.__duWallpaperKeepAliveTimer) { clearInterval(window.__duWallpaperKeepAliveTimer); window.__duWallpaperKeepAliveTimer = null; }
+            window.__duWallpaperKeepAliveTimer = setInterval(() => {
+              if (window.__duEnginePaused) return;
+              const current = document.getElementById('du-custom-wallpaper-video');
+              if (current && current.paused) {
+                current.muted = true;
+                current.play().catch(() => {});
+              }
+            }, 1000);
             syncWallpaperPlayback();
           } else {
             if (videoEl) videoEl.remove();
             if (gifEl) gifEl.remove();
+            if (engineEl) engineEl.remove();
           }
         } catch(e) { console.error('Theme inject err:', e); }
       })();
@@ -22915,7 +23131,41 @@ module.exports = require('./core.asar');
 
 void prepareBrowserExtension();
 
-void applyDiscordThemeCss(const std::string &themeId, const std::string &customImg = "", const std::string &customAccent = "") {
+// Engine per-theme settings (flip, fps, quality)
+struct EngineThemeSettings {
+  bool flip = false;
+  int fps = 60;
+  double quality = 1.0;
+  bool paused = false;
+};
+std::unordered_map<std::string, EngineThemeSettings> g_engineSettings;
+
+// Forward declarations for handleEngineControl
+void applyDiscordThemeCss(const std::string &themeId, const std::string &customImg = "", const std::string &customAccent = "");
+void installDiscordThemeHook(const std::wstring &discordExe);
+
+void handleEngineControl(const std::string& json) {
+  std::string themeId = extractJsonField(json, "themeId");
+  if (themeId.empty()) return;
+  std::string rawId = themeId;
+  if (rawId.rfind("theme_", 0) == 0) rawId = rawId.substr(6);
+  if (rawId.rfind("steam_theme_", 0) == 0) rawId = rawId.substr(12);
+  if (rawId.rfind("custom_theme_", 0) == 0) rawId = rawId.substr(13);
+  if (rawId.rfind("local_custom_", 0) == 0) rawId = rawId.substr(13);
+  auto& es = g_engineSettings[rawId];
+  std::string flipStr = extractJsonField(json, "flip");
+  std::string fpsStr = extractJsonField(json, "fps");
+  std::string qualStr = extractJsonField(json, "quality");
+  std::string pauseStr = extractJsonField(json, "paused");
+  if (!flipStr.empty()) es.flip = (flipStr == "true" || flipStr == "1");
+  if (!fpsStr.empty()) { int fv = std::stoi(fpsStr); if(fv<10)fv=10; if(fv>60)fv=60; es.fps = fv; }
+  if (!qualStr.empty()) { double qv = std::stod(qualStr); if(qv<0.25)qv=0.25; if(qv>1.0)qv=1.0; es.quality = qv; }
+  if (!pauseStr.empty()) es.paused = (pauseStr == "true" || pauseStr == "1");
+  applyDiscordThemeCss(themeId);
+  installDiscordThemeHook(g_targetExe);
+}
+
+void applyDiscordThemeCss(const std::string &themeId, const std::string &customImg, const std::string &customAccent) {
   wchar_t appData[MAX_PATH];
   if (GetEnvironmentVariableW(L"APPDATA", appData, MAX_PATH) > 0) {
     fs::path discordDir = fs::path(appData) / "discord";
@@ -23107,9 +23357,91 @@ void applyDiscordThemeCss(const std::string &themeId, const std::string &customI
       }
     }
 
+    // Check if this is an engine scene with shaders (WebGL renderer).
+    // WebGL renderer takes priority over extracted native media because:
+    // 1. WebGL renders at full quality with real-time shaders
+    // 2. FPS/Quality controls only work with WebGL renderer
+    // 3. Extracted GIFs/videos from RePKG are often low quality
+    // Native media is only used as fallback for themes without scene.json
+
+    bool isEngineScene = false;
+    std::string engineScenePath;
+    if (rawId.rfind("local_engine_", 0) == 0) {
+      for (const auto &temasDir : candidateTemasDirs) {
+        std::error_code ecE;
+        fs::path engineDir = temasDir / rawId / "engine_extracted";
+        fs::path sceneJson = engineDir / "scene.json";
+        if (fs::exists(sceneJson, ecE) && !ecE) {
+          isEngineScene = true;
+          engineScenePath = engineDir.string();
+
+          // Check if scene has GLSL shaders. Themes without .vert/.frag files
+          // (e.g. spritesheet-only themes) can't animate in WebGL and should
+          // fall back to native GIF/video if available.
+          bool hasGlslShaders = false;
+          fs::path shadersDir = engineDir / "shaders";
+          if (fs::exists(shadersDir, ecE) && !ecE) {
+            try {
+              for (const auto &se : fs::recursive_directory_iterator(shadersDir)) {
+                if (se.is_regular_file()) {
+                  std::string sext = se.path().extension().string();
+                  if (sext == ".vert" || sext == ".frag") { hasGlslShaders = true; break; }
+                }
+              }
+            } catch(...) {}
+          }
+          // Also check effects/ dir for GLSL
+          if (!hasGlslShaders) {
+            fs::path effectsDir = engineDir / "effects";
+            if (fs::exists(effectsDir, ecE) && !ecE) {
+              try {
+                for (const auto &se : fs::recursive_directory_iterator(effectsDir)) {
+                  if (se.is_regular_file()) {
+                    std::string sext = se.path().extension().string();
+                    if (sext == ".vert" || sext == ".frag") { hasGlslShaders = true; break; }
+                  }
+                }
+              } catch(...) {}
+            }
+          }
+
+          if (!hasGlslShaders) {
+            // No GLSL shaders - WebGL can't animate, use native fallback
+            isEngineScene = false;
+            engineScenePath.clear();
+            if (isVideo) {
+              logThemeEngine("THEME_APPLY", "ENGINE_FALLBACK", "No GLSL shaders for " + rawId + ", using native animated media fallback");
+            } else {
+              logThemeEngine("THEME_APPLY", "ENGINE_FALLBACK", "No GLSL shaders for " + rawId + ", using static image fallback");
+            }
+          } else {
+            logThemeEngine("THEME_APPLY", "ENGINE_SCENE", "Using WebGL renderer for " + rawId + " at " + engineScenePath);
+          }
+          break;
+        }
+      }
+    }
+
     if (!foundFilePath.empty()) {
       localAssetPath = foundFilePath.generic_string();
-      if (isVideo) {
+      if (isEngineScene) {
+        // Use WebGL engine renderer via iframe
+        isVideo = true;
+        videoUri = "http://127.0.0.1:45123/engine?path=" + urlEncode(engineScenePath) + "&theme=" + urlEncode(rawId);
+        // Append engine settings if configured
+        auto esIt = g_engineSettings.find(rawId);
+        if (esIt != g_engineSettings.end()) {
+          const auto& es = esIt->second;
+          if (es.flip) videoUri += "&flip=1";
+          if (es.fps != 60) videoUri += "&fps=" + std::to_string(es.fps);
+          if (es.quality < 0.99) {
+            char qbuf[32]; snprintf(qbuf, sizeof(qbuf), "%.2f", es.quality);
+            videoUri += "&quality=" + std::string(qbuf);
+          }
+          if (es.paused) videoUri += "&pause=1";
+        }
+        bgCustom = "";
+      } else if (isVideo) {
         videoUri = "http://127.0.0.1:45123/file?file=" + urlEncode(foundFilePath.string());
         bgCustom = "";
       } else {
@@ -23172,13 +23504,24 @@ void applyDiscordThemeCss(const std::string &themeId, const std::string &customI
     }
 
     // Save wallpaper metadata for 60FPS Video Injection
+    // Include engine settings so the hook can apply flip/pause to native video/gif too
+    std::string engineSettingsJson;
+    auto esWpIt = g_engineSettings.find(rawId);
+    if (esWpIt != g_engineSettings.end()) {
+      const auto& esw = esWpIt->second;
+      engineSettingsJson = ",\n"
+        "  \"engineFlip\": " + std::string(esw.flip ? "true" : "false") + ",\n"
+        "  \"enginePaused\": " + std::string(esw.paused ? "true" : "false") + ",\n"
+        "  \"engineFps\": " + std::to_string(esw.fps) + ",\n"
+        "  \"engineQuality\": " + std::to_string(esw.quality);
+    }
     std::string wpJson = "{\n"
                          "  \"themeId\": \"" + themeId + "\",\n"
                          "  \"isVideo\": " + (isVideo ? "true" : "false") + ",\n"
                          "  \"videoUri\": \"" + videoUri + "\",\n"
                          "  \"assetPath\": \"" + localAssetPath + "\",\n"
                          "  \"accent\": \"" + accent + "\",\n"
-                         "  \"fps\": 60\n"
+                         "  \"fps\": 60" + engineSettingsJson + "\n"
                          "}\n";
     std::ofstream fWp(wpJsonPath.string());
     if (fWp.is_open()) {
@@ -23187,8 +23530,29 @@ void applyDiscordThemeCss(const std::string &themeId, const std::string &customI
     }
 
     std::string bgMountStyle;
+    std::string wallpaperLayer; // CSS body::before for wallpaper display
     if (isVideo) {
       bgMountStyle = "  background: transparent !important;\n  background-color: transparent !important;\n  background-image: none !important;\n";
+      // CSS-based wallpaper: works even if JS injection fails
+      std::string mediaUrl = videoUri;
+      if (isEngineScene) {
+        // Engine scenes: iframe injected by JS, CSS just makes background transparent
+        wallpaperLayer = "";
+      } else {
+        // GIF, MP4, WebM: use CSS pseudo-element as wallpaper
+        wallpaperLayer =
+          "body::before {\n"
+          "  content: '';\n"
+          "  position: fixed;\n"
+          "  top: 0; left: 0;\n"
+          "  width: 100vw;\n"
+          "  height: 100vh;\n"
+          "  z-index: -1;\n"
+          "  pointer-events: none;\n"
+          "  background: url('" + mediaUrl + "') center center / cover no-repeat fixed;\n"
+          "  background-size: cover;\n"
+          "}\n";
+      }
     } else if (!bgCustom.empty()) {
       bgMountStyle = "  background: " + bgCustom + " !important;\n  background-color: " + primary + " !important;\n  background-size: cover !important;\n  background-attachment: fixed !important;\n";
     } else {
@@ -23210,6 +23574,7 @@ void applyDiscordThemeCss(const std::string &themeId, const std::string &customI
         "  color-scheme: dark !important;\n"
         + bgMountStyle +
         "}\n\n"
+        + wallpaperLayer + "\n"
         "/* 2. TRANSLUCENT CONTAINER LAYERS TO REVEAL 4K / 60FPS LIVE WALLPAPER */\n"
         "[class*=\"appAsidePanelWrapper\"],\n"
         "[class*=\"layers_\"],\n"
@@ -26965,6 +27330,223 @@ void handleRecorderSaveClipHotKey() {
   }
 }
 
+// Forward declarations needed by handleRecorderAction (defined later in file)
+struct ActiveAppInfo {
+  DWORD pid;
+  std::string name;
+  std::string title;
+  HWND hwnd;
+};
+static std::vector<ActiveAppInfo> getRunningApplications();
+
+// Extracted from the main WebView dispatcher to reduce MSVC nesting depth.
+void handleRecorderAction(const std::string& action, const std::string& json) {
+  if (action == "recorder_get_status") {
+    broadcastRecorderStatus();
+  } else if (action == "recorder_get_settings") {
+    broadcastRecorderSettings();
+  } else if (action == "recorder_get_targets") {
+    auto monitors = DiscordUnlock::GetSystemMonitors();
+    auto windows = getRunningApplications();
+    std::string jsonResp = "{\"type\":\"recorder_targets\",\"monitors\":[";
+    for (size_t i = 0; i < monitors.size(); ++i) {
+      if (i > 0) jsonResp += ",";
+      jsonResp += "{\"index\":" + std::to_string(monitors[i].index) +
+                  ",\"name\":\"" + escapeJsonString(monitors[i].name) + "\"" +
+                  ",\"width\":" + std::to_string(monitors[i].width) +
+                  ",\"height\":" + std::to_string(monitors[i].height) +
+                  ",\"orientation\":" + std::to_string(monitors[i].orientation) +
+                  ",\"isPrimary\":" + std::string(monitors[i].isPrimary ? "true" : "false") + "}";
+    }
+    jsonResp += "],\"windows\":[";
+    for (size_t i = 0; i < windows.size(); ++i) {
+      if (i > 0) jsonResp += ",";
+      jsonResp += "{\"pid\":" + std::to_string(windows[i].pid) +
+                  ",\"hwnd\":\"" + std::to_string((uintptr_t)windows[i].hwnd) + "\"" +
+                  ",\"name\":\"" + escapeJsonString(windows[i].name) + "\"" +
+                  ",\"title\":\"" + escapeJsonString(windows[i].title) + "\"}";
+    }
+    jsonResp += "]}";
+    postJsonToUI(jsonResp);
+  } else if (action == "get_hotkeys") {
+    broadcastHotkeysConfig();
+  } else if (action == "save_hotkeys") {
+    std::string target = extractJsonField(json, "target");
+    std::string ctrlStr = extractJsonField(json, "ctrl");
+    std::string altStr = extractJsonField(json, "alt");
+    std::string shiftStr = extractJsonField(json, "shift");
+    std::string vkStr = extractJsonField(json, "vk");
+    std::string txt = extractJsonField(json, "text");
+    {
+      std::lock_guard<std::mutex> lock(g_hotkeysMutex);
+      auto applyItem = [&](HotkeyConfigItem& it) {
+        if (!ctrlStr.empty()) it.ctrl = (ctrlStr == "true" || ctrlStr == "1");
+        if (!altStr.empty()) it.alt = (altStr == "true" || altStr == "1");
+        if (!shiftStr.empty()) it.shift = (shiftStr == "true" || shiftStr == "1");
+        if (!vkStr.empty()) {
+          try { it.vkCode = (UINT)std::stoi(vkStr); } catch(...) {}
+        }
+        if (!txt.empty()) it.text = txt;
+      };
+      if (target == "record") applyItem(g_hotkeysConfig.record);
+      else if (target == "clip") applyItem(g_hotkeysConfig.clip);
+      else if (target == "overlay") applyItem(g_hotkeysConfig.overlay);
+    }
+    saveHotkeysConfig();
+    broadcastHotkeysConfig();
+    broadcastRecorderSettings();
+  } else if (action == "reset_hotkeys") {
+    {
+      std::lock_guard<std::mutex> lock(g_hotkeysMutex);
+      g_hotkeysConfig.record = { true, false, false, VK_F9, "Ctrl+F9" };
+      g_hotkeysConfig.clip = { true, false, false, VK_F10, "Ctrl+F10" };
+      g_hotkeysConfig.overlay = { false, false, false, VK_F12, "F12" };
+    }
+    saveHotkeysConfig();
+    broadcastHotkeysConfig();
+    broadcastRecorderSettings();
+  } else if (action == "recorder_get_microphones") {
+    broadcastRecorderMicrophones();
+  } else if (action == "recorder_save_settings") {
+    auto& rec = DiscordUnlock::ScreenRecorder::Instance();
+    auto s = rec.GetSettings();
+    std::string ct = extractJsonField(json, "captureTarget");
+    if (!ct.empty()) s.captureTarget = ct;
+    std::string mi = extractJsonField(json, "monitorIndex");
+    if (!mi.empty()) {
+      try { s.monitorIndex = std::stoi(mi); } catch(...) {}
+    }
+    std::string hw = extractJsonField(json, "targetHwnd");
+    if (!hw.empty()) {
+      try { s.targetHwnd = (HWND)std::stoull(hw); } catch(...) {}
+    }
+    std::string wn = extractJsonField(json, "targetWindowName");
+    if (!wn.empty()) s.targetWindowName = wn;
+    std::string rmMode = extractJsonField(json, "resolutionMode");
+    if (!rmMode.empty()) s.resolutionMode = rmMode;
+    std::string rw = extractJsonField(json, "resolutionWidth");
+    if (!rw.empty()) s.targetWidth = std::stoi(rw);
+    std::string rh = extractJsonField(json, "resolutionHeight");
+    if (!rh.empty()) s.targetHeight = std::stoi(rh);
+    std::string fpsStr = extractJsonField(json, "fps");
+    if (!fpsStr.empty()) s.fps = std::stoi(fpsStr);
+    std::string brStr = extractJsonField(json, "bitrate");
+    if (!brStr.empty()) s.bitrate = std::stoi(brStr);
+    std::string am = extractJsonField(json, "audioMode");
+    if (!am.empty()) s.audioMode = am;
+    std::string rm = extractJsonField(json, "recordMic");
+    if (!rm.empty()) s.recordMic = (rm == "true" || rm == "1");
+    std::string micId = extractJsonField(json, "micDeviceId");
+    s.micDeviceId = toWide(micId);
+    std::string cursorMode = extractJsonField(json, "cursorMode");
+    if (cursorMode == "hidden" || cursorMode == "cursor" || cursorMode == "highlight") s.cursorMode = cursorMode;
+    std::string rb = extractJsonField(json, "replayBufferEnabled");
+    bool prevBuffer = s.replayBufferEnabled;
+    if (!rb.empty()) s.replayBufferEnabled = (rb == "true" || rb == "1");
+    std::string rbs = extractJsonField(json, "replayBufferSeconds");
+    const int previousReplaySeconds = s.replayBufferSeconds;
+    const std::string previousReplayQuality = s.replayQuality;
+    if (!rbs.empty()) s.replayBufferSeconds = std::clamp(std::stoi(rbs), 15, 300);
+    std::string rq = extractJsonField(json, "replayQuality");
+    if (rq == "economy" || rq == "balanced" || rq == "high") s.replayQuality = rq;
+    const bool restartReplay = prevBuffer && (previousReplaySeconds != s.replayBufferSeconds || previousReplayQuality != s.replayQuality);
+    std::string auc = extractJsonField(json, "autoUploadCloud");
+    if (!auc.empty()) s.autoUploadCloud = (auc == "true" || auc == "1");
+    std::string f180 = extractJsonField(json, "flip180");
+    if (!f180.empty()) s.flip180 = (f180 == "true" || f180 == "1");
+    std::string aud = extractJsonField(json, "autoUploadDeleteLocal");
+    if (!aud.empty()) s.autoUploadDeleteLocal = (aud == "true" || aud == "1");
+    // Nunca permitir apagar o arquivo antes de um upload automático.
+    if (s.autoUploadDeleteLocal) s.autoUploadCloud = true;
+    rec.UpdateSettings(s);
+    if (s.replayBufferEnabled && !prevBuffer) {
+      std::string err;
+      rec.StartReplayBuffer(err);
+    } else if (!s.replayBufferEnabled && prevBuffer) {
+      rec.StopReplayBuffer();
+    } else if (s.replayBufferEnabled && restartReplay) {
+      rec.StopReplayBuffer();
+      std::string err;
+      rec.StartReplayBuffer(err);
+    }
+    broadcastRecorderStatus();
+    broadcastRecorderSettings();
+  } else if (action == "recorder_start") {
+    auto& rec = DiscordUnlock::ScreenRecorder::Instance();
+    std::string err;
+    if (rec.StartRecording(err)) {
+      broadcastRecorderStatus();
+      showTrayNotification(L"Discord Unlock — Gravação", L"Gravação de vídeo iniciada.");
+    }
+  } else if (action == "recorder_stop") {
+    auto& rec = DiscordUnlock::ScreenRecorder::Instance();
+    std::wstring saved;
+    if (rec.StopRecording(&saved)) {
+      broadcastRecorderStatus();
+      broadcastRecorderClips();
+      showTrayNotification(L"Discord Unlock — Gravação", L"Gravação finalizada e vídeo salvo.");
+    } else {
+      broadcastRecorderStatus();
+      broadcastRecorderClips();
+      showTrayNotification(L"Discord Unlock — Gravação", L"A gravação falhou e o arquivo incompleto foi removido.");
+    }
+    auto s = rec.GetSettings();
+    if (s.autoUploadCloud && !saved.empty()) {
+      uploadToCloudGofile(saved, "1h", "", true, true);
+    } else if (!saved.empty()) {
+      applyStoragePolicyAsync(false);
+    }
+  } else if (action == "recorder_save_clip") {
+    handleRecorderSaveClipHotKey();
+  } else if (action == "recorder_trim_clip") {
+    std::string fp = extractJsonField(json, "filePath");
+    double startValue = std::strtod(extractJsonField(json, "startSec").c_str(), nullptr);
+    double endValue = std::strtod(extractJsonField(json, "endSec").c_str(), nullptr);
+    double startSec = startValue > 0.0 ? startValue : 0.0;
+    double endSec = endValue > 0.0 ? endValue : 0.0;
+    std::thread([fp, startSec, endSec]() {
+      std::wstring output; std::string err;
+      bool ok = !fp.empty() && DiscordUnlock::ScreenRecorder::Instance().TrimClip(toWide(fp), startSec, endSec, output, err);
+      if (ok) {
+        postJsonToUI("{\"type\":\"recorder_trim_result\",\"success\":true,\"filename\":\"" + escapeJsonString(fs::path(output).filename().string()) + "\"}");
+        broadcastRecorderClips();
+      } else {
+        if (err.empty()) err = "Não foi possível cortar este clipe.";
+        postJsonToUI("{\"type\":\"recorder_trim_result\",\"success\":false,\"error\":\"" + escapeJsonString(err) + "\"}");
+      }
+    }).detach();
+  } else if (action == "recorder_get_clips") {
+    broadcastRecorderClips();
+  } else if (action == "recorder_delete_clip") {
+    std::string fp = extractJsonField(json, "filePath");
+    const bool fromManualUpload = extractJsonField(json, "fromManualUpload") == "true";
+    if (!fp.empty()) {
+      const std::wstring filePath = toWide(fp);
+      if (fromManualUpload) postRecorderCloudUploadProgress("deletando", 100, filePath, "Removendo o vídeo local...");
+      const bool deleted = DiscordUnlock::ScreenRecorder::Instance().DeleteClip(filePath) || !fs::exists(filePath);
+      broadcastRecorderClips();
+      if (fromManualUpload) {
+        postRecorderCloudUploadProgress(deleted ? "deletado" : "deletando", 100, filePath,
+          deleted ? "Arquivo local removido após sua confirmação." : "O Windows não permitiu apagar o arquivo local.", deleted);
+        postJsonToUI(std::string(R"({"type":"recorder_delete_result","success":)") + (deleted ? "true" : "false") + R"(,"message":")" + escapeJsonString(deleted ? "Arquivo local removido após sua confirmação." : "O Windows não permitiu apagar o arquivo local.") + R"("})");
+      }
+    }
+  } else if (action == "recorder_play_clip") {
+    std::string fp = extractJsonField(json, "filePath");
+    if (!fp.empty()) {
+      ShellExecuteW(nullptr, L"open", toWide(fp).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+    }
+  } else if (action == "recorder_upload_cloud") {
+    std::string fp = extractJsonField(json, "filePath");
+    if (!fp.empty()) {
+      uploadToCloudGofile(toWide(fp), "1h", "", true, false);
+    }
+  } else if (action == "recorder_open_folder") {
+    auto s = DiscordUnlock::ScreenRecorder::Instance().GetSettings();
+    ShellExecuteW(nullptr, L"open", s.outputFolder.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+  }
+}
+
 void measureAllPingsAsync() {
   std::thread([]() {
     try {
@@ -27175,13 +27757,31 @@ static bool extractWallpaperEnginePackage(const fs::path &packageFile, const fs:
       if (ec || !entry.is_regular_file(ec)) continue;
       std::string ext = entry.path().extension().string();
       std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char ch) { return (char)std::tolower(ch); });
+      std::string fn = entry.path().filename().string();
+      std::transform(fn.begin(), fn.end(), fn.begin(), [](unsigned char ch) { return (char)std::tolower(ch); });
       int rank = 0;
-      if (ext == ".mp4" || ext == ".webm") rank = 4;
-      else if (ext == ".gif") rank = 3;
-      else if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".webp") rank = 2;
+      if (ext == ".mp4" || ext == ".webm") rank = 6;
+      else if (ext == ".gif") rank = 4;
+      else if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".webp") rank = 3;
       if (rank == 0) continue;
       const uintmax_t size = entry.file_size(ec);
-      if (!ec && size > 1024) candidates.push_back({entry.path(), rank, size});
+      if (!ec && size > 1024) {
+        // Boost rank for files in materials/ (full-res scene textures)
+        std::string relPath = entry.path().string();
+        if (relPath.find("materials") != std::string::npos && relPath.find("masks") == std::string::npos
+            && relPath.find("effects") == std::string::npos && relPath.find("presets") == std::string::npos) {
+          if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".webp") rank = 5; // Above GIF, below video
+        }
+        // Penalize tiny files (likely previews/icons)
+        if (size < 50000 && (ext == ".png" || ext == ".jpg" || ext == ".gif")) rank = 1;
+        // Skip particle textures, masks, effect textures
+        if (fn.find("mask") != std::string::npos || fn.find("noise") != std::string::npos
+            || fn.find("particle") != std::string::npos || fn.find("white") != std::string::npos
+            || fn.find("skycolor") != std::string::npos || fn.find("spot") != std::string::npos
+            || fn.find("cloud") != std::string::npos || fn.find("phase") != std::string::npos
+            || fn.find("normal") != std::string::npos || fn.find("flow") != std::string::npos) continue;
+        candidates.push_back({entry.path(), rank, size});
+      }
     }
     if (candidates.empty()) {
       error = "Nenhum video ou imagem compativel foi encontrado no pacote.";
@@ -27191,6 +27791,55 @@ static bool extractWallpaperEnginePackage(const fs::path &packageFile, const fs:
       return a.rank != b.rank ? a.rank > b.rank : a.size > b.size;
     });
     mediaFile = candidates.front().path;
+
+    // Wallpaper Engine material textures are stored Y-flipped (OpenGL origin).
+    // Flip vertically so they display correctly as CSS/HTML backgrounds.
+    {
+      std::string selPath = mediaFile.string();
+      std::string selExt = mediaFile.extension().string();
+      std::transform(selExt.begin(), selExt.end(), selExt.begin(), [](unsigned char ch) { return (char)std::tolower(ch); });
+      if (selPath.find("materials") != std::string::npos &&
+          (selExt == ".png" || selExt == ".jpg" || selExt == ".jpeg" || selExt == ".bmp")) {
+        try {
+          Gdiplus::GdiplusStartupInput gdiplusStartupInput;
+          ULONG_PTR gdiplusToken;
+          Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+          {
+            std::wstring wpath(mediaFile.wstring());
+            Gdiplus::Bitmap* bmp = new Gdiplus::Bitmap(wpath.c_str());
+            if (bmp && bmp->GetLastStatus() == Gdiplus::Ok) {
+              bmp->RotateFlip(Gdiplus::RotateNoneFlipY);
+              // Determine encoder
+              CLSID clsid;
+              auto getEncoder = [](const WCHAR* format, CLSID* pClsid) -> bool {
+                UINT num = 0, sz = 0;
+                Gdiplus::GetImageEncodersSize(&num, &sz);
+                if (sz == 0) return false;
+                auto pEncoders = (Gdiplus::ImageCodecInfo*)(malloc(sz));
+                if (!pEncoders) return false;
+                Gdiplus::GetImageEncoders(num, sz, pEncoders);
+                for (UINT j = 0; j < num; ++j) {
+                  if (wcscmp(pEncoders[j].MimeType, format) == 0) {
+                    *pClsid = pEncoders[j].Clsid;
+                    free(pEncoders);
+                    return true;
+                  }
+                }
+                free(pEncoders);
+                return false;
+              };
+              const WCHAR* mime = (selExt == ".png") ? L"image/png" : L"image/jpeg";
+              if (getEncoder(mime, &clsid)) {
+                bmp->Save(wpath.c_str(), &clsid, NULL);
+              }
+            }
+            delete bmp;
+          }
+          Gdiplus::GdiplusShutdown(gdiplusToken);
+        } catch (...) {}
+      }
+    }
+
     return true;
   } catch (...) {
     error = "Ocorreu uma falha ao preparar o tema do Wallpaper Engine.";
@@ -27253,17 +27902,30 @@ std::string getLocalWallpaperEngineThemesJson() {
         if (!folder.is_directory(ec) || ec) { ec.clear(); continue; }
 
         fs::path package;
+        fs::path nativeVideo;  // For video-type themes without .pkg
         for (const auto &candidate : fs::directory_iterator(folder.path(), fs::directory_options::skip_permission_denied, ec)) {
           if (ec) { ec.clear(); continue; }
           if (!candidate.is_regular_file(ec) || ec) { ec.clear(); continue; }
           std::string ext = candidate.path().extension().string();
           std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char ch) { return (char)std::tolower(ch); });
           if (ext == ".pkg") { package = candidate.path(); break; }
+          if (nativeVideo.empty() && (ext == ".mp4" || ext == ".webm")) {
+            if (candidate.file_size(ec) >= 100000 && !ec) nativeVideo = candidate.path();
+            ec.clear();
+          }
         }
-        if (package.empty()) continue;
-        std::string packageKey = package.lexically_normal().string();
-        std::transform(packageKey.begin(), packageKey.end(), packageKey.begin(), [](unsigned char ch) { return (char)std::tolower(ch); });
-        if (!seenPackages.insert(packageKey).second) continue;
+
+        // Skip folders with neither .pkg nor native video
+        if (package.empty() && nativeVideo.empty()) continue;
+
+        std::string uniqueKey;
+        if (!package.empty()) {
+          uniqueKey = package.lexically_normal().string();
+        } else {
+          uniqueKey = folder.path().lexically_normal().string();
+        }
+        std::transform(uniqueKey.begin(), uniqueKey.end(), uniqueKey.begin(), [](unsigned char ch) { return (char)std::tolower(ch); });
+        if (!seenPackages.insert(uniqueKey).second) continue;
 
         std::string workId = folder.path().filename().string();
         for (char &ch : workId) if (!std::isalnum((unsigned char)ch) && ch != '_' && ch != '-') ch = '_';
@@ -27277,19 +27939,22 @@ std::string getLocalWallpaperEngineThemesJson() {
           }
           ec.clear();
         }
-        bool hasAnimatedMedia = false;
-        try {
-          for (const auto &mediaFile : fs::recursive_directory_iterator(folder.path(), fs::directory_options::skip_permission_denied, ec)) {
-            if (ec) { ec.clear(); continue; }
-            if (!mediaFile.is_regular_file(ec) || ec) { ec.clear(); continue; }
-            std::string mediaExt = mediaFile.path().extension().string();
-            std::transform(mediaExt.begin(), mediaExt.end(), mediaExt.begin(), [](unsigned char ch) { return (char)std::tolower(ch); });
-            if (mediaExt != ".mp4" && mediaExt != ".webm" && mediaExt != ".gif") continue;
-            const uintmax_t mediaSize = mediaFile.file_size(ec);
-            if (!ec && mediaSize >= 100000) { hasAnimatedMedia = true; break; }
-            ec.clear();
-          }
-        } catch (...) { ec.clear(); }
+
+        bool hasAnimatedMedia = !nativeVideo.empty();  // video-type themes are always animated
+        if (!hasAnimatedMedia) {
+          try {
+            for (const auto &mediaFile : fs::recursive_directory_iterator(folder.path(), fs::directory_options::skip_permission_denied, ec)) {
+              if (ec) { ec.clear(); continue; }
+              if (!mediaFile.is_regular_file(ec) || ec) { ec.clear(); continue; }
+              std::string mediaExt = mediaFile.path().extension().string();
+              std::transform(mediaExt.begin(), mediaExt.end(), mediaExt.begin(), [](unsigned char ch) { return (char)std::tolower(ch); });
+              if (mediaExt != ".mp4" && mediaExt != ".webm" && mediaExt != ".gif") continue;
+              const uintmax_t mediaSize = mediaFile.file_size(ec);
+              if (!ec && mediaSize >= 100000) { hasAnimatedMedia = true; break; }
+              ec.clear();
+            }
+          } catch (...) { ec.clear(); }
+        }
 
         // Also check if this theme was previously imported and produced animated media
         if (!hasAnimatedMedia) {
@@ -27311,19 +27976,50 @@ std::string getLocalWallpaperEngineThemesJson() {
           } catch (...) { ec.clear(); }
         }
 
-        uintmax_t size = fs::file_size(package, ec);
+        // Determine source_path: .pkg for scenes, native video path for video-type
+        fs::path sourcePath = !package.empty() ? package : nativeVideo;
+        uintmax_t size = fs::file_size(sourcePath, ec);
         if (ec) { size = 0; ec.clear(); }
         std::stringstream mb;
         mb << std::fixed << std::setprecision(1) << (double)size / (1024.0 * 1024.0);
-        const std::string engineDesc = hasAnimatedMedia
-          ? "Video ou GIF local detectado. A animacao sera preservada no Discord Unlock."
-          : "Cena com shaders do Wallpaper Engine. O RePKG extrai uma imagem estatica; ele nao executa a cena.";
-        const std::string engineBadge = hasAnimatedMedia ? "ENGINE ANIMADO" : "CENA ENGINE (ESTATICA)";
+        std::string engineDesc, engineBadge;
+        if (!nativeVideo.empty() && package.empty()) {
+          // Video-type theme (no .pkg)
+          engineDesc = "Video nativo do Wallpaper Engine. Reproduzido diretamente no Discord com qualidade original.";
+          engineBadge = "ENGINE VIDEO";
+        } else if (hasAnimatedMedia) {
+          engineDesc = "Animacao detectada. Sera renderizada em tempo real no Discord com o motor WebGL.";
+          engineBadge = "ENGINE ANIMADO";
+        } else {
+          engineDesc = "Cena com shaders do Wallpaper Engine. Sera renderizada em tempo real com o motor WebGL integrado.";
+          engineBadge = "CENA ENGINE";
+        }
+        std::string themeTitle;
+        fs::path projJson = folder.path() / "project.json";
+        if (!fs::exists(projJson, ec)) {
+          ec.clear();
+          projJson = getLocalTemasDir() / themeId / "project.json";
+        }
+        if (fs::exists(projJson, ec) && !ec) {
+          try {
+            std::ifstream pj(projJson.string());
+            if (pj.is_open()) {
+              std::string pjc((std::istreambuf_iterator<char>(pj)), std::istreambuf_iterator<char>());
+              pj.close();
+              std::string t = extractJsonField(pjc, "title");
+              if (!t.empty()) themeTitle = t;
+            }
+          } catch (...) {}
+        }
+        if (themeTitle.empty()) {
+          themeTitle = "Wallpaper Engine " + workId;
+        }
+
         entries.push_back("{\"id\":\"" + escapeJsonString(themeId) +
-          "\",\"name\":\"Wallpaper Engine " + escapeJsonString(workId) +
+          "\",\"name\":\"" + escapeJsonString(themeTitle) +
           "\",\"desc\":\"" + escapeJsonString(engineDesc) + "\","
           "\"tags\":[\"Wallpaper Engine\"],\"file_name\":\"" + escapeJsonString(themeId + "_engine") +
-          "\",\"source_path\":\"" + escapeJsonString(package.string()) +
+          "\",\"source_path\":\"" + escapeJsonString(sourcePath.string()) +
           "\",\"preview\":\"" + escapeJsonString(preview) + "\",\"size_mb\":" + mb.str() +
           ",\"isAnimated\":" + (hasAnimatedMedia ? "true" : "false") +
           ",\"badge\":\"" + engineBadge + "\",\"isEngineLocal\":true}");
@@ -27345,52 +28041,72 @@ void importLocalWallpaperEngineThemeAsync(const std::string &themeId, const std:
       for (char &ch : rawId) if (!std::isalnum((unsigned char)ch) && ch != '_' && ch != '-') ch = '_';
       std::string extension = package.extension().string();
       std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char ch) { return (char)std::tolower(ch); });
-      if (!fs::exists(package, ec) || extension != ".pkg") {
+      const bool isDirectVideo = (extension == ".mp4" || extension == ".webm");
+      if (!fs::exists(package, ec) || (extension != ".pkg" && !isDirectVideo)) {
         postJsonToUI("{\"type\":\"theme_download_error\",\"themeId\":\"" + escapeJsonString(themeId) + "\",\"error\":\"O pacote local do Wallpaper Engine nao foi encontrado.\"}");
         return;
       }
 
       fs::path themeDir = getLocalTemasDir();
       fs::path subDir = themeDir / rawId;
-      fs::path playableMedia;
-      int bestRank = 0;
-      uintmax_t bestSize = 0;
-      try {
-        for (const auto &candidate : fs::recursive_directory_iterator(package.parent_path(), fs::directory_options::skip_permission_denied, ec)) {
-          if (ec) { ec.clear(); continue; }
-          if (!candidate.is_regular_file(ec) || ec) { ec.clear(); continue; }
-          std::string ext = candidate.path().extension().string();
-          std::string name = candidate.path().filename().string();
-          std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char ch) { return (char)std::tolower(ch); });
-          std::transform(name.begin(), name.end(), name.begin(), [](unsigned char ch) { return (char)std::tolower(ch); });
-          const bool preview = name.find("preview") != std::string::npos;
-          int rank = 0;
-          if ((ext == ".mp4" || ext == ".webm") && !preview) rank = 5;
-          else if (ext == ".gif" && !preview) rank = 4;
-          else if (ext == ".mp4" || ext == ".webm") rank = 3;
-          else if (ext == ".gif") rank = 2;
-          if (!rank) continue;
-          const uintmax_t size = candidate.file_size(ec);
-          if (ec || size < 100000) { ec.clear(); continue; }
-          if (rank > bestRank || (rank == bestRank && size > bestSize)) {
-            playableMedia = candidate.path();
-            bestRank = rank;
-            bestSize = size;
-          }
-        }
-      } catch (...) {}
+      fs::create_directories(subDir, ec);
+      ec.clear();
+
+      fs::path srcProjJson = package.parent_path() / "project.json";
+      if (fs::exists(srcProjJson, ec) && !ec) {
+        fs::copy_file(srcProjJson, subDir / "project.json", fs::copy_options::overwrite_existing, ec);
+        ec.clear();
+      }
 
       fs::path media;
-      bool isNativeAnimatedMedia = !playableMedia.empty();
-      if (isNativeAnimatedMedia) {
-        postJsonToUI("{\"type\":\"theme_download_stage\",\"themeId\":\"" + escapeJsonString(themeId) + "\",\"stage\":\"extracting\",\"label\":\"Copiando vídeo animado do Wallpaper Engine...\"}");
-        media = playableMedia;
+      bool isNativeAnimatedMedia = false;
+
+      if (isDirectVideo) {
+        // Video-type theme: direct copy, no RePKG needed
+        postJsonToUI("{\"type\":\"theme_download_stage\",\"themeId\":\"" + escapeJsonString(themeId) + "\",\"stage\":\"extracting\",\"label\":\"Copiando video do Wallpaper Engine...\"}");
+        media = package;
+        isNativeAnimatedMedia = true;
       } else {
-        postJsonToUI("{\"type\":\"theme_download_stage\",\"themeId\":\"" + escapeJsonString(themeId) + "\",\"stage\":\"extracting\",\"label\":\"Extraindo imagem do pacote do Wallpaper Engine...\"}");
-        std::string extractionError;
-        if (!extractWallpaperEnginePackage(package, subDir / "engine_extracted", media, extractionError)) {
-          postJsonToUI("{\"type\":\"theme_download_error\",\"themeId\":\"" + escapeJsonString(themeId) + "\",\"error\":\"" + escapeJsonString(extractionError) + "\"}");
-          return;
+        // Scene-type theme: check for native playable media first
+        fs::path playableMedia;
+        int bestRank = 0;
+        uintmax_t bestSize = 0;
+        try {
+          for (const auto &candidate : fs::recursive_directory_iterator(package.parent_path(), fs::directory_options::skip_permission_denied, ec)) {
+            if (ec) { ec.clear(); continue; }
+            if (!candidate.is_regular_file(ec) || ec) { ec.clear(); continue; }
+            std::string ext = candidate.path().extension().string();
+            std::string name = candidate.path().filename().string();
+            std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char ch) { return (char)std::tolower(ch); });
+            std::transform(name.begin(), name.end(), name.begin(), [](unsigned char ch) { return (char)std::tolower(ch); });
+            const bool preview = name.find("preview") != std::string::npos;
+            int rank = 0;
+            if ((ext == ".mp4" || ext == ".webm") && !preview) rank = 5;
+            else if (ext == ".gif" && !preview) rank = 4;
+            else if (ext == ".mp4" || ext == ".webm") rank = 3;
+            else if (ext == ".gif") rank = 2;
+            if (!rank) continue;
+            const uintmax_t size = candidate.file_size(ec);
+            if (ec || size < 100000) { ec.clear(); continue; }
+            if (rank > bestRank || (rank == bestRank && size > bestSize)) {
+              playableMedia = candidate.path();
+              bestRank = rank;
+              bestSize = size;
+            }
+          }
+        } catch (...) {}
+
+        isNativeAnimatedMedia = !playableMedia.empty();
+        if (isNativeAnimatedMedia) {
+          postJsonToUI("{\"type\":\"theme_download_stage\",\"themeId\":\"" + escapeJsonString(themeId) + "\",\"stage\":\"extracting\",\"label\":\"Copiando vídeo animado do Wallpaper Engine...\"}");
+          media = playableMedia;
+        } else {
+          postJsonToUI("{\"type\":\"theme_download_stage\",\"themeId\":\"" + escapeJsonString(themeId) + "\",\"stage\":\"extracting\",\"label\":\"Extraindo imagem do pacote do Wallpaper Engine...\"}");
+          std::string extractionError;
+          if (!extractWallpaperEnginePackage(package, subDir / "engine_extracted", media, extractionError)) {
+            postJsonToUI("{\"type\":\"theme_download_error\",\"themeId\":\"" + escapeJsonString(themeId) + "\",\"error\":\"" + escapeJsonString(extractionError) + "\"}");
+            return;
+          }
         }
       }
 
@@ -27410,6 +28126,7 @@ void importLocalWallpaperEngineThemeAsync(const std::string &themeId, const std:
       const std::string mediaExt = media.extension().string();
       const std::string cleanFileName = rawId + "_engine" + mediaExt;
       fs::copy_file(media, themeDir / cleanFileName, fs::copy_options::overwrite_existing, ec);
+      if (ec) { ec.clear(); }
       fs::copy_file(media, subDir / ("wallpaper_hd" + mediaExt), fs::copy_options::overwrite_existing, ec);
       if (ec) {
         postJsonToUI("{\"type\":\"theme_download_error\",\"themeId\":\"" + escapeJsonString(themeId) + "\",\"error\":\"Nao foi possivel salvar a mídia importada.\"}");
@@ -27923,11 +28640,19 @@ std::string getLocalCustomThemesJson() {
       for (const auto &entry : fs::directory_iterator(temasDir, fs::directory_options::skip_permission_denied, ec)) {
         if (entry.path().extension() == ".tmp") continue;
 
+        std::string fnLower = entry.path().filename().string();
+        std::transform(fnLower.begin(), fnLower.end(), fnLower.begin(), ::tolower);
+        if (fnLower.rfind("local_engine_", 0) == 0 || fnLower.find("_engine") != std::string::npos) continue;
+
         std::string stem = entry.path().stem().string();
         std::string rawId = stem;
         if (rawId.rfind("theme_", 0) == 0) rawId = rawId.substr(6);
         if (rawId.rfind("steam_theme_", 0) == 0) rawId = rawId.substr(12);
         if (rawId.rfind("custom_theme_", 0) == 0) rawId = rawId.substr(13);
+
+        std::string rawIdLowerCheck = rawId;
+        std::transform(rawIdLowerCheck.begin(), rawIdLowerCheck.end(), rawIdLowerCheck.begin(), ::tolower);
+        if (rawIdLowerCheck.rfind("local_engine_", 0) == 0) continue;
 
         if (knownCatalogIds.count(rawId) || knownCatalogIds.count(stem)) continue;
 
@@ -30449,13 +31174,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 }
 
 std::string extractJsonField(const std::string &json, const std::string &key) {
-  std::string pattern1 = "\"" + key + "\":";
-  std::string pattern2 = "\\\"" + key + "\\\":";
-  size_t pos = json.find(pattern1);
-  size_t patLen = pattern1.length();
-  if (pos == std::string::npos) {
-    pos = json.find(pattern2);
-    patLen = pattern2.length();
+  // Try patterns with and without spaces around colon (Wallpaper Engine project.json uses "key" : "val")
+  const std::string patterns[] = {
+    "\"" + key + "\":",
+    "\"" + key + "\" :",
+    "\\\"" + key + "\\\":",
+    "\\\"" + key + "\\\" :"
+  };
+  size_t pos = std::string::npos;
+  size_t patLen = 0;
+  for (const auto& pat : patterns) {
+    pos = json.find(pat);
+    if (pos != std::string::npos) { patLen = pat.length(); break; }
   }
   if (pos == std::string::npos) return "";
   pos += patLen;
@@ -31451,12 +32181,7 @@ static double getDwmRefreshFps() {
 }
 
 // 6. Running Graphical Applications Enumeration
-struct ActiveAppInfo {
-  DWORD pid;
-  std::string name;
-  std::string title;
-  HWND hwnd;
-};
+// (struct ActiveAppInfo defined earlier near handleRecorderAction)
 
 static BOOL CALLBACK EnumWindowsPerfProc(HWND hwnd, LPARAM lParam) {
   if (!IsWindowVisible(hwnd) || IsIconic(hwnd)) return TRUE;
@@ -32927,6 +33652,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                                   applyStoragePolicyAsync(true);
                                   return S_OK;
                                 }
+                                if (action == "engine_control") {
+                                  handleEngineControl(json);
+                                  return S_OK;
+                                }
+                                // Recorder + hotkey actions dispatched early to reduce nesting depth
+                                if (action.rfind("recorder_", 0) == 0 || action == "get_hotkeys" || action == "save_hotkeys" || action == "reset_hotkeys") {
+                                  handleRecorderAction(action, json);
+                                  return S_OK;
+                                }
 
                                 if (action == "minimize") {
                                   ShowWindow(g_hWnd, SW_MINIMIZE);
@@ -33740,210 +34474,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                                     if (!filePath.empty()) {
                                       uploadToCloudGofile(toWide(filePath), expiry.empty() ? "1h" : expiry);
                                     }
-                                   } else if (action == "recorder_get_status") {
-                                      broadcastRecorderStatus();
-                                    } else if (action == "recorder_get_settings") {
-                                      broadcastRecorderSettings();
-                                    } else if (action == "recorder_get_targets") {
-                                      auto monitors = DiscordUnlock::GetSystemMonitors();
-                                      auto windows = getRunningApplications();
-                                      std::string jsonResp = "{\"type\":\"recorder_targets\",\"monitors\":[";
-                                      for (size_t i = 0; i < monitors.size(); ++i) {
-                                        if (i > 0) jsonResp += ",";
-                                        jsonResp += "{\"index\":" + std::to_string(monitors[i].index) +
-                                                    ",\"name\":\"" + escapeJsonString(monitors[i].name) + "\"" +
-                                                    ",\"width\":" + std::to_string(monitors[i].width) +
-                                                    ",\"height\":" + std::to_string(monitors[i].height) +
-                                                    ",\"orientation\":" + std::to_string(monitors[i].orientation) +
-                                                    ",\"isPrimary\":" + std::string(monitors[i].isPrimary ? "true" : "false") + "}";
-                                      }
-                                      jsonResp += "],\"windows\":[";
-                                      for (size_t i = 0; i < windows.size(); ++i) {
-                                        if (i > 0) jsonResp += ",";
-                                        jsonResp += "{\"pid\":" + std::to_string(windows[i].pid) +
-                                                    ",\"hwnd\":\"" + std::to_string((uintptr_t)windows[i].hwnd) + "\"" +
-                                                    ",\"name\":\"" + escapeJsonString(windows[i].name) + "\"" +
-                                                    ",\"title\":\"" + escapeJsonString(windows[i].title) + "\"}";
-                                      }
-                                      jsonResp += "]}";
-                                      postJsonToUI(jsonResp);
-                                    } else if (action == "get_hotkeys") {
-                                      broadcastHotkeysConfig();
-                                    } else if (action == "save_hotkeys") {
-                                      std::string target = extractJsonField(json, "target");
-                                      std::string ctrlStr = extractJsonField(json, "ctrl");
-                                      std::string altStr = extractJsonField(json, "alt");
-                                      std::string shiftStr = extractJsonField(json, "shift");
-                                      std::string vkStr = extractJsonField(json, "vk");
-                                      std::string txt = extractJsonField(json, "text");
-                                      {
-                                        std::lock_guard<std::mutex> lock(g_hotkeysMutex);
-                                        auto applyItem = [&](HotkeyConfigItem& it) {
-                                          if (!ctrlStr.empty()) it.ctrl = (ctrlStr == "true" || ctrlStr == "1");
-                                          if (!altStr.empty()) it.alt = (altStr == "true" || altStr == "1");
-                                          if (!shiftStr.empty()) it.shift = (shiftStr == "true" || shiftStr == "1");
-                                          if (!vkStr.empty()) {
-                                            try { it.vkCode = (UINT)std::stoi(vkStr); } catch(...) {}
-                                          }
-                                          if (!txt.empty()) it.text = txt;
-                                        };
-                                        if (target == "record") applyItem(g_hotkeysConfig.record);
-                                        else if (target == "clip") applyItem(g_hotkeysConfig.clip);
-                                        else if (target == "overlay") applyItem(g_hotkeysConfig.overlay);
-                                      }
-                                      saveHotkeysConfig();
-                                      broadcastHotkeysConfig();
-                                      broadcastRecorderSettings();
-                                    } else if (action == "reset_hotkeys") {
-                                      {
-                                        std::lock_guard<std::mutex> lock(g_hotkeysMutex);
-                                        g_hotkeysConfig.record = { true, false, false, VK_F9, "Ctrl+F9" };
-                                        g_hotkeysConfig.clip = { true, false, false, VK_F10, "Ctrl+F10" };
-                                        g_hotkeysConfig.overlay = { false, false, false, VK_F12, "F12" };
-                                      }
-                                      saveHotkeysConfig();
-                                      broadcastHotkeysConfig();
-                                      broadcastRecorderSettings();
-                                    } else if (action == "recorder_get_microphones") {
-                                      broadcastRecorderMicrophones();
-                                    } else if (action == "recorder_save_settings") {
-                                      auto& rec = DiscordUnlock::ScreenRecorder::Instance();
-                                      auto s = rec.GetSettings();
-                                      std::string ct = extractJsonField(json, "captureTarget");
-                                      if (!ct.empty()) s.captureTarget = ct;
-                                      std::string mi = extractJsonField(json, "monitorIndex");
-                                      if (!mi.empty()) {
-                                        try { s.monitorIndex = std::stoi(mi); } catch(...) {}
-                                      }
-                                      std::string hw = extractJsonField(json, "targetHwnd");
-                                      if (!hw.empty()) {
-                                        try { s.targetHwnd = (HWND)std::stoull(hw); } catch(...) {}
-                                      }
-                                      std::string wn = extractJsonField(json, "targetWindowName");
-                                      if (!wn.empty()) s.targetWindowName = wn;
-                                      std::string rmMode = extractJsonField(json, "resolutionMode");
-                                      if (!rmMode.empty()) s.resolutionMode = rmMode;
-                                      std::string rw = extractJsonField(json, "resolutionWidth");
-                                      if (!rw.empty()) s.targetWidth = std::stoi(rw);
-                                      std::string rh = extractJsonField(json, "resolutionHeight");
-                                      if (!rh.empty()) s.targetHeight = std::stoi(rh);
-                                      std::string fpsStr = extractJsonField(json, "fps");
-                                      if (!fpsStr.empty()) s.fps = std::stoi(fpsStr);
-                                      std::string brStr = extractJsonField(json, "bitrate");
-                                      if (!brStr.empty()) s.bitrate = std::stoi(brStr);
-                                      std::string am = extractJsonField(json, "audioMode");
-                                      if (!am.empty()) s.audioMode = am;
-                                      std::string rm = extractJsonField(json, "recordMic");
-                                      if (!rm.empty()) s.recordMic = (rm == "true" || rm == "1");
-                                      std::string micId = extractJsonField(json, "micDeviceId");
-                                      s.micDeviceId = toWide(micId);
-                                      std::string cursorMode = extractJsonField(json, "cursorMode");
-                                      if (cursorMode == "hidden" || cursorMode == "cursor" || cursorMode == "highlight") s.cursorMode = cursorMode;
-                                      std::string rb = extractJsonField(json, "replayBufferEnabled");
-                                      bool prevBuffer = s.replayBufferEnabled;
-                                      if (!rb.empty()) s.replayBufferEnabled = (rb == "true" || rb == "1");
-                                      std::string rbs = extractJsonField(json, "replayBufferSeconds");
-                                      const int previousReplaySeconds = s.replayBufferSeconds;
-                                      const std::string previousReplayQuality = s.replayQuality;
-                                      if (!rbs.empty()) s.replayBufferSeconds = std::clamp(std::stoi(rbs), 15, 300);
-                                      std::string rq = extractJsonField(json, "replayQuality");
-                                      if (rq == "economy" || rq == "balanced" || rq == "high") s.replayQuality = rq;
-                                      const bool restartReplay = prevBuffer && (previousReplaySeconds != s.replayBufferSeconds || previousReplayQuality != s.replayQuality);
-                                      std::string auc = extractJsonField(json, "autoUploadCloud");
-                                      if (!auc.empty()) s.autoUploadCloud = (auc == "true" || auc == "1");
-                                       std::string f180 = extractJsonField(json, "flip180");
-                                       if (!f180.empty()) s.flip180 = (f180 == "true" || f180 == "1");
-                                      std::string aud = extractJsonField(json, "autoUploadDeleteLocal");
-                                      if (!aud.empty()) s.autoUploadDeleteLocal = (aud == "true" || aud == "1");
-                                      // Nunca permitir apagar o arquivo antes de um upload automático.
-                                      if (s.autoUploadDeleteLocal) s.autoUploadCloud = true;
-                                      rec.UpdateSettings(s);
-                                      if (s.replayBufferEnabled && !prevBuffer) {
-                                        std::string err;
-                                        rec.StartReplayBuffer(err);
-                                      } else if (!s.replayBufferEnabled && prevBuffer) {
-                                        rec.StopReplayBuffer();
-                                      } else if (s.replayBufferEnabled && restartReplay) {
-                                        rec.StopReplayBuffer();
-                                        std::string err;
-                                        rec.StartReplayBuffer(err);
-                                      }
-                                      broadcastRecorderStatus();
-                                      broadcastRecorderSettings();
-                                   } else if (action == "recorder_start") {
-                                     auto& rec = DiscordUnlock::ScreenRecorder::Instance();
-                                     std::string err;
-                                     if (rec.StartRecording(err)) {
-                                       broadcastRecorderStatus();
-                                       showTrayNotification(L"Discord Unlock — Gravação", L"Gravação de vídeo iniciada.");
-                                     }
-                                   } else if (action == "recorder_stop") {
-                                     auto& rec = DiscordUnlock::ScreenRecorder::Instance();
-                                     std::wstring saved;
-                                     if (rec.StopRecording(&saved)) {
-                                       broadcastRecorderStatus();
-                                       broadcastRecorderClips();
-                                       showTrayNotification(L"Discord Unlock — Gravação", L"Gravação finalizada e vídeo salvo.");
-                                     } else {
-                                       broadcastRecorderStatus();
-                                       broadcastRecorderClips();
-                                       showTrayNotification(L"Discord Unlock — Gravação", L"A gravação falhou e o arquivo incompleto foi removido.");
-                                     }
-                                     auto s = rec.GetSettings();
-                                     if (s.autoUploadCloud && !saved.empty()) {
-                                       uploadToCloudGofile(saved, "1h", "", true, true);
-                                     } else if (!saved.empty()) {
-                                       applyStoragePolicyAsync(false);
-                                     }
-                                   } else if (action == "recorder_save_clip") {
-                                     handleRecorderSaveClipHotKey();
-                                   } else if (action == "recorder_trim_clip") {
-                                     std::string fp = extractJsonField(json, "filePath");
-                                     double startValue = std::strtod(extractJsonField(json, "startSec").c_str(), nullptr);
-                                     double endValue = std::strtod(extractJsonField(json, "endSec").c_str(), nullptr);
-                                     double startSec = startValue > 0.0 ? startValue : 0.0;
-                                     double endSec = endValue > 0.0 ? endValue : 0.0;
-                                     std::thread([fp, startSec, endSec]() {
-                                       std::wstring output; std::string err;
-                                       bool ok = !fp.empty() && DiscordUnlock::ScreenRecorder::Instance().TrimClip(toWide(fp), startSec, endSec, output, err);
-                                       if (ok) {
-                                         postJsonToUI("{\"type\":\"recorder_trim_result\",\"success\":true,\"filename\":\"" + escapeJsonString(fs::path(output).filename().string()) + "\"}");
-                                         broadcastRecorderClips();
-                                       } else {
-                                         if (err.empty()) err = "Não foi possível cortar este clipe.";
-                                         postJsonToUI("{\"type\":\"recorder_trim_result\",\"success\":false,\"error\":\"" + escapeJsonString(err) + "\"}");
-                                       }
-                                     }).detach();
-                                   } else if (action == "recorder_get_clips") {
-                                     broadcastRecorderClips();
-                                   } else if (action == "recorder_delete_clip") {
-                                     std::string fp = extractJsonField(json, "filePath");
-                                     const bool fromManualUpload = extractJsonField(json, "fromManualUpload") == "true";
-                                     if (!fp.empty()) {
-                                       const std::wstring filePath = toWide(fp);
-                                       if (fromManualUpload) postRecorderCloudUploadProgress("deletando", 100, filePath, "Removendo o vídeo local...");
-                                       const bool deleted = DiscordUnlock::ScreenRecorder::Instance().DeleteClip(filePath) || !fs::exists(filePath);
-                                       broadcastRecorderClips();
-                                       if (fromManualUpload) {
-                                         postRecorderCloudUploadProgress(deleted ? "deletado" : "deletando", 100, filePath,
-                                           deleted ? "Arquivo local removido após sua confirmação." : "O Windows não permitiu apagar o arquivo local.", deleted);
-                                         postJsonToUI(std::string(R"({"type":"recorder_delete_result","success":)") + (deleted ? "true" : "false") + R"(,"message":") + escapeJsonString(deleted ? "Arquivo local removido após sua confirmação." : "O Windows não permitiu apagar o arquivo local.") + R"("})");
-                                       }
-                                     }
-                                   } else if (action == "recorder_play_clip") {
-                                     std::string fp = extractJsonField(json, "filePath");
-                                     if (!fp.empty()) {
-                                       ShellExecuteW(nullptr, L"open", toWide(fp).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-                                     }
-                                   } else if (action == "recorder_upload_cloud") {
-                                     std::string fp = extractJsonField(json, "filePath");
-                                     if (!fp.empty()) {
-                                       uploadToCloudGofile(toWide(fp), "1h", "", true, false);
-                                     }
-                                   } else if (action == "recorder_open_folder") {
-                                     auto s = DiscordUnlock::ScreenRecorder::Instance().GetSettings();
-                                     ShellExecuteW(nullptr, L"open", s.outputFolder.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-                                   }
+                                    }
                                  return S_OK;
                               })
                               .Get(),

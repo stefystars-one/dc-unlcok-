@@ -7,10 +7,14 @@ IDI_ICON1 ICON "app_icon_remastered_main.ico"
 106 RCDATA "bin\\wiresock.zip"
 107 RCDATA "bin\\protonvpn-wg-confgen.zip"
 108 RCDATA "themes_catalog.json"
+109 RCDATA "bin\\repkg\\RePKG.exe"
+110 RCDATA "bin\\repkg\\LICENSE.txt"
+111 RCDATA "bin\\repkg\\THIRD-PARTY-NOTICES.txt"
+112 RCDATA "wallpaper_engine_renderer.html"
 
 1 VERSIONINFO
-FILEVERSION 8,2,0,0
-PRODUCTVERSION 8,2,0,0
+FILEVERSION 8,3,0,0
+PRODUCTVERSION 8,3,0,0
 FILEFLAGSMASK 0x3fL
 FILEFLAGS 0x0L
 FILEOS 0x40004L
@@ -22,13 +26,13 @@ BEGIN
         BLOCK "041604b0"
         BEGIN
             VALUE "CompanyName", "Discord Unlock"
-            VALUE "FileDescription", "Discord Unlock 8.2"
-            VALUE "FileVersion", "8.2.0.0"
+            VALUE "FileDescription", "Discord Unlock 8.3"
+            VALUE "FileVersion", "8.3.0.0"
             VALUE "InternalName", "DiscordUnlock"
             VALUE "LegalCopyright", "Copyright (C) 2026"
             VALUE "OriginalFilename", "DiscordUnlock.exe"
-            VALUE "ProductName", "Discord Unlock 8.2"
-            VALUE "ProductVersion", "8.2.0.0"
+            VALUE "ProductName", "Discord Unlock 8.3"
+            VALUE "ProductVersion", "8.3.0.0"
         END
     END
     BLOCK "VarFileInfo"
@@ -36,6 +40,9 @@ BEGIN
         VALUE "Translation", 0x416, 1200
     END
 END
+
+
+
 
 
 

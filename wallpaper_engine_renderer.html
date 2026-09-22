@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>*{margin:0;padding:0;overflow:hidden}body{background:#000}canvas{width:100vw;height:100vh;display:block}</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+'use strict';
+const BASE = 'http://127.0.0.1:45123';
+const params = new URLSearchParams(location.search);
+const themePath = params.get('path') || '';
+
+const canvas = document.getElementById('c');
+const gl = canvas.getContext('webgl2', { alpha: false, antialias: false, premultipliedAlpha: false, preserveDrawingBuffer: true });
+if (!gl) { document.body.innerHTML = '<p style="color:red">WebGL2 not supported</p>'; throw 'no gl'; }
+
+// Controllable params (URL or postMessage)
+let flipY = params.get('flip') === '1';
+let targetFPS = parseInt(params.get('fps')) || 60;
+let qualityScale = parseFloat(params.get('quality')) || 1.0;
+let paused = params.get('pause') === '1';
+let drawnPausedFrame = false;
+
+// Listen for runtime control from parent
+window.addEventListener('message', e => {
+  if (e.data?.type === 'engine_control') {
+    if ('flip' in e.data) flipY = !!e.data.flip;
+    if ('fps' in e.data) targetFPS = e.data.fps;
+    if ('quality' in e.data) qualityScale = e.data.quality;
+    if ('pause' in e.data) {
+      paused = !!e.data.pause;
+      drawnPausedFrame = false;
+    }
+  }
+});
+
+/* ======== GLSL Transpilation ======== */
+const POLYFILLS = `
+#define texSample2D(s,uv) texture(s,uv)
+#define texSample2DLod(s,uv,l) textureLod(s,uv,l)
+#define mul(v,m) ((m)*(v))
+#define frac fract
+#define saturate(x) clamp(x,0.0,1.0)
+#define CAST2(x) vec2(x)
+#define CAST3(x) vec3(x)
+#define CAST4(x) vec4(x)
+#define M_PI 3.14159265358979
+#define M_PI_2 6.28318530717959
+#define ddx dFdx
+#define ddy dFdy
+vec2 rotateVec2(vec2 v,float a){float s=sin(a),c=cos(a);return mat2(c,-s,s,c)*v;}
+`;
+const BLENDING_FN = `
+vec3 ApplyBlending(int mode, vec3 base, vec3 blend, float opacity) {
+  vec3 result;
+  if (mode == 0) result = blend;
+  else if (mode == 1) result = base + blend;
+  else if (mode == 2) result = base * blend;
+  else if (mode == 4) {
+    result = vec3(
+      base.r < 0.5 ? 2.0*base.r*blend.r : 1.0-2.0*(1.0-base.r)*(1.0-blend.r),
+      base.g < 0.5 ? 2.0*base.g*blend.g : 1.0-2.0*(1.0-base.g)*(1.0-blend.g),
+      base.b < 0.5 ? 2.0*base.b*blend.b : 1.0-2.0*(1.0-base.b)*(1.0-blend.b));
+  } else result = blend;
+  return mix(base, result, opacity);
+}
+`;
+
+function cleanSrc(s){s=s.replace(/#include\s+"[^"]*"/g,'');s=s.replace(/\/\/\s*\[COMBO[^\]]*\][^\n]*/g,'');s=s.replace(/\/\/\s*\[OFF_COMBO[^\]]*\][^\n]*/g,'');return s;}
+function extractMaterialMap(s){const m={};const r=/uniform\s+\w+\s+(\w+)\s*;.*?"material"\s*:\s*"([^"]+)"/g;let x;while((x=r.exec(s))!==null)m[x[2]]=x[1];return m;}
+function extractDefaults(s){const d={};const r=/uniform\s+\w+\s+(\w+)\s*;.*?"default"\s*:\s*("([^"]+)"|([0-9.eE\-+]+))/g;let x;while((x=r.exec(s))!==null)d[x[1]]=x[3]||x[4];return d;}
+function addCombos(s,c){const D=['AUDIOPROCESSING','MASK','NOISE','SPECULAR','PULSECOLOR','PULSEALPHA','DIRECTION','POSITION','BLENDMODE','SHADING','WRITEALPHA','PERSPECTIVE'];let p='';for(const[k,v]of Object.entries(c||{}))p+='#define '+k+' '+v+'\n';for(const d of D)if(!(d in(c||{})))p+='#define '+d+' 0\n';return p+s;}
+function transpileVert(s,c){s=cleanSrc(s);s=addCombos(s,c);s=s.replace(/\battribute\b/g,'in');s=s.replace(/\bvarying\b/g,'out');return'#version 300 es\nprecision highp float;\n'+POLYFILLS+s;}
+function transpileFrag(s,c){s=cleanSrc(s);s=addCombos(s,c);s=s.replace(/\bvarying\b/g,'in');s=s.replace(/\bgl_FragColor\b/g,'fragColor');return'#version 300 es\nprecision highp float;\nout vec4 fragColor;\n'+POLYFILLS+BLENDING_FN+s;}
+
+/* ======== GL Helpers ======== */
+function compile(type,src){const sh=gl.createShader(type);gl.shaderSource(sh,src);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS)){console.warn('Shader err:',gl.getShaderInfoLog(sh));gl.deleteShader(sh);return null;}return sh;}
+function linkProg(v,f){const vs=compile(gl.VERTEX_SHADER,v);const fs=compile(gl.FRAGMENT_SHADER,f);if(!vs||!fs)return null;const p=gl.createProgram();gl.attachShader(p,vs);gl.attachShader(p,fs);gl.bindAttribLocation(p,0,'a_Position');gl.bindAttribLocation(p,1,'a_TexCoord');gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS)){console.warn('Link err:',gl.getProgramInfoLog(p));gl.deleteProgram(p);return null;}return p;}
+
+function makeFBO(w,h){
+  const t=gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D,t);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  const fb=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);return{fb,t,w,h};
+}
+
+async function loadImg(url){
+  return new Promise(r=>{
+    const img=new Image();img.crossOrigin='anonymous';
+    img.onload=()=>{const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
+      gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);
+      gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);
+      r({t,w:img.naturalWidth,h:img.naturalHeight});};
+    img.onerror=()=>r(null);img.src=url;});
+}
+
+function make1pxTex(r,g,b,a){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([r,g,b,a]));gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);return{t,w:1,h:1};}
+function makeNoiseTex(){const sz=256,d=new Uint8Array(sz*sz*4);for(let i=0;i<sz*sz;i++){const v=Math.random()*255|0;d[i*4]=v;d[i*4+1]=v;d[i*4+2]=v;d[i*4+3]=255;}const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,sz,sz,0,gl.RGBA,gl.UNSIGNED_BYTE,d);gl.generateMipmap(gl.TEXTURE_2D);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);return{t,w:sz,h:sz};}
+function makeCloudsTex(){const sz=256,d=new Uint8Array(sz*sz*4);for(let y=0;y<sz;y++)for(let x=0;x<sz;x++){let v=Math.sin(x*0.05)*0.3+Math.cos(y*0.07)*0.3+Math.sin(x*0.12+y*0.08)*0.2+Math.cos(x*0.09-y*0.11)*0.2+Math.sin(x*0.23-y*0.17)*0.15+Math.cos(x*0.19+y*0.23)*0.15;v=Math.max(0,Math.min(255,((v+1.5)/3.0)*255|0));const i=(y*sz+x)*4;d[i]=v;d[i+1]=v;d[i+2]=v;d[i+3]=255;}const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,sz,sz,0,gl.RGBA,gl.UNSIGNED_BYTE,d);gl.generateMipmap(gl.TEXTURE_2D);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);return{t,w:sz,h:sz};}
+
+const whiteTex=make1pxTex(255,255,255,255),blackTex=make1pxTex(0,0,0,255),noiseTex=makeNoiseTex(),cloudsTex=makeCloudsTex(),noflowTex=make1pxTex(127,127,0,255);
+const BUILTIN_TEX={'util/white':whiteTex,'util/noise':noiseTex,'util/clouds_256':cloudsTex,'util/noflow':noflowTex};
+function getBuiltinTex(ref){if(BUILTIN_TEX[ref])return BUILTIN_TEX[ref];for(const[k,v]of Object.entries(BUILTIN_TEX))if(ref.endsWith('/'+k.split('/')[1]))return v;return null;}
+
+async function fetchText(u){try{const r=await fetch(u);return r.ok?await r.text():null;}catch{return null;}}
+async function fetchJson(u){try{const r=await fetch(u);return r.ok?await r.json():null;}catch{return null;}}
+function fileUrl(p){return BASE+'/file?file='+encodeURIComponent(p);}
+async function loadTexture(bp){for(const ext of['.png','.jpg','.jpeg','.gif','.webp','']){const td=await loadImg(fileUrl(bp+ext));if(td)return td;}return null;}
+
+/* Fullscreen quad: positions + UVs */
+const qv=new Float32Array([-1,-1,0,0,0, 1,-1,0,1,0, -1,1,0,0,1, 1,1,0,1,1]);
+const qb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,qb);gl.bufferData(gl.ARRAY_BUFFER,qv,gl.STATIC_DRAW);
+function drawQuad(prog){gl.useProgram(prog);gl.bindBuffer(gl.ARRAY_BUFFER,qb);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,20,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,2,gl.FLOAT,false,20,12);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);}
+
+/* Passthrough: just renders a texture fullscreen */
+const ptProg=linkProg(
+  `#version 300 es\nprecision highp float;\nin vec3 a_Position;in vec2 a_TexCoord;out vec2 vUV;\nvoid main(){gl_Position=vec4(a_Position,1.0);vUV=a_TexCoord;}`,
+  `#version 300 es\nprecision highp float;\nin vec2 vUV;out vec4 fc;uniform sampler2D uTex;\nvoid main(){fc=texture(uTex,vUV);}`
+);
+
+/* Layer composite: draws a sprite positioned in scene coordinates */
+const compositeProg=linkProg(
+  `#version 300 es
+precision highp float;
+in vec3 a_Position; in vec2 a_TexCoord; out vec2 vUV;
+uniform vec4 uRect; // x, y, w, h in normalized scene coords (0-1)
+uniform float uFlipY; // 1.0 = flip texture vertically
+void main(){
+  vec2 pos = a_Position.xy * 0.5 + 0.5;
+  pos = uRect.xy + pos * uRect.zw;
+  pos.y = 1.0 - pos.y;
+  pos = pos * 2.0 - 1.0;
+  gl_Position = vec4(pos, 0.0, 1.0);
+  vUV = a_TexCoord;
+  if (uFlipY > 0.5) vUV.y = 1.0 - vUV.y;
+}`,
+  `#version 300 es
+precision highp float;
+in vec2 vUV; out vec4 fc;
+uniform sampler2D uTex;
+uniform float uOpacity;
+void main(){
+  vec4 c = texture(uTex, vUV);
+  c.a *= uOpacity;
+  fc = c;
+}`
+);
+
+/* Bloom shaders */
+const bloomThreshProg=linkProg(
+  `#version 300 es\nprecision highp float;\nin vec3 a_Position;in vec2 a_TexCoord;out vec2 vUV;\nvoid main(){gl_Position=vec4(a_Position,1.0);vUV=a_TexCoord;}`,
+  `#version 300 es\nprecision highp float;\nin vec2 vUV;out vec4 fc;uniform sampler2D uTex;uniform float uThreshold;\nvoid main(){vec4 c=texture(uTex,vUV);float b=dot(c.rgb,vec3(0.2126,0.7152,0.0722));fc=b>uThreshold?c:vec4(0,0,0,1);}`
+);
+const bloomBlurProg=linkProg(
+  `#version 300 es\nprecision highp float;\nin vec3 a_Position;in vec2 a_TexCoord;out vec2 vUV;\nvoid main(){gl_Position=vec4(a_Position,1.0);vUV=a_TexCoord;}`,
+  `#version 300 es\nprecision highp float;\nin vec2 vUV;out vec4 fc;uniform sampler2D uTex;uniform vec2 uDir;\nconst float w[5]=float[](0.227027,0.1945946,0.1216216,0.054054,0.016216);\nvoid main(){vec3 r=texture(uTex,vUV).rgb*w[0];for(int i=1;i<5;i++){vec2 o=uDir*float(i)*2.0;r+=texture(uTex,vUV+o).rgb*w[i];r+=texture(uTex,vUV-o).rgb*w[i];}fc=vec4(r,1);}`
+);
+const bloomCompProg=linkProg(
+  `#version 300 es\nprecision highp float;\nin vec3 a_Position;in vec2 a_TexCoord;out vec2 vUV;\nvoid main(){gl_Position=vec4(a_Position,1.0);vUV=a_TexCoord;}`,
+  `#version 300 es\nprecision highp float;\nin vec2 vUV;out vec4 fc;uniform sampler2D uBase;uniform sampler2D uBloom;uniform float uStrength;\nvoid main(){fc=vec4(texture(uBase,vUV).rgb+texture(uBloom,vUV).rgb*uStrength,1);}`
+);
+
+const identityMat4=new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]);
+function isVisible(v){if(v==null)return true;if(typeof v==='boolean')return v;if(typeof v==='object'&&'value'in v)return!!v.value;return true;}
+
+/* Mouse tracking for parallax */
+let mouseX=0.5,mouseY=0.5;
+document.addEventListener('mousemove',e=>{mouseX=e.clientX/window.innerWidth;mouseY=e.clientY/window.innerHeight;});
+
+/* ======== Main ======== */
+(async function main(){
+  function resize(){
+    const dpr = window.devicePixelRatio||1;
+    canvas.width = Math.max(1, (window.innerWidth * dpr * qualityScale)|0);
+    canvas.height = Math.max(1, (window.innerHeight * dpr * qualityScale)|0);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const scene=await fetchJson(fileUrl(themePath+'/scene.json'));
+  if(!scene||!scene.objects){console.error('No scene');return;}
+
+  const general=scene.general||{};
+  const sceneW=general.orthogonalprojection?.width||1920;
+  const sceneH=general.orthogonalprojection?.height||1080;
+  const bloomOn=!!general.bloom;
+  const bloomStr=general.bloomstrength||1;
+  const bloomThr=general.bloomthreshold||0.5;
+  const parallaxOn=!!general.cameraparallax;
+  const parallaxAmt=general.cameraparallaxamount||0.5;
+  const parallaxMouse=general.cameraparallaxmouseinfluence||0.05;
+  const shakeOn=!!general.camerashake;
+  const shakeAmp=general.camerashakeamplitude||0.5;
+  const shakeRough=general.camerashakeroughness||1;
+  const shakeSpd=general.camerashakespeed||3;
+
+  console.log('Scene:',sceneW,'x',sceneH,'bloom='+bloomOn,'parallax='+parallaxOn,'shake='+shakeOn);
+
+  // ======== Load ALL visible image layers ========
+  const layers = [];
+  for (const obj of scene.objects) {
+    if (!obj.image || obj.sound || obj.particle) continue;
+    if (!isVisible(obj.visible)) continue;
+
+    let baseTex = null;
+    const modelJson = await fetchJson(fileUrl(themePath + '/' + obj.image));
+    if (modelJson && modelJson.material) {
+      const matJson = await fetchJson(fileUrl(themePath + '/' + modelJson.material));
+      if (matJson?.passes?.[0]?.textures?.[0]) {
+        baseTex = await loadTexture(themePath + '/materials/' + matJson.passes[0].textures[0]);
+      }
+    }
+    if (!baseTex) { console.warn('Skip layer (no tex):', obj.name); continue; }
+
+    // Parse transform in scene coords
+    const origin = (obj.origin||'0 0 0').split(' ').map(Number);
+    const size = (obj.size||`${sceneW} ${sceneH}`).split(' ').map(Number);
+    const scale = (obj.scale||'1 1 1').split(' ').map(Number);
+    const parallaxDepth = (obj.parallaxDepth||'0 0').split(' ').map(Number);
+    const blendMode = obj.colorBlendMode || 0;
+    const opacity = obj.alpha != null ? obj.alpha : 1.0;
+
+    // Compute rect in normalized scene space (0-1)
+    const w = size[0] * scale[0];
+    const h = size[1] * scale[1];
+    const rx = (origin[0] - w/2) / sceneW;
+    const ry = (origin[1] - h/2) / sceneH;
+    const rw = w / sceneW;
+    const rh = h / sceneH;
+
+    // Load effects for this layer
+    const effects = [];
+    if (obj.effects && Array.isArray(obj.effects)) {
+      for (const eff of obj.effects) {
+        if (!isVisible(eff.visible)) continue;
+        if (!eff.file) continue;
+        try {
+          const effJson = await fetchJson(fileUrl(themePath + '/' + eff.file));
+          if (!effJson?.passes) continue;
+          const scenePasses = eff.passes || [];
+          for (let pi = 0; pi < effJson.passes.length; pi++) {
+            const effPass = effJson.passes[pi];
+            const scenePass = scenePasses[pi] || {};
+            if (!effPass.material) continue;
+            const mat = await fetchJson(fileUrl(themePath + '/' + effPass.material));
+            if (!mat?.passes?.[0]?.shader) continue;
+            const shaderName = mat.passes[0].shader;
+            let vSrc = await fetchText(fileUrl(themePath+'/shaders/'+shaderName+'.vert'));
+            let fSrc = await fetchText(fileUrl(themePath+'/shaders/'+shaderName+'.frag'));
+            if(!vSrc)vSrc=await fetchText(fileUrl(themePath+'/shaders/effects/'+shaderName+'.vert'));
+            if(!fSrc)fSrc=await fetchText(fileUrl(themePath+'/shaders/effects/'+shaderName+'.frag'));
+            if(!vSrc||!fSrc){console.warn('Missing shader:',shaderName);continue;}
+            const combos=Object.assign({},mat.passes[0].combos||{},scenePass.combos||{});
+            const prog=linkProg(transpileVert(vSrc,combos),transpileFrag(fSrc,combos));
+            if(!prog){console.warn('Shader fail:',shaderName);continue;}
+            const matMap=Object.assign({},extractMaterialMap(vSrc),extractMaterialMap(fSrc));
+            const defaults=Object.assign({},extractDefaults(vSrc),extractDefaults(fSrc));
+            const uniforms={};
+            const sceneVals=scenePass.constantshadervalues||{};
+            for(const[mn,val]of Object.entries(sceneVals))if(matMap[mn])uniforms[matMap[mn]]=val;
+            for(const[un,def]of Object.entries(defaults))if(!(un in uniforms))uniforms[un]=def;
+            const matTexRefs=mat.passes[0].textures||[];
+            const sceneTexRefs=scenePass.textures||[];
+            const maxT=Math.max(matTexRefs.length,sceneTexRefs.length,3);
+            const textures=[];
+            for(let ti=0;ti<maxT;ti++){
+              const ref=(ti<sceneTexRefs.length&&sceneTexRefs[ti])?sceneTexRefs[ti]:(ti<matTexRefs.length&&matTexRefs[ti])?matTexRefs[ti]:null;
+              if(!ref){textures.push(null);continue;}
+              const bt=getBuiltinTex(ref);if(bt){textures.push(bt);continue;}
+              const td=await loadTexture(themePath+'/materials/'+ref);textures.push(td||whiteTex);
+            }
+            effects.push({prog,uniforms,textures,shaderName});
+          }
+        } catch(e) { console.warn('Effect err:',eff.file,e); }
+      }
+    }
+
+    layers.push({ name:obj.name, baseTex, rx, ry, rw, rh, effects, blendMode, opacity, parallaxDepth });
+    console.log('Layer:', obj.name, baseTex.w+'x'+baseTex.h, 'fx:'+effects.length, 'rect:', rx.toFixed(3), ry.toFixed(3), rw.toFixed(3), rh.toFixed(3));
+  }
+  console.log('Layers:', layers.length);
+
+  // FBOs - will be recreated on resize
+  let cw = canvas.width, ch = canvas.height;
+  let fboScene = makeFBO(cw, ch);
+  let fboLayer = makeFBO(cw, ch);
+  let fboLayerB = makeFBO(cw, ch);
+  let bloomFboA = bloomOn ? makeFBO(Math.max(1,(cw/2)|0), Math.max(1,(ch/2)|0)) : null;
+  let bloomFboB = bloomOn ? makeFBO(Math.max(1,(cw/2)|0), Math.max(1,(ch/2)|0)) : null;
+
+  function recreateFBOs(w, h) {
+    gl.deleteFramebuffer(fboScene.fb); gl.deleteTexture(fboScene.t);
+    gl.deleteFramebuffer(fboLayer.fb); gl.deleteTexture(fboLayer.t);
+    gl.deleteFramebuffer(fboLayerB.fb); gl.deleteTexture(fboLayerB.t);
+    fboScene = makeFBO(w, h);
+    fboLayer = makeFBO(w, h);
+    fboLayerB = makeFBO(w, h);
+    if (bloomOn) {
+      if (bloomFboA) { gl.deleteFramebuffer(bloomFboA.fb); gl.deleteTexture(bloomFboA.t); }
+      if (bloomFboB) { gl.deleteFramebuffer(bloomFboB.fb); gl.deleteTexture(bloomFboB.t); }
+      const bw = Math.max(1, (w/2)|0), bh = Math.max(1, (h/2)|0);
+      bloomFboA = makeFBO(bw, bh);
+      bloomFboB = makeFBO(bw, bh);
+    }
+    cw = w; ch = h;
+  }
+
+  const t0 = performance.now() / 1000;
+  let smoothOffX = 0, smoothOffY = 0;
+  let lastFrameTime = 0;
+  let pauseTime = 0;
+  let wasPaused = false;
+
+  function render() {
+    const now = performance.now();
+
+    if (paused) {
+      if (!wasPaused) {
+        pauseTime = now / 1000 - t0;
+        wasPaused = true;
+        drawnPausedFrame = false;
+      }
+      if (drawnPausedFrame) {
+        setTimeout(() => requestAnimationFrame(render), 200);
+        return;
+      }
+    } else {
+      if (wasPaused) {
+        wasPaused = false;
+        drawnPausedFrame = false;
+      }
+      const minInterval = 1000 / targetFPS;
+      if (now - lastFrameTime < minInterval) { requestAnimationFrame(render); return; }
+      lastFrameTime = now;
+    }
+
+    const time = paused ? pauseTime : (now / 1000 - t0);
+    const dpr = window.devicePixelRatio || 1;
+    const targetW = Math.max(1, (window.innerWidth * dpr * qualityScale) | 0);
+    const targetH = Math.max(1, (window.innerHeight * dpr * qualityScale) | 0);
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+      canvas.width = targetW; canvas.height = targetH;
+    }
+    const newCw = canvas.width, newCh = canvas.height;
+    if (newCw !== cw || newCh !== ch) recreateFBOs(newCw, newCh);
+
+    // Camera offset (parallax + shake) - zeroed when paused
+    let offX = 0, offY = 0;
+    if (!paused) {
+      if (parallaxOn) {
+        const tx = (mouseX - 0.5) * parallaxMouse * parallaxAmt;
+        const ty = (mouseY - 0.5) * parallaxMouse * parallaxAmt;
+        smoothOffX += (tx - smoothOffX) * 0.03;
+        smoothOffY += (ty - smoothOffY) * 0.03;
+        offX += smoothOffX; offY += smoothOffY;
+      }
+      if (shakeOn) {
+        const a = shakeAmp * 0.003, s = shakeSpd, r = shakeRough;
+        offX += Math.sin(time*s*1.7)*a + Math.sin(time*s*3.1*r)*a*0.3;
+        offY += Math.cos(time*s*1.3)*a + Math.cos(time*s*2.7*r)*a*0.3;
+      }
+    }
+
+    // Clear scene
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fboScene.fb);
+    gl.viewport(0, 0, cw, ch);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    // Render layers in order (back to front)
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    for (const layer of layers) {
+      const lOffX = offX * (1.0 + (layer.parallaxDepth[0] || 0) * 5.0);
+      const lOffY = offY * (1.0 + (layer.parallaxDepth[1] || 0) * 5.0);
+
+      let texToComposite = layer.baseTex.t;
+
+      if (layer.effects.length > 0) {
+        // Render base tex fullscreen into fboLayer, apply effects, get result
+        gl.disable(gl.BLEND);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fboLayer.fb);
+        gl.viewport(0, 0, cw, ch);
+        gl.useProgram(ptProg);
+        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, layer.baseTex.t);
+        gl.uniform1i(gl.getUniformLocation(ptProg, 'uTex'), 0);
+        drawQuad(ptProg);
+
+        let rd = fboLayer, wr = fboLayerB;
+        for (const eff of layer.effects) {
+          gl.bindFramebuffer(gl.FRAMEBUFFER, wr.fb);
+          gl.viewport(0, 0, cw, ch);
+          gl.useProgram(eff.prog);
+          gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, rd.t);
+          const t0l = gl.getUniformLocation(eff.prog, 'g_Texture0'); if (t0l) gl.uniform1i(t0l, 0);
+          const t0r = gl.getUniformLocation(eff.prog, 'g_Texture0Resolution'); if (t0r) gl.uniform4f(t0r, cw, ch, cw, ch);
+          for (let ti = 1; ti < eff.textures.length; ti++) {
+            const pt = eff.textures[ti]; if (!pt) continue;
+            gl.activeTexture(gl.TEXTURE0 + ti); gl.bindTexture(gl.TEXTURE_2D, pt.t);
+            const loc = gl.getUniformLocation(eff.prog, 'g_Texture' + ti); if (loc) gl.uniform1i(loc, ti);
+            const rl = gl.getUniformLocation(eff.prog, 'g_Texture' + ti + 'Resolution'); if (rl) gl.uniform4f(rl, pt.w, pt.h, pt.w, pt.h);
+          }
+          const tl = gl.getUniformLocation(eff.prog, 'g_Time'); if (tl) gl.uniform1f(tl, time);
+          const ml = gl.getUniformLocation(eff.prog, 'g_ModelViewProjectionMatrix'); if (ml) gl.uniformMatrix4fv(ml, false, identityMat4);
+          for (const [name, val] of Object.entries(eff.uniforms)) {
+            const loc = gl.getUniformLocation(eff.prog, name); if (!loc) continue;
+            if (typeof val === 'number') { gl.uniform1f(loc, val); continue; }
+            const parts = String(val).trim().split(/\s+/).map(Number).filter(n => !isNaN(n));
+            if (parts.length === 1) gl.uniform1f(loc, parts[0]);
+            else if (parts.length === 2) gl.uniform2f(loc, parts[0], parts[1]);
+            else if (parts.length === 3) gl.uniform3f(loc, parts[0], parts[1], parts[2]);
+            else if (parts.length >= 4) gl.uniform4f(loc, parts[0], parts[1], parts[2], parts[3]);
+          }
+          drawQuad(eff.prog);
+          [rd, wr] = [wr, rd];
+        }
+        texToComposite = rd.t;
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      }
+
+      // Composite layer onto scene
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fboScene.fb);
+      gl.viewport(0, 0, cw, ch);
+      gl.useProgram(compositeProg);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texToComposite);
+      gl.uniform1i(gl.getUniformLocation(compositeProg, 'uTex'), 0);
+      gl.uniform1f(gl.getUniformLocation(compositeProg, 'uOpacity'), layer.opacity);
+      gl.uniform1f(gl.getUniformLocation(compositeProg, 'uFlipY'), flipY ? 1.0 : 0.0);
+      gl.uniform4f(gl.getUniformLocation(compositeProg, 'uRect'),
+        layer.rx + lOffX, layer.ry + lOffY, layer.rw, layer.rh);
+      drawQuad(compositeProg);
+    }
+    gl.disable(gl.BLEND);
+
+    // Bloom post-processing
+    if (bloomOn && bloomFboA && bloomFboB) {
+      const bw = bloomFboA.w, bh = bloomFboA.h;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, bloomFboA.fb); gl.viewport(0, 0, bw, bh);
+      gl.useProgram(bloomThreshProg);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, fboScene.t);
+      gl.uniform1i(gl.getUniformLocation(bloomThreshProg, 'uTex'), 0);
+      gl.uniform1f(gl.getUniformLocation(bloomThreshProg, 'uThreshold'), bloomThr);
+      drawQuad(bloomThreshProg);
+
+      gl.useProgram(bloomBlurProg);
+      for (let i = 0; i < 3; i++) {
+        gl.bindFramebuffer(gl.FRAMEBUFFER, bloomFboB.fb); gl.viewport(0, 0, bw, bh);
+        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, bloomFboA.t);
+        gl.uniform1i(gl.getUniformLocation(bloomBlurProg, 'uTex'), 0);
+        gl.uniform2f(gl.getUniformLocation(bloomBlurProg, 'uDir'), 1.0 / bw, 0);
+        drawQuad(bloomBlurProg);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, bloomFboA.fb); gl.viewport(0, 0, bw, bh);
+        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, bloomFboB.t);
+        gl.uniform2f(gl.getUniformLocation(bloomBlurProg, 'uDir'), 0, 1.0 / bh);
+        drawQuad(bloomBlurProg);
+      }
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, cw, ch);
+      gl.useProgram(bloomCompProg);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, fboScene.t);
+      gl.uniform1i(gl.getUniformLocation(bloomCompProg, 'uBase'), 0);
+      gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, bloomFboA.t);
+      gl.uniform1i(gl.getUniformLocation(bloomCompProg, 'uBloom'), 1);
+      gl.uniform1f(gl.getUniformLocation(bloomCompProg, 'uStrength'), bloomStr);
+      drawQuad(bloomCompProg);
+    } else {
+      // No bloom: just output scene
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, cw, ch);
+      gl.useProgram(ptProg);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, fboScene.t);
+      gl.uniform1i(gl.getUniformLocation(ptProg, 'uTex'), 0);
+      drawQuad(ptProg);
+    }
+
+    if (paused) {
+      drawnPausedFrame = true;
+    }
+    requestAnimationFrame(render);
+  }
+  requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>
