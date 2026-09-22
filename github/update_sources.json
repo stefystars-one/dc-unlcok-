@@ -1,0 +1,5 @@
+{
+  "cloudflare_manifest_url": "https://discord-unlock-api.st4rs.workers.dev/updates/update-manifest.json",
+  "github_release_manifest_url": "https://github.com/stefystars-one/dc-unlcok-/releases/latest/download/update-manifest.json",
+  "github_repo": "stefystars-one/dc-unlcok-"
+}

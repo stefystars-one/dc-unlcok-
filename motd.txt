@@ -1,0 +1,22 @@
+🚀 Discord Unlock — Versão 8.2
+
+A versão 8.2 traz grandes otimizações na Galeria de Wallpapers Animados, resolução de duplicatas, suporte avançado a tags e controle de reprodução em segundo plano.
+
+✨ Principais novidades da v8.2
+
+🖼️ Eliminação Definitiva de Wallpapers Duplicados
+O motor de temas agora cruza inteligentemente os arquivos locais baixados com o catálogo da nuvem. Wallpapers do catálogo já baixados não geram mais clones ou duplicatas como "temas customizados" — o mesmo card passa diretamente para o estado "Aplicar Tema".
+
+🏷️ Correção de Subpastas e Tags Automáticas
+A indexação de temas no catálogo foi reestruturada para que subpastas de wallpapers não substituam o nome das categorias principais. Wallpapers dentro de pastas de categoria (Anime, Games, Carros, etc.) herdam sua tag correta sem poluir a lista com nomes de pastas internas.
+
+🔍 Busca em Tempo Real e Filtros de Tags na Galeria
+Adicionada barra de pesquisa e botões de filtro rápido no topo da Galeria de Temas: navegue facilmente por Todos, Anime, Games, Carros, Espaço, Natureza, Geral ou apenas seus papéis de parede Baixados/Locais.
+
+⏸️ Controle de Reprodução: Pausar ao Minimizar ou Manter Rolando
+Agora você tem controle total sobre o comportamento do vídeo do wallpaper quando o Discord estiver minimizado ou em segundo plano. Desative a opção "Pausar ao Minimizar" para que seu wallpaper continue passando fluido e sem pausas a 60 FPS, mesmo com o Discord fora de foco!
+
+📦 Catálogo Automatizado Google Drive Atualizado
+O script gerador de catálogo agora conta com desduplicação nativa por ID de arquivo e nome limpo, garantindo integridade de 100% no carregamento instantâneo.
+
+— Stefy Stars ✨

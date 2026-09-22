@@ -1,0 +1,16 @@
+*.exe
+*.res
+*.old
+*.old2
+*.obj
+*.pdb
+*.ilk
+*.log
+bin/
+packages/
+steamcmd/
+release-*/
+wallpapers/
+temas/
+themes_engine.log
+tools/

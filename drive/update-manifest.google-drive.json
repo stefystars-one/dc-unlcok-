@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "version": "7.05",
+  "artifacts": {
+    "DiscordUnlock.exe": {
+      "url": "https://drive.usercontent.google.com/download?id=1brDB2oQ1G_4u9PZ-fLpp_qL80DrS-NFd&export=download&confirm=t",
+      "sha256": "6ba9a556ba283a23ac22d7ab4912358eb0a4e44073cbcfa4c45bebdff6a7384e"
+    },
+    "DiscordUnlock_Special.exe": {
+      "url": "https://drive.usercontent.google.com/download?id=1owDce80tTZZjBy_7THJgCe-HO9bPyQG5&export=download&confirm=t",
+      "sha256": "75722db85db949132a6a1c898013e9e5b9dbed537f209bbca341d3878aa010bf"
+    }
+  }
+}
