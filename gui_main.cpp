@@ -1580,6 +1580,39 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       border-color: #ef4444;
       transform: translateY(-2px);
     }
+    .btn-pause-theme {
+      width: 36px;
+      min-width: 36px;
+      height: 36px;
+      box-sizing: border-box;
+      background: rgba(251, 191, 36, 0.15);
+      border: 1px solid rgba(251, 191, 36, 0.4);
+      color: #fde68a;
+      border-radius: 8px;
+      padding: 0;
+      margin: 0;
+      cursor: pointer;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      transition: all 0.2s ease;
+    }
+    .btn-pause-theme:hover {
+      background: rgba(251, 191, 36, 0.3);
+      border-color: #f59e0b;
+      transform: translateY(-2px);
+    }
+    .btn-pause-theme.paused {
+      background: rgba(34, 197, 94, 0.15);
+      border-color: rgba(34, 197, 94, 0.4);
+      color: #4ade80;
+    }
+    .btn-pause-theme.paused:hover {
+      background: rgba(34, 197, 94, 0.3);
+      border-color: #22c55e;
+    }
     .theme-progress-box {
       width: 100%;
       background: rgba(15, 23, 42, 0.85);
@@ -10209,6 +10242,61 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
         bg: '#000000',
         isStatic: true,
         accent: '#6366f1'
+      },
+      {
+        id: 'forest_emerald',
+        name: 'Forest Emerald',
+        desc: 'Verde esmeralda profundo inspirado em florestas tropicais e natureza selvagem.',
+        img: '',
+        bg: '#021a0e',
+        isStatic: true,
+        accent: '#10b981'
+      },
+      {
+        id: 'ocean_deep',
+        name: 'Deep Ocean',
+        desc: 'Azul oceano profundo com tons de marinho e brilho de água cristalina.',
+        img: '',
+        bg: '#00091a',
+        isStatic: true,
+        accent: '#0ea5e9'
+      },
+      {
+        id: 'crimson_dark',
+        name: 'Crimson Dark',
+        desc: 'Vermelho carmesim intenso sobre fundo quase preto. Agressivo e estiloso.',
+        img: '',
+        bg: '#130007',
+        isStatic: true,
+        accent: '#ef4444'
+      },
+      {
+        id: 'rose_gold',
+        name: 'Rose Gold',
+        desc: 'Rosa dourado elegante e moderno. Perfeito para um visual delicado e premium.',
+        img: '',
+        bg: '#1a0814',
+        isStatic: true,
+        accent: '#f43f5e'
+      },
+      {
+        id: 'solar_orange',
+        name: 'Solar Orange',
+        desc: 'Laranja solar vibrante com fundo escuro profundo. Energia máxima.',
+        img: '',
+        bg: '#120800',
+        isStatic: true,
+        accent: '#f97316'
+      },
+      {
+        id: 'custom_color_picker',
+        name: '🎨 Cor Personalizada',
+        desc: 'Escolha qualquer cor de acento para personalizar o Discord do seu jeito.',
+        img: '',
+        bg: '#0d1117',
+        isStatic: true,
+        isColorPicker: true,
+        accent: '#5865f2'
       }
     ];
 
@@ -10724,15 +10812,54 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
             const deleteBtn = (!t.isStatic && (theFn || rawId)) ? `<button class="btn-delete-theme" onclick="event.stopPropagation(); deleteThemeAsset('${t.id}', '${theFn}')" title="Excluir arquivo local">🗑️</button>` : '';
             const isEngine = rawId.startsWith('local_engine_');
             const engineBtn = isEngine ? `<button class="btn-engine-settings" onclick="event.stopPropagation(); openEngineSettings('${t.id}')" title="Configurações do Motor">⚙️</button>` : '';
-            actionButtonsHtml = `
-              <div style="display: flex; align-items: center; gap: 6px; width: 100%;">
-                <button class="btn-apply-theme ${isCurrent ? 'active-theme-btn' : ''}" onclick="event.stopPropagation(); applyTheme('${t.id}')">
-                  ${isCurrent ? '✅ Tema Ativo' : '⚡ Aplicar Tema'}
-                </button>
-                ${engineBtn}
-                ${deleteBtn}
-              </div>
-            `;
+            // Pause button: only for active non-engine animated themes (video/gif) — engine already has pause in ⚙️ settings
+            const isAnimatedTheme = !t.isStatic && !isEngine && (t.isVideo || (theFn && (theFn.endsWith('.mp4') || theFn.endsWith('.webm') || theFn.endsWith('.gif'))));
+            const isPaused = (window.__duThemePausedId === t.id && window.__duThemePausedState);
+            const pauseBtn = (isCurrent && isAnimatedTheme) ? `<button class="btn-pause-theme${isPaused ? ' paused' : ''}" id="btn-pause-${t.id.replace(/[^a-z0-9]/gi,'')}" onclick="event.stopPropagation(); toggleActiveThemePause('${t.id}')" title="${isPaused ? 'Retomar wallpaper' : 'Pausar wallpaper'}">${isPaused ? '▶' : '⏸'}</button>` : '';
+            // Color picker card special UI — dual pickers: bg color + accent color, live preview
+            if (t.isColorPicker) {
+              const savedAccent = safeGetStorage('discord_unlock_custom_accent', '#5865f2');
+              const savedBg     = safeGetStorage('discord_unlock_custom_bg',     '#0d1117');
+              const isPickerCurrent = currentTheme && currentTheme.startsWith('custom_color_');
+              actionButtonsHtml = `
+                <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <div style="display: flex; flex-direction: column; gap: 3px;">
+                      <label style="font-size: 10px; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;">Fundo</label>
+                      <div style="display: flex; align-items: center; gap: 5px;">
+                        <input type="color" id="customThemeBgPicker" value="${savedBg}"
+                          style="width: 34px; height: 28px; padding: 2px; background: #0b1020; border: 1px solid rgba(148,163,184,.4); border-radius: 6px; cursor: pointer; flex-shrink:0;"
+                          oninput="safeSetStorage('discord_unlock_custom_bg', this.value); previewCustomColorTheme();">
+                        <span id="customThemeBgPreview" style="font-size: 10px; font-weight: 700; color: ${savedBg}; font-family: monospace; overflow: hidden; text-overflow: ellipsis;">${savedBg}</span>
+                      </div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 3px;">
+                      <label style="font-size: 10px; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;">Acento</label>
+                      <div style="display: flex; align-items: center; gap: 5px;">
+                        <input type="color" id="customThemeAccentPicker" value="${savedAccent}"
+                          style="width: 34px; height: 28px; padding: 2px; background: #0b1020; border: 1px solid rgba(148,163,184,.4); border-radius: 6px; cursor: pointer; flex-shrink:0;"
+                          oninput="safeSetStorage('discord_unlock_custom_accent', this.value); previewCustomColorTheme();">
+                        <span id="customThemeAccentPreview" style="font-size: 10px; font-weight: 700; color: ${savedAccent}; font-family: monospace; overflow: hidden; text-overflow: ellipsis;">${savedAccent}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button class="btn-apply-theme ${isPickerCurrent ? 'active-theme-btn' : ''}" onclick="event.stopPropagation(); applyCustomColorTheme()">
+                    ${isPickerCurrent ? '✅ Cor Ativa' : '🎨 Aplicar Cor'}
+                  </button>
+                </div>
+              `;
+            } else {
+              actionButtonsHtml = `
+                <div style="display: flex; align-items: center; gap: 6px; width: 100%;">
+                  <button class="btn-apply-theme ${isCurrent ? 'active-theme-btn' : ''}" onclick="event.stopPropagation(); applyTheme('${t.id}')">
+                    ${isCurrent ? '✅ Tema Ativo' : '⚡ Aplicar Tema'}
+                  </button>
+                  ${pauseBtn}
+                  ${engineBtn}
+                  ${deleteBtn}
+                </div>
+              `;
+            }
           } else if (t.isEngineLocal) {
             const engineCanAnimate = t.isAnimated === true;
             const engineNotice = engineCanAnimate
@@ -11015,6 +11142,9 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
     function applyTheme(themeId) {
       if (themeId === 'default' || themeId === 'reset') { restoreDefaultTheme(); return; }
       playSound('success');
+      // Clear pause state when switching themes
+      window.__duThemePausedId = null;
+      window.__duThemePausedState = false;
       safeSetStorage('discord_unlock_theme', themeId);
       const fullList = [...wallpaperEngineThemesList, ...customThemesList, ...HARDCODED_BASE_THEMES, ...remoteThemesList];
       const selected = fullList.find(t => t.id === themeId);
@@ -11031,7 +11161,61 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       showToast(`Tema ${selected ? selected.name : ''} aplicado em qualidade máxima!`);
     }
 
+    function toggleActiveThemePause(themeId) {
+      const currentTheme = safeGetStorage('discord_unlock_theme', '');
+      if (!themeId || themeId !== currentTheme) return;
+      const wasPaused = (window.__duThemePausedId === themeId && window.__duThemePausedState);
+      const nowPaused = !wasPaused;
+      window.__duThemePausedId = themeId;
+      window.__duThemePausedState = nowPaused;
+      // Use engine_control action: works for both engine scenes and native video/gif
+      sendToCpp('engine_control', { themeId: themeId, paused: nowPaused });
+      playSound('click');
+      // Update button immediately without full re-render
+      const safeId = themeId.replace(/[^a-z0-9]/gi, '');
+      const btn = document.getElementById('btn-pause-' + safeId);
+      if (btn) {
+        btn.textContent = nowPaused ? '▶' : '⏸';
+        btn.title = nowPaused ? 'Retomar wallpaper' : 'Pausar wallpaper';
+        if (nowPaused) btn.classList.add('paused'); else btn.classList.remove('paused');
+      }
+      showToast(nowPaused ? '⏸ Wallpaper pausado.' : '▶ Wallpaper retomado.');
+    }
+
+    function previewCustomColorTheme() {
+      // Update preview text spans in real-time as user drags color pickers
+      const bgPicker = document.getElementById('customThemeBgPicker');
+      const acPicker = document.getElementById('customThemeAccentPicker');
+      const bgSpan   = document.getElementById('customThemeBgPreview');
+      const acSpan   = document.getElementById('customThemeAccentPreview');
+      if (bgPicker && bgSpan)  { bgSpan.style.color  = bgPicker.value;  bgSpan.textContent  = bgPicker.value; }
+      if (acPicker && acSpan)  { acSpan.style.color  = acPicker.value;  acSpan.textContent  = acPicker.value; }
+      // Live-update the card mini-preview background (the mock discord thumbnail at top)
+      const cardEl = document.getElementById('custom_color_picker_card_preview');
+      if (cardEl && bgPicker) cardEl.style.background = bgPicker.value;
+    }
+
+    function applyCustomColorTheme() {
+      const bgPicker = document.getElementById('customThemeBgPicker');
+      const acPicker = document.getElementById('customThemeAccentPicker');
+      const bgHex    = (bgPicker?.value || safeGetStorage('discord_unlock_custom_bg', '#0d1117'));
+      const acHex    = (acPicker?.value || safeGetStorage('discord_unlock_custom_accent', '#5865f2'));
+      if (!acHex.match(/^#[0-9a-fA-F]{6}$/)) { showToast('Cor inválida.', false); return; }
+      playSound('success');
+      safeSetStorage('discord_unlock_custom_bg', bgHex);
+      safeSetStorage('discord_unlock_custom_accent', acHex);
+      // themeId encodes accent; bg is passed via the 'bg' field
+      const themeId = 'custom_color_' + acHex.replace('#', '');
+      window.__duThemePausedId = null;
+      window.__duThemePausedState = false;
+      safeSetStorage('discord_unlock_theme', themeId);
+      sendToCpp('apply_theme', { theme: themeId, img: '', accent: acHex, bg: bgHex });
+      renderThemesGallery();
+      showToast('🎨 Cor personalizada aplicada!');
+    }
+
     function cleanDiscordRamNow() {
+
       const btn = document.getElementById('btnCleanDiscordRam');
       if (btn) { btn.disabled = true; btn.textContent = 'Limpando...'; }
       sendToCpp('clean_discord_ram');
@@ -23294,10 +23478,18 @@ void applyDiscordThemeCss(const std::string &themeId, const std::string &customI
     std::string accentGlow = "rgba(56, 189, 248, 0.35)";
     std::string popoutBg = "rgba(6, 36, 68, 0.94)";
     std::string bgCustom = "";
+    std::string bgOverride = ""; // custom bg color from 'bg:' prefix in customImg
     bool isVideo = false;
     std::string videoUri = "";
     std::string localFileUri = "";
     std::string localAssetPath = "";
+
+    // Extract 'bg:' prefix — used by custom_color themes to pass a user-chosen bg hex
+    std::string effectiveImg = customImg;
+    if (customImg.rfind("bg:", 0) == 0) {
+      bgOverride = customImg.substr(3); // "#rrggbb"
+      effectiveImg = "";
+    }
 
     fs::path foundFilePath;
     std::string rawId = themeId;
@@ -23501,8 +23693,8 @@ void applyDiscordThemeCss(const std::string &themeId, const std::string &customI
         }
       }
       if (!customAccent.empty()) accent = customAccent;
-    } else if (!customImg.empty()) {
-      std::string fullResUrl = customImg;
+    } else if (!effectiveImg.empty()) {
+      std::string fullResUrl = effectiveImg;
       if (fullResUrl.find(".mp4") != std::string::npos || fullResUrl.find(".webm") != std::string::npos) {
         isVideo = true;
         videoUri = fullResUrl;
@@ -23531,6 +23723,49 @@ void applyDiscordThemeCss(const std::string &themeId, const std::string &customI
       mainGradient = "linear-gradient(135deg, #050508 0%, #000000 50%, #000000 100%)";
       primary = "#000000"; secondary = "#050507"; tertiary = "#000000";
       accent = "#6366f1"; accentSub = "#a5b4fc"; accentGlow = "rgba(99, 102, 241, 0.35)"; popoutBg = "rgba(10, 10, 14, 0.96)";
+    } else if (themeId == "forest_emerald") {
+      mainGradient = "linear-gradient(135deg, #0d3320 0%, #0a2918 50%, #071a0f 100%)";
+      primary = "#0d2e1c"; secondary = "#0a2415"; tertiary = "#071710";
+      accent = "#10b981"; accentSub = "#6ee7b7"; accentGlow = "rgba(16, 185, 129, 0.35)"; popoutBg = "rgba(10, 38, 22, 0.96)";
+    } else if (themeId == "ocean_deep") {
+      mainGradient = "linear-gradient(135deg, #003366 0%, #002244 50%, #001528 100%)";
+      primary = "#002e5c"; secondary = "#002244"; tertiary = "#00152c";
+      accent = "#0ea5e9"; accentSub = "#7dd3fc"; accentGlow = "rgba(14, 165, 233, 0.35)"; popoutBg = "rgba(0, 28, 56, 0.96)";
+    } else if (themeId == "crimson_dark") {
+      mainGradient = "linear-gradient(135deg, #3d0014 0%, #2a000d 50%, #180007 100%)";
+      primary = "#380011"; secondary = "#260009"; tertiary = "#160006";
+      accent = "#ef4444"; accentSub = "#fca5a5"; accentGlow = "rgba(239, 68, 68, 0.38)"; popoutBg = "rgba(48, 2, 15, 0.96)";
+    } else if (themeId == "rose_gold") {
+      mainGradient = "linear-gradient(135deg, #3d1030 0%, #2b0820 50%, #1a0412 100%)";
+      primary = "#35102a"; secondary = "#260820"; tertiary = "#180415";
+      accent = "#f43f5e"; accentSub = "#fda4af"; accentGlow = "rgba(244, 63, 94, 0.38)"; popoutBg = "rgba(44, 8, 32, 0.96)";
+    } else if (themeId == "solar_orange") {
+      mainGradient = "linear-gradient(135deg, #3a1400 0%, #2a0e00 50%, #1c0900 100%)";
+      primary = "#341200"; secondary = "#251000"; tertiary = "#160800";
+      accent = "#f97316"; accentSub = "#fdba74"; accentGlow = "rgba(249, 115, 22, 0.38)"; popoutBg = "rgba(44, 16, 0, 0.96)";
+    } else if (themeId.rfind("custom_color_", 0) == 0 || themeId == "custom_color_picker") {
+      // Custom color theme: accent from themeId/customAccent, bg from bgOverride (parsed from 'bg:' prefix)
+      std::string hexColor = customAccent;
+      if (hexColor.empty() && themeId.rfind("custom_color_", 0) == 0) {
+        std::string hexPart = themeId.substr(13); // after "custom_color_"
+        if (hexPart.size() == 6) hexColor = "#" + hexPart;
+        else if (hexPart.size() == 7 && hexPart[0] == '#') hexColor = hexPart;
+      }
+      if (hexColor.empty()) hexColor = "#5865f2";
+      accent = hexColor;
+      accentSub = hexColor;
+      accentGlow = "rgba(88, 101, 242, 0.32)";
+      // Use the custom bg color (user-picked) if passed via bgOverride
+      if (!bgOverride.empty()) {
+        primary = bgOverride; secondary = bgOverride; tertiary = bgOverride;
+        mainGradient = bgOverride;
+        popoutBg = bgOverride;
+      } else {
+        // fallback: neutral dark
+        mainGradient = "linear-gradient(135deg, #0d1117 0%, #0f1420 50%, #080c14 100%)";
+        primary = "#0d1117"; secondary = "#0f1420"; tertiary = "#080c14";
+        popoutBg = "rgba(10, 14, 22, 0.96)";
+      }
     } else {
       // Tema customizado / desconhecido sem mídia local direta no momento:
       // Preserva o CSS já ativo se existente, ou aplica gradiente escuro moderno com acento
@@ -23576,6 +23811,14 @@ void applyDiscordThemeCss(const std::string &themeId, const std::string &customI
       fWp << wpJson;
       fWp.close();
     }
+
+    // If user provided a custom bg color (via bgOverride), propagate to bgCustom for downstream CSS
+    if (!bgOverride.empty() && bgCustom.empty()) {
+      bgCustom = bgOverride;
+    }
+
+    // Static color themes use colored CSS — NOT the transparent-everything wallpaper approach
+    bool isStaticColor = (!isVideo && bgCustom.empty());
 
     std::string bgMountStyle;
     std::string wallpaperLayer; // CSS body::before for wallpaper display
@@ -23642,43 +23885,43 @@ void applyDiscordThemeCss(const std::string &themeId, const std::string &customI
         "  background-color: transparent !important;\n"
         "}\n\n"
         "[class*=\"sidebar_\"] {\n"
-        "  background: rgba(0, 0, 0, 0.45) !important;\n"
-        "  backdrop-filter: blur(8px) !important;\n"
+        "  background: " + (isStaticColor ? secondary : "rgba(0, 0, 0, 0.45)") + " !important;\n"
+        + (isStaticColor ? "" : "  backdrop-filter: blur(8px) !important;\n") +
         "}\n\n"
         "[class*=\"guilds_\"] {\n"
-        "  background: rgba(0, 0, 0, 0.60) !important;\n"
+        "  background: " + (isStaticColor ? tertiary : "rgba(0, 0, 0, 0.60)") + " !important;\n"
         "}\n\n"
         "[class*=\"panels_\"] {\n"
-        "  background: rgba(0, 0, 0, 0.65) !important;\n"
+        "  background: " + (isStaticColor ? secondary : "rgba(0, 0, 0, 0.65)") + " !important;\n"
         "}\n\n"
         "[class*=\"channelTextArea_\"] {\n"
-        "  background: rgba(0, 0, 0, 0.55) !important;\n"
-        "  border: 1px solid rgba(255, 255, 255, 0.15) !important;\n"
+        "  background: " + (isStaticColor ? secondary : "rgba(0, 0, 0, 0.55)") + " !important;\n"
+        "  border: 1px solid " + (isStaticColor ? accentGlow : "rgba(255, 255, 255, 0.15)") + " !important;\n"
         "}\n\n"
         ":root, .theme-dark, .theme-light, [class*=\"theme-\"] {\n"
-        "  --background-primary: transparent !important;\n"
-        "  --background-secondary: rgba(0, 0, 0, 0.40) !important;\n"
-        "  --background-secondary-alt: rgba(0, 0, 0, 0.50) !important;\n"
-        "  --background-tertiary: rgba(0, 0, 0, 0.60) !important;\n"
-        "  --background-accent: rgba(255, 255, 255, 0.08) !important;\n"
-        "  --background-floating: rgba(10, 10, 20, 0.90) !important;\n"
+        "  --background-primary: " + (isStaticColor ? primary : "transparent") + " !important;\n"
+        "  --background-secondary: " + (isStaticColor ? secondary : "rgba(0, 0, 0, 0.40)") + " !important;\n"
+        "  --background-secondary-alt: " + (isStaticColor ? secondary : "rgba(0, 0, 0, 0.50)") + " !important;\n"
+        "  --background-tertiary: " + (isStaticColor ? tertiary : "rgba(0, 0, 0, 0.60)") + " !important;\n"
+        "  --background-accent: " + accentGlow + " !important;\n"
+        "  --background-floating: " + popoutBg + " !important;\n"
         "  --background-nested-floating: " + primary + " !important;\n"
         "  --background-mobile-primary: " + primary + " !important;\n"
         "  --background-mobile-secondary: " + secondary + " !important;\n"
-        "  --bg-base-primary: transparent !important;\n"
-        "  --bg-base-secondary: transparent !important;\n"
-        "  --bg-base-tertiary: transparent !important;\n"
-        "  --bg-surface-raised: rgba(0, 0, 0, 0.40) !important;\n"
-        "  --bg-surface-overlay: rgba(0, 0, 0, 0.60) !important;\n"
-        "  --bg-overlay-chat: transparent !important;\n"
-        "  --bg-overlay-app-frame: transparent !important;\n"
-        "  --bg-overlay-1: transparent !important;\n"
-        "  --bg-overlay-2: transparent !important;\n"
-        "  --bg-overlay-3: transparent !important;\n"
-        "  --channeltextarea-background: rgba(0, 0, 0, 0.50) !important;\n"
-        "  --activity-card-background: rgba(10, 5, 20, 0.6) !important;\n"
-        "  --home-background: transparent !important;\n"
-        "  --chat-background: transparent !important;\n"
+        "  --bg-base-primary: " + (isStaticColor ? primary : "transparent") + " !important;\n"
+        "  --bg-base-secondary: " + (isStaticColor ? secondary : "transparent") + " !important;\n"
+        "  --bg-base-tertiary: " + (isStaticColor ? tertiary : "transparent") + " !important;\n"
+        "  --bg-surface-raised: " + (isStaticColor ? secondary : "rgba(0, 0, 0, 0.40)") + " !important;\n"
+        "  --bg-surface-overlay: " + (isStaticColor ? primary : "rgba(0, 0, 0, 0.60)") + " !important;\n"
+        "  --bg-overlay-chat: " + (isStaticColor ? primary : "transparent") + " !important;\n"
+        "  --bg-overlay-app-frame: " + (isStaticColor ? primary : "transparent") + " !important;\n"
+        "  --bg-overlay-1: " + (isStaticColor ? primary : "transparent") + " !important;\n"
+        "  --bg-overlay-2: " + (isStaticColor ? secondary : "transparent") + " !important;\n"
+        "  --bg-overlay-3: " + (isStaticColor ? tertiary : "transparent") + " !important;\n"
+        "  --channeltextarea-background: " + (isStaticColor ? secondary : "rgba(0, 0, 0, 0.50)") + " !important;\n"
+        "  --activity-card-background: " + (isStaticColor ? tertiary : "rgba(10, 5, 20, 0.6)") + " !important;\n"
+        "  --home-background: " + (isStaticColor ? primary : "transparent") + " !important;\n"
+        "  --chat-background: " + (isStaticColor ? primary : "transparent") + " !important;\n"
         "  --header-primary: #ffffff !important;\n"
         "  --header-secondary: #f1f5f9 !important;\n"
         "  --text-normal: #ffffff !important;\n"
@@ -23734,8 +23977,8 @@ void applyDiscordThemeCss(const std::string &themeId, const std::string &customI
         "#app-mount [class*=\"bottomControls_\"],\n"
         "#app-mount [class*=\"topControls_\"],\n"
         "#app-mount [class*=\"idle_\"] {\n"
-        "  background: transparent !important;\n"
-        "  background-color: transparent !important;\n"
+        "  background: " + (isStaticColor ? primary : "transparent") + " !important;\n"
+        "  background-color: " + (isStaticColor ? primary : "transparent") + " !important;\n"
         "}\n\n"
         "/* Left Servers & Sidebars: Translucent so theme shines through */\n"
         "#app-mount [class*=\"guilds_\"],\n"
@@ -23744,20 +23987,20 @@ void applyDiscordThemeCss(const std::string &themeId, const std::string &customI
         "#app-mount [class*=\"guilds_\"] > [class*=\"wrapper_\"],\n"
         "#app-mount [class*=\"guilds_\"] [class*=\"scroller_\"],\n"
         "#app-mount [class*=\"unreadMentionsIndicator_\"] {\n"
-        "  background: rgba(0, 0, 0, 0.22) !important;\n"
-        "  background-color: rgba(0, 0, 0, 0.22) !important;\n"
+        "  background: " + (isStaticColor ? tertiary : "rgba(0, 0, 0, 0.22)") + " !important;\n"
+        "  background-color: " + (isStaticColor ? tertiary : "rgba(0, 0, 0, 0.22)") + " !important;\n"
         "}\n\n"
         "#app-mount [class*=\"sidebar_\"],\n"
         "#app-mount [class*=\"privateChannels_\"],\n"
         "#app-mount [class*=\"privateChannels_\"] [class*=\"scroller_\"],\n"
         "#app-mount nav[class*=\"wrapper_\"] {\n"
-        "  background: rgba(0, 0, 0, 0.16) !important;\n"
-        "  background-color: rgba(0, 0, 0, 0.16) !important;\n"
+        "  background: " + (isStaticColor ? secondary : "rgba(0, 0, 0, 0.16)") + " !important;\n"
+        "  background-color: " + (isStaticColor ? secondary : "rgba(0, 0, 0, 0.16)") + " !important;\n"
         "}\n\n"
         "/* Call Screen: Frosted Glass / Translucent Acrylic Background */\n"
         "#app-mount [class*=\"callContainer_\"] {\n"
-        "  background: rgba(0, 0, 0, 0.35) !important;\n"
-        "  background-color: rgba(0, 0, 0, 0.35) !important;\n"
+        "  background: " + (isStaticColor ? primary : "rgba(0, 0, 0, 0.35)") + " !important;\n"
+        "  background-color: " + (isStaticColor ? primary : "rgba(0, 0, 0, 0.35)") + " !important;\n"
         "  backdrop-filter: blur(12px) !important;\n"
         "  -webkit-backdrop-filter: blur(12px) !important;\n"
         "}\n"
@@ -33788,6 +34031,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                                   std::string themeId = extractJsonField(json, "theme");
                                   std::string themeImg = extractJsonField(json, "img");
                                   std::string themeAccent = extractJsonField(json, "accent");
+                                  std::string themeBg = extractJsonField(json, "bg"); // custom bg color
+                                  // Encode bg color into themeImg with prefix so applyDiscordThemeCss can distinguish
+                                  if (!themeBg.empty() && themeImg.empty()) {
+                                    themeImg = "bg:" + themeBg;
+                                  }
                                   if (!themeId.empty()) {
                                     applyDiscordThemeCss(themeId, themeImg, themeAccent);
                                     installDiscordThemeHook(g_targetExe);

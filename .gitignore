@@ -14,3 +14,12 @@ wallpapers/
 temas/
 themes_engine.log
 tools/
+
+*.exe
+*.exe.bak
+*.exe.to_delete
+*.bak
+license.key
+
+.release_id.txt
+
