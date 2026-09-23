@@ -1,18 +1,18 @@
 {
     "date":  "2026-09-22",
     "channel":  "stable",
-    "version":  "8.10",
+    "version":  "8.9",
     "files":  {
                   "DiscordUnlock.exe":  {
                                             "url":  "https://github.com/stefystars-one/dc-unlcok-/releases/latest/download/DiscordUnlock.exe",
-                                            "sha256":  "52a0e252fded86c88a734d07d3d3ad4e52048ab070f49ddcc7515f28b5abaa2f",
+                                            "sha256":  "7b8646576e75b9339ee5f753b32d652c34853dad1f0dfd89e9c8d140bf9e545e",
                                             "size":  13771776
                                         },
                   "DiscordUnlock_Special.exe":  {
                                                     "url":  "https://github.com/stefystars-one/dc-unlcok-/releases/latest/download/DiscordUnlock_Special.exe",
-                                                    "sha256":  "78629822797d6aaa64782df4208aa4b619959e1e2c7a9c1bcf9f8b31b46e4592",
+                                                    "sha256":  "6d9cc2213989541040c6706225870ad1f3d996082866d4108a27d62e6abfada2",
                                                     "size":  13578240
                                                 }
               },
-    "notes":  "v8.10 - Slider de Tamanho restaurado na preview do Banner do Perfil. Fix deteccao de update: comparacao por inteiros (major.minor) em vez de float."
+    "notes":  "v8.9 - Slider de Tamanho restaurado na preview do Banner do Perfil. Fix deteccao de update: comparacao por inteiros (major.minor) em vez de float."
 }
