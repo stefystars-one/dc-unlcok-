@@ -5634,7 +5634,7 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
                 <span style="color:#c4b5fd; font-weight:700;">🎨 Modo DU Exclusivo</span> — Cole o link do GIF/imagem, gere sua tag e cole no <em>Sobre Mim</em> do Discord. O banner aparece para qualquer usuário com DU instalado. <span style="color:#a78bfa; font-weight:600;">Não requer Nitro.</span>
               </div>
               <div style="background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); border-radius:8px; padding:8px 12px;">
-                <span style="color:#818cf8; font-weight:700;">🌐 Modo USRBG</span> — Cadastre seu banner no site do USRBG com login Discord. Fica visível também para usuários de BetterDiscord — sem precisar instalar nada extra. Requer aprovação manual no servidor deles.
+                <span style="color:#818cf8; font-weight:700;">🌐 Modo USRBG</span> — Faça login com Discord no site deles, cole o link do GIF e salve. Seu banner fica visível também para usuários de BetterDiscord automaticamente — sem aprovação manual.
               </div>
             </div>
           </div>
