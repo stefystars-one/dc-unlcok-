@@ -18121,6 +18121,28 @@ std::string downloadUrl(const std::wstring &host, const std::wstring &path) {
 // A implementacao fica junto do atualizador, depois do downloader binario.
 std::string getLatestUpdateVersionFromAllSources();
 
+// Compara versoes no formato "MAJOR.MINOR" corretamente.
+// std::stod("8.10") == 8.1 < 8.7 — ERRADO. Esta funcao evita esse bug.
+static std::pair<int,int> parseVersion(const std::string& v) {
+  int major2 = 0, minor2 = 0;
+  auto dot = v.find('.');
+  try {
+    if (dot == std::string::npos) {
+      major2 = std::stoi(v);
+    } else {
+      major2 = std::stoi(v.substr(0, dot));
+      minor2 = std::stoi(v.substr(dot + 1));
+    }
+  } catch (...) {}
+  return {major2, minor2};
+}
+// Retorna true se a > b (versao a e mais nova que b)
+static bool updateVersionNumber(const std::string& a, const std::string& b) {
+  auto pa = parseVersion(a), pb = parseVersion(b);
+  if (pa.first != pb.first) return pa.first > pb.first;
+  return pa.second > pb.second;
+}
+
 void initAntiTamperProtection() {
   // Blindagem de seguranca desativada por enquanto conforme solicitado
 }
@@ -18134,9 +18156,9 @@ void checkForUpdatesPreAuth() {
 
     if (!remoteVer.empty()) {
       try {
-        double r = std::stod(remoteVer);
-        double l = std::stod(CURRENT_VERSION);
-        if (r > l) {
+        auto remoteOrd  = (long long)parseVersion(remoteVer).first * 100000LL + parseVersion(remoteVer).second;
+        auto currentOrd = (long long)parseVersion(CURRENT_VERSION).first * 100000LL + parseVersion(CURRENT_VERSION).second;
+        if (remoteOrd > currentOrd) {
           std::string updateJson = "{\"type\":\"update_available\",\"currentVersion\":\"" + CURRENT_VERSION + "\",\"latestVersion\":\"" + remoteVer + "\"}";
           postJsonToUI(updateJson);
         }
@@ -25379,6 +25401,7 @@ static void schedulePresentMonFpsCapture(DWORD targetPid) {
     g_presentMonFps.captureRunning.store(false);
   }).detach();
 }
+
 void performSelfUpdate() {
   std::thread([]() {
     const std::wstring currentExe = getCurrentExePath();
@@ -25392,7 +25415,7 @@ void performSelfUpdate() {
       return;
     }
 
-    if (updateVersionNumber(candidates.front().version) <= updateVersionNumber(CURRENT_VERSION)) {
+    if (!updateVersionNumber(candidates.front().version, CURRENT_VERSION)) {
       postJsonToUI("{\"type\":\"no_update\"}");
       return;
     }
@@ -25404,7 +25427,7 @@ void performSelfUpdate() {
     std::string downloadedVersion;
     // Tenta as fontes em ordem de versao. Se uma falhar, o outro espelho ainda pode atualizar o app.
     for (const auto &candidate : candidates) {
-      if (updateVersionNumber(candidate.version) <= updateVersionNumber(CURRENT_VERSION)) continue;
+      if (!updateVersionNumber(candidate.version, CURRENT_VERSION)) continue;
       fs::remove(newTmp, ec);
       if (!downloadUpdateBinaryFromUrl(toWide(candidate.downloadUrl), newTmp)) continue;
       const std::string actualHash = computeFileSHA256(newTmp);
@@ -35237,7 +35260,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                                      remoteVer.erase(std::find_if(remoteVer.rbegin(), remoteVer.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), remoteVer.end());
                                      std::replace(remoteVer.begin(), remoteVer.end(), ',', '.');
                                      try {
-                                       if (!remoteVer.empty() && updateVersionNumber(remoteVer) > updateVersionNumber(CURRENT_VERSION)) {
+                                        if (!remoteVer.empty() && updateVersionNumber(remoteVer, CURRENT_VERSION)) {
                                          postJsonToUI("{\"type\":\"update_available\",\"version\":\"" + remoteVer + "\"}");
                                        } else if (!remoteVer.empty()) {
                                          postJsonToUI("{\"type\":\"no_update\"}");
