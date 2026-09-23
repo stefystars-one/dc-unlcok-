@@ -5667,12 +5667,17 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
             <div style="position:absolute; bottom:6px; right:8px; background:rgba(0,0,0,0.6); color:#a78bfa; font-size:10px; font-weight:700; padding:2px 8px; border-radius:6px;">PREVIEW · 480×200</div>
           </div>
 
-          <!-- Controls: Opacity, Position Y -->
+          <!-- Controls: Opacity, Tamanho, Position Y -->
           <div style="display:flex; flex-direction:column; gap:8px;">
             <div style="display:flex; align-items:center; gap:10px;">
               <label style="font-size:11px; color:var(--text-muted); font-weight:600; width:72px; flex-shrink:0;">Opacidade</label>
               <input type="range" id="bannerOpacitySlider" min="10" max="100" value="85" oninput="applyBannerPreviewStyles()" style="flex:1; accent-color:#a855f7; cursor:pointer;">
               <span id="bannerOpacityVal" style="font-size:11px; color:#a78bfa; width:34px; text-align:right;">85%</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <label style="font-size:11px; color:var(--text-muted); font-weight:600; width:72px; flex-shrink:0;">Tamanho</label>
+              <input type="range" id="bannerHeightSlider" min="80" max="400" value="200" oninput="applyBannerPreviewStyles()" style="flex:1; accent-color:#a855f7; cursor:pointer;">
+              <span id="bannerHeightVal" style="font-size:11px; color:#a78bfa; width:40px; text-align:right;">200px</span>
             </div>
             <div style="display:flex; align-items:center; gap:10px;">
               <label style="font-size:11px; color:var(--text-muted); font-weight:600; width:72px; flex-shrink:0;">Posição Y</label>
@@ -13684,12 +13689,17 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
 
     function applyBannerPreviewStyles() {
       const opacity = parseInt((document.getElementById('bannerOpacitySlider') || {}).value || 85);
+      const height  = parseInt((document.getElementById('bannerHeightSlider')  || {}).value || 200);
       const posY    = parseInt((document.getElementById('bannerPosSlider')     || {}).value || 50);
       const opVal = document.getElementById('bannerOpacityVal');
+      const htVal = document.getElementById('bannerHeightVal');
       const pyVal = document.getElementById('bannerPosVal');
       if (opVal) opVal.textContent = opacity + '%';
+      if (htVal) htVal.textContent = height + 'px';
       if (pyVal) pyVal.textContent = posY + '%';
-      // inner height is set automatically by aspect-ratio:5/2 in CSS
+      // override height (aspect-ratio:5/2 é o padrão automático; o slider permite ajustar)
+      const inner = document.getElementById('bannerPreviewInner');
+      if (inner) inner.style.height = height + 'px';
       const img = document.getElementById('bannerPreviewImg');
       const vid = document.getElementById('bannerPreviewVid');
       const op = (opacity / 100).toFixed(2);
@@ -17873,7 +17883,7 @@ const char EMBEDDED_OVERLAY_HTML[] = R"raw_overlay_html(
 using namespace Microsoft::WRL;
 namespace fs = std::filesystem;
 
-const std::string CURRENT_VERSION = "8.9";
+const std::string CURRENT_VERSION = "8.10";
 const std::wstring CLOUD_API_HOST = L"discord-unlock-api.st4rs.workers.dev";
 const std::wstring THEMES_CATALOG_HOST = L"script.google.com";
 const std::wstring THEMES_CATALOG_PATH = L"/macros/s/AKfycbxJeT0t6WzljXxQH5FoyBhQkNad8oQWm7Wzf0aa40oh2fAO3XriJJWHmps3bLAtbpJgdA/exec";
