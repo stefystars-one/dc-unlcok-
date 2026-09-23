@@ -1,31 +1,31 @@
 {
   "schema": 1,
-  "version": "8.9",
+  "version": "9.0",
   "channel": "stable",
-  "date": "2026-09-22",
-  "notes": "v8.9 - Slider de Tamanho restaurado na preview do Banner do Perfil. Fix deteccao de update: comparacao por inteiros (major.minor) em vez de float.",
+  "date": "2026-09-23",
+  "notes": "v9.0 - Gravador DXGI 4K 120 FPS 150 Mbps, Replay Instantaneo (Ctrl+F10), Editor Lossless de Clipes, Galeria DU com Banners e Avatares Animados.",
   "artifacts": {
     "DiscordUnlock.exe": {
       "url": "https://github.com/stefystars-one/dc-unlcok-/releases/latest/download/DiscordUnlock.exe",
-      "sha256": "7b8646576e75b9339ee5f753b32d652c34853dad1f0dfd89e9c8d140bf9e545e",
-      "size": 13771776
+      "sha256": "c3be4984c72e7eaff28d5aa3a6af4128e457978bef93394530bb3e023e02cd70",
+      "size": 13851648
     },
     "DiscordUnlock_Special.exe": {
       "url": "https://github.com/stefystars-one/dc-unlcok-/releases/latest/download/DiscordUnlock_Special.exe",
-      "sha256": "6d9cc2213989541040c6706225870ad1f3d996082866d4108a27d62e6abfada2",
-      "size": 13578240
+      "sha256": "f174748a59a604fc5ad0dbebb70b83f51d955b25e96ed75c5ed4f2aa20391c5a",
+      "size": 13658112
     }
   },
   "files": {
     "DiscordUnlock.exe": {
       "url": "https://github.com/stefystars-one/dc-unlcok-/releases/latest/download/DiscordUnlock.exe",
-      "sha256": "7b8646576e75b9339ee5f753b32d652c34853dad1f0dfd89e9c8d140bf9e545e",
-      "size": 13771776
+      "sha256": "c3be4984c72e7eaff28d5aa3a6af4128e457978bef93394530bb3e023e02cd70",
+      "size": 13851648
     },
     "DiscordUnlock_Special.exe": {
       "url": "https://github.com/stefystars-one/dc-unlcok-/releases/latest/download/DiscordUnlock_Special.exe",
-      "sha256": "6d9cc2213989541040c6706225870ad1f3d996082866d4108a27d62e6abfada2",
-      "size": 13578240
+      "sha256": "f174748a59a604fc5ad0dbebb70b83f51d955b25e96ed75c5ed4f2aa20391c5a",
+      "size": 13658112
     }
   }
 }

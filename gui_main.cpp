@@ -4441,11 +4441,12 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
               <div>
                 <label class="form-label" style="font-size: 11px; margin-bottom: 4px; display: block; color: var(--text-muted);">Resolução &amp; Qualidade:</label>
-                <select id="recResSelect" class="form-input" onchange="updateRecorderSettingsFromUI()" style="width: 100%; font-size: 11.5px; padding: 6px 10px; background: #0f1118; border: 1px solid var(--card-border); color: #fff; border-radius: 6px;">
+                <select id="recResSelect" class="form-input" onchange="onRecResSelectChange()" style="width: 100%; font-size: 11.5px; padding: 6px 10px; background: #0f1118; border: 1px solid var(--card-border); color: #fff; border-radius: 6px;">
                   <option value="native">Nativa do Alvo (Máxima Qualidade - 50 Mbps)</option>
                   <option value="1440p60">2560x1440 • 60 FPS (2K Ultra - 35 Mbps)</option>
                   <option value="1080p60" selected>1920x1080 • 60 FPS (Full HD Gamer - 20 Mbps)</option>
                   <option value="720p60">1280x720 • 60 FPS (HD Leve - 8 Mbps)</option>
+                  <option value="custom">⚙️ Personalizado (Custom)...</option>
                 </select>
               </div>
               <div>
@@ -4454,6 +4455,63 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
                   <option value="pc">🔊 Todo o Som do PC</option>
                   <option value="game">🎮 Somente Áudio do Jogo (Isolado)</option>
                 </select>
+              </div>
+            </div>
+
+            <!-- Painel de Configurações Personalizadas (Custom) -->
+            <div id="recCustomPanel" style="display:none; background:linear-gradient(135deg,rgba(99,102,241,.09),rgba(56,189,248,.05)); border:1px solid rgba(99,102,241,.35); border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+              <div style="font-size:11.5px; font-weight:800; color:#c7d2fe; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px;">
+                <span style="display:flex; align-items:center; gap:6px;"><span>⚙️</span> Predefinição Personalizada</span>
+                <span style="font-size:10px; color:#38bdf8; background:rgba(56,189,248,.12); border:1px solid rgba(56,189,248,.28); padding:2px 8px; border-radius:10px; font-weight:700;">Máx 4K • 120 FPS • 150 Mbps</span>
+              </div>
+              <div style="display:grid; grid-template-columns: 1.2fr 1fr 1.3fr; gap:12px; align-items:start;">
+                <!-- 1. Resolução -->
+                <div>
+                  <label style="font-size:10.5px; color:#94a3b8; display:block; margin-bottom:5px; font-weight:700;">📐 Resolução:</label>
+                  <select id="recCustomResPreset" onchange="onRecCustomPresetChange()" style="width:100%; font-size:11px; padding:6px 8px; background:#090d16; border:1px solid rgba(99,102,241,.35); color:#fff; border-radius:6px; margin-bottom:6px; outline:none;">
+                    <option value="3840x2160">4K Ultra HD (3840x2160)</option>
+                    <option value="2560x1440">2K Quad HD (2560x1440)</option>
+                    <option value="1920x1080" selected>Full HD (1920x1080)</option>
+                    <option value="1600x900">HD+ (1600x900)</option>
+                    <option value="1280x720">HD (1280x720)</option>
+                    <option value="manual">Personalizada (Largura × Altura)</option>
+                  </select>
+                  <div id="recCustomManualResWrap" style="display:none; gap:6px; align-items:center;">
+                    <input id="recCustomWidth" type="number" min="320" max="3840" step="2" value="1920" placeholder="Largura (máx 3840)" onchange="onCustomResolutionInputChange()" style="width:50%; font-size:11px; padding:5px 7px; background:#090d16; border:1px solid rgba(255,255,255,.18); color:#fff; border-radius:6px; box-sizing:border-box;">
+                    <span style="color:#64748b; font-size:12px; font-weight:bold;">×</span>
+                    <input id="recCustomHeight" type="number" min="240" max="2160" step="2" value="1080" placeholder="Altura (máx 2160)" onchange="onCustomResolutionInputChange()" style="width:50%; font-size:11px; padding:5px 7px; background:#090d16; border:1px solid rgba(255,255,255,.18); color:#fff; border-radius:6px; box-sizing:border-box;">
+                  </div>
+                </div>
+
+                <!-- 2. FPS -->
+                <div>
+                  <label style="font-size:10.5px; color:#94a3b8; display:block; margin-bottom:5px; font-weight:700;">⏱️ Taxa de Quadros (FPS):</label>
+                  <select id="recCustomFpsSelect" onchange="updateRecorderSettingsFromUI()" style="width:100%; font-size:11px; padding:6px 8px; background:#090d16; border:1px solid rgba(99,102,241,.35); color:#fff; border-radius:6px; outline:none;">
+                    <option value="120">120 FPS (Ultra Fluidez / Gamer)</option>
+                    <option value="90">90 FPS (Competitivo)</option>
+                    <option value="60" selected>60 FPS (Padrão)</option>
+                    <option value="50">50 FPS</option>
+                    <option value="45">45 FPS</option>
+                    <option value="30">30 FPS (Econômico)</option>
+                    <option value="24">24 FPS (Cinemático)</option>
+                    <option value="15">15 FPS (Ultraleve)</option>
+                  </select>
+                </div>
+
+                <!-- 3. Bitrate (Mbps) -->
+                <div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                    <label style="font-size:10.5px; color:#94a3b8; font-weight:700;">🚀 Taxa de Bits:</label>
+                    <strong id="recCustomBitrateLabel" style="font-size:11.5px; color:#38bdf8; font-family:var(--font-mono);">35 Mbps</strong>
+                  </div>
+                  <input id="recCustomBitrateInput" type="range" min="2" max="150" step="1" value="35" oninput="onRecCustomBitrateInput(this.value)" onchange="updateRecorderSettingsFromUI()" style="width:100%; accent-color:#38bdf8; cursor:pointer;">
+                  <div style="display:flex; justify-content:space-between; font-size:9.5px; color:#64748b; margin-top:3px;">
+                    <span>2 Mbps</span>
+                    <span>50M</span>
+                    <span>100M</span>
+                    <span style="color:#a855f7; font-weight:700;">150 Mbps (Máx)</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -4670,17 +4728,20 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       <div id="clipTrimModal" style="display:none; position:fixed; inset:0; z-index:100000; background:rgba(2,4,12,.86); align-items:center; justify-content:center; padding:18px;" onclick="if(event.target===this) closeClipTrimmer()">
         <div style="width:min(860px,100%); max-height:calc(100vh - 36px); overflow:auto; background:#111522; border:1px solid rgba(168,85,247,.48); border-radius:14px; box-shadow:0 24px 80px rgba(0,0,0,.55); padding:20px;">
           <div style="display:flex; justify-content:space-between; gap:12px; align-items:start; margin-bottom:10px;">
-            <div><div id="clipTrimTitle" style="font-weight:800; color:#fff; font-size:14px;">✂️ Cortar Clipe</div><div style="margin-top:4px; font-size:11px; color:#94a3b8;">Corte rápido sem reencodar. O início pode ser ajustado ao keyframe mais próximo.</div></div>
+            <div><div id="clipTrimTitle" style="font-weight:800; color:#fff; font-size:14px;">✂️ Editar Clipe</div><div style="margin-top:4px; font-size:11px; color:#94a3b8;">Corte, renomeie ou gire o clipe. O início do corte acompanha o keyframe mais próximo.</div></div>
             <button onclick="closeClipTrimmer()" style="border:0; background:transparent; color:#94a3b8; cursor:pointer; font-size:20px;">×</button>
           </div>
-          <div style="margin-top:14px; border:1px solid rgba(255,255,255,.08); border-radius:10px; overflow:hidden; background:#05070d; position:relative;">
-            <video id="clipTrimVideo" preload="metadata" playsinline controls style="display:block; width:100%; max-height:410px; aspect-ratio:16/9; object-fit:contain; background:#020308;" onloadedmetadata="handleClipTrimMetadata()" ontimeupdate="handleClipTrimTimeUpdate()" onplay="syncClipTrimPlayButton()" onpause="syncClipTrimPlayButton()" onerror="handleClipTrimVideoError()"></video>
+          <div id="clipTrimVideoWrapper" style="margin-top:14px; border:1px solid rgba(255,255,255,.08); border-radius:10px; overflow:hidden; background:#05070d; position:relative; min-height:220px; display:flex; align-items:center; justify-content:center;">
+            <video id="clipTrimVideo" preload="metadata" playsinline onclick="toggleClipTrimPlayback()" style="display:block; width:100%; max-height:410px; aspect-ratio:16/9; object-fit:contain; background:#020308; cursor:pointer;" onloadedmetadata="handleClipTrimMetadata()" ontimeupdate="handleClipTrimTimeUpdate()" onplay="syncClipTrimPlayButton()" onpause="syncClipTrimPlayButton()" onerror="handleClipTrimVideoError()"></video>
             <div id="clipTrimVideoStatus" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#cbd5e1; font-size:12px; pointer-events:none; background:rgba(2,3,8,.62);">Carregando prévia do vídeo...</div>
+            <div id="clipTrimCenterPlay" onclick="toggleClipTrimPlayback()" style="position:absolute; width:52px; height:52px; border-radius:50%; background:rgba(15,23,42,.8); border:1px solid rgba(255,255,255,.25); display:none; align-items:center; justify-content:center; color:#fff; font-size:22px; padding-left:3px; cursor:pointer; box-shadow:0 8px 30px rgba(0,0,0,.6); pointer-events:auto; transition:transform .15s ease;">▶</div>
           </div>
           <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-top:10px;">
             <div style="display:flex; align-items:center; gap:8px;">
-              <button id="clipTrimPlayBtn" onclick="toggleClipTrimPlayback()" style="padding:7px 12px; border:1px solid rgba(168,85,247,.5); background:rgba(168,85,247,.14); color:#e9d5ff; border-radius:7px; cursor:pointer; font-weight:800;">▶ Reproduzir trecho</button>
-              <span id="clipTrimTimeLabel" style="font-family:var(--font-mono); color:#cbd5e1; font-size:11px;">00:00.0 / 00:00.0</span>
+              <button id="clipTrimPlayBtn" type="button" onclick="toggleClipTrimPlayback()" style="padding:7px 12px; border:1px solid rgba(168,85,247,.5); background:rgba(168,85,247,.14); color:#e9d5ff; border-radius:7px; cursor:pointer; font-weight:800;">▶ Reproduzir trecho</button>
+              <span id="clipTrimTimeLabel" style="font-family:var(--font-mono); color:#cbd5e1; font-size:11px; background:#090d16; padding:5px 8px; border-radius:6px; border:1px solid rgba(255,255,255,.06);">00:00.0 / 00:00.0</span>
+              <button id="clipTrimMuteBtn" type="button" onclick="toggleClipTrimMute()" style="padding:6px 9px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.06); color:#cbd5e1; border-radius:7px; cursor:pointer; font-size:12px;" title="Ligar/Desligar som">🔊</button>
+              <button id="clipTrimFullscreenBtn" type="button" onclick="toggleClipTrimFullscreen()" style="padding:6px 9px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.06); color:#cbd5e1; border-radius:7px; cursor:pointer; font-size:12px;" title="Tela cheia">⛶</button>
             </div>
             <div style="display:flex; gap:7px;">
               <button onclick="setClipTrimPointFromVideo('start')" style="padding:7px 10px; border:1px solid rgba(56,189,248,.35); background:rgba(56,189,248,.1); color:#7dd3fc; border-radius:7px; cursor:pointer; font-size:11px; font-weight:700;">Marcar início aqui</button>
@@ -4695,6 +4756,22 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
             <div><div style="display:flex; justify-content:space-between; font-size:11px; color:#cbd5e1; margin-bottom:7px;"><span>Início</span><strong id="clipTrimStartLabel" style="color:#7dd3fc">00:00.0</strong></div><input id="clipTrimStart" type="range" value="0" step="0.1" oninput="updateClipTrimPreview('start', true)" style="width:100%; accent-color:#38bdf8;"></div>
             <div><div style="display:flex; justify-content:space-between; font-size:11px; color:#cbd5e1; margin-bottom:7px;"><span>Fim</span><strong id="clipTrimEndLabel" style="color:#f9a8d4">00:00.0</strong></div><input id="clipTrimEnd" type="range" value="0" step="0.1" oninput="updateClipTrimPreview('end', true)" style="width:100%; accent-color:#f472b6;"></div>
             <div id="clipTrimDurationLabel" style="text-align:center; padding:8px; border-radius:7px; background:rgba(168,85,247,.1); color:#e9d5ff; font-size:12px; font-weight:700;">Trecho selecionado: 0,0 segundos</div>
+          </div>
+          <!-- Renomear e Girar -->
+          <div style="margin-top:16px; border-top:1px solid rgba(255,255,255,.07); padding-top:14px; display:grid; grid-template-columns:1fr auto; gap:10px; align-items:end;">
+            <div>
+              <div style="font-size:11px; color:#94a3b8; margin-bottom:5px; font-weight:700;">✏️ Renomear clipe</div>
+              <input id="clipRenameInput" type="text" placeholder="Novo nome (sem extensão)" autocomplete="off" spellcheck="false" style="width:100%; padding:7px 10px; background:#090c14; border:1px solid rgba(99,102,241,.4); color:#fff; border-radius:7px; font-size:12px; outline:none; box-sizing:border-box;">
+            </div>
+            <button id="clipRenameSaveBtn" onclick="saveClipRename()" style="padding:8px 13px; border:1px solid rgba(99,102,241,.6); background:rgba(99,102,241,.18); color:#c7d2fe; border-radius:7px; cursor:pointer; font-weight:800; white-space:nowrap;">Renomear</button>
+          </div>
+          <div style="margin-top:12px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span style="font-size:11px; color:#94a3b8; font-weight:700;">🔄 Girar vídeo:</span>
+            <button id="clipRotBtn0"   type="button" onclick="setClipTrimRotation(0)"   style="padding:6px 11px; border:1px solid #38bdf8; background:rgba(56,189,248,.25); color:#fff; border-radius:7px; cursor:pointer; font-size:11px; font-weight:800; box-shadow:0 0 10px rgba(56,189,248,.35); transition:all .18s ease;">↻ 0° (Normal)</button>
+            <button id="clipRotBtn90"  type="button" onclick="setClipTrimRotation(90)"  style="padding:6px 11px; border:1px solid rgba(251,191,36,.35); background:rgba(251,191,36,.08); color:#fde68a; border-radius:7px; cursor:pointer; font-size:11px; font-weight:700; transition:all .18s ease;">↻ 90°</button>
+            <button id="clipRotBtn180" type="button" onclick="setClipTrimRotation(180)" style="padding:6px 11px; border:1px solid rgba(251,191,36,.35); background:rgba(251,191,36,.08); color:#fde68a; border-radius:7px; cursor:pointer; font-size:11px; font-weight:700; transition:all .18s ease;">↻ 180°</button>
+            <button id="clipRotBtn270" type="button" onclick="setClipTrimRotation(270)" style="padding:6px 11px; border:1px solid rgba(251,191,36,.35); background:rgba(251,191,36,.08); color:#fde68a; border-radius:7px; cursor:pointer; font-size:11px; font-weight:700; transition:all .18s ease;">↻ 270°</button>
+            <span id="clipRotateStatus" style="font-size:10.5px; color:#38bdf8; margin-left:4px; font-weight:600;"></span>
           </div>
           <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:18px;">
             <button onclick="closeClipTrimmer()" style="padding:8px 12px; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.05); color:#cbd5e1; border-radius:7px; cursor:pointer; font-weight:700;">Cancelar</button>
@@ -5624,124 +5701,207 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       <!-- TAB: MEU BANNER DU -->
       <div id="tab-profile-banner" class="tab-pane">
 
-        <!-- Header -->
-        <div style="background: linear-gradient(135deg, rgba(168,85,247,0.18) 0%, rgba(88,101,242,0.18) 100%); border: 1px solid rgba(168,85,247,0.35); border-radius: 14px; padding: 20px; margin-bottom: 18px; text-align: center;">
-          <div style="font-size: 28px; margin-bottom: 8px;">✨</div>
-          <div style="font-size: 17px; font-weight: 800; color: #fff; margin-bottom: 6px;">Banner do Perfil</div>
-          <div style="font-size: 11.5px; color: #cbd5e1; max-width: 540px; margin: 0 auto; line-height: 1.65; text-align:left;">
-            <div style="display:flex; flex-direction:column; gap:7px;">
-              <div style="background:rgba(168,85,247,0.1); border:1px solid rgba(168,85,247,0.25); border-radius:8px; padding:8px 12px;">
-                <span style="color:#c4b5fd; font-weight:700;">🎨 Modo DU Exclusivo</span> — Cole o link do GIF/imagem, gere sua tag e cole no <em>Sobre Mim</em> do Discord. O banner aparece para qualquer usuário com DU instalado. <span style="color:#a78bfa; font-weight:600;">Não requer Nitro.</span>
+        <!-- Header Unificado -->
+        <div style="background: linear-gradient(135deg, rgba(56,189,248,0.16) 0%, rgba(168,85,247,0.18) 100%); border: 1px solid rgba(56,189,248,0.35); border-radius: 14px; padding: 20px; margin-bottom: 18px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:14px;">
+            <div style="flex:1;">
+              <div style="font-size:18px; font-weight:800; color:#fff; margin-bottom:6px; display:flex; align-items:center; gap:9px;">
+                <span>✨</span> DU Banner &amp; Avatar Público
+                <span style="font-size:10.5px; font-weight:700; padding:2px 10px; border-radius:12px; background:rgba(56,189,248,0.18); border:1px solid rgba(56,189,248,0.4); color:#7dd3fc;">Rede Global DU</span>
               </div>
-              <div style="background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); border-radius:8px; padding:8px 12px;">
-                <span style="color:#818cf8; font-weight:700;">🌐 Modo USRBG</span> — Faça login com Discord no site deles, cole o link do GIF e salve. Seu banner fica visível também para usuários de BetterDiscord automaticamente — sem aprovação manual.
+              <div style="font-size:11.5px; color:#cbd5e1; line-height:1.65; margin-top:6px;">
+                <div style="margin-bottom:5px;">
+                  🎨 <strong style="color:#fff;">O que este recurso altera?</strong> Altera tanto o <strong style="color:#a78bfa;">Banner de Perfil</strong> (capa atrás do avatar) quanto o <strong style="color:#38bdf8;">Avatar (Foto de Perfil)</strong> com suporte total a imagens estáticas e GIFs animados sem precisar de Discord Nitro!
+                </div>
+                <div style="margin-bottom:5px;">
+                  🌐 <strong style="color:#fff;">Como funciona?</strong> Você cadastra o link do banner e do avatar. Eles ficam salvos na nuvem e aparecem automaticamente para <strong style="color:#7dd3fc;">todos os usuários do DiscordUnlock</strong>, no chat, popouts e perfil.
+                </div>
+                <div>
+                  ⚡ <strong style="color:#fff;">Tempo de sincronização:</strong> Atualizações propagam na rede em até <strong style="color:#34d399;">5 minutos</strong> para toda a comunidade.
+                </div>
               </div>
+            </div>
+            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+              <label class="toggle-switch" title="Ativar ou desativar exibição de banners e avatares DU">
+                <input type="checkbox" id="duBannerToggle" checked onchange="saveDuBannerToggle(this.checked)">
+                <span class="toggle-slider"></span>
+              </label>
+              <span style="font-size:10px; color:#94a3b8; font-weight:600;">Exibir no Discord</span>
             </div>
           </div>
         </div>
 
-        <!-- PASSO 1: URL -->
-        <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 16px; margin-bottom: 14px;">
-          <div style="font-size: 12px; font-weight: 700; color: #a78bfa; margin-bottom: 10px; display:flex; align-items:center; gap:6px;">
-            <span style="background:rgba(168,85,247,0.25);border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;">1</span>
-            Cole o link do seu GIF ou imagem
-          </div>
-          <div style="display: flex; gap: 8px; margin-bottom: 6px;">
-            <input type="url" id="bannerUrlInput" placeholder="https://i.imgur.com/xxx.gif   ou   https://media.giphy.com/..." oninput="previewBannerUrl()" style="flex:1; height:38px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff; padding:0 12px; font-size:12px; outline:none; font-family:var(--font-main);">
-            <button onclick="clearBannerConfig()" title="Remover banner" style="padding:0 12px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.35); color:#f87171; border-radius:8px; font-size:16px; cursor:pointer;">🗑️</button>
-          </div>
-          <div style="font-size:10.5px; color:var(--text-muted); margin-bottom:10px; line-height:1.5;">
-            ⚠️ O link precisa ser <strong style="color:#e2e8f0;">direto para o arquivo</strong> (termina em .gif, .png, .jpg, .mp4...).<br>
-            Links de páginas como <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px;">klipy.com/gifs/xxx</code> <strong style="color:#f87171;">não funcionam</strong> — clique com botão direito no GIF e copie o link da imagem.
+        <!-- Status badge dinâmico -->
+        <div id="duBannerStatusBadge" style="display:none; margin-bottom:14px;"></div>
+
+        <!-- Bloco Principal de Configuração -->
+        <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 18px; margin-bottom: 14px;">
+          
+          <!-- Passo 1: Identificação do Discord -->
+          <div style="margin-bottom: 16px;">
+            <div style="font-size: 12px; font-weight: 700; color: #7dd3fc; margin-bottom: 6px; display:flex; align-items:center; gap:6px;">
+              <span style="background:rgba(56,189,248,0.2);border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;">1</span>
+              Seu ID do Discord (User ID)
+            </div>
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">
+              Detectado automaticamente se o Discord estiver aberto. Se não detectar, ative o Modo Desenvolvedor no Discord (Configurações → Avançado), clique com botão direito no seu perfil e selecione <em>Copiar ID de Usuário</em>.
+            </div>
+            <div style="display:flex; gap:8px;">
+              <input type="text" id="duBannerDiscordId" placeholder="Ex: 123456789012345678" maxlength="21" oninput="this.value=this.value.replace(/[^0-9]/g,'')" style="flex:1; height:38px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff; padding:0 12px; font-size:12px; font-family:var(--font-mono); outline:none;">
+              <button onclick="duBannerLoadStatus()" style="padding:0 14px; height:38px; background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.35); color:#7dd3fc; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:6px;">
+                🔍 Verificar Status
+              </button>
+            </div>
           </div>
 
-          <!-- Preview box — proporção real do banner do Discord (480×200 = 5:2) -->
-          <div id="bannerPreviewBox" style="display:none; margin-bottom:12px; border-radius:10px; overflow:hidden; position:relative; background:rgba(0,0,0,0.3); border:1px solid rgba(168,85,247,0.25);">
-            <div id="bannerPreviewInner" style="width:100%; aspect-ratio:5/2; overflow:hidden; position:relative;">
-              <img id="bannerPreviewImg" src="" alt="" style="width:100%; height:100%; object-fit:cover; object-position:center 50%; display:none; opacity:0.85;">
+          <!-- Passo 2: Link do Banner (Capa) -->
+          <div style="margin-bottom: 16px;">
+            <div style="font-size: 12px; font-weight: 700; color: #a78bfa; margin-bottom: 6px; display:flex; align-items:center; gap:6px;">
+              <span style="background:rgba(168,85,247,0.25);border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;">2</span>
+              Banner do Perfil (Capa de Fundo — GIF ou Imagem)
+            </div>
+            <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+              <input type="url" id="bannerUrlInput" placeholder="https://i.imgur.com/xxx.gif   ou   https://media.giphy.com/..." oninput="previewBannerUrl(); var u=document.getElementById('duBannerUrlInput'); if(u) u.value=this.value;" style="flex:1; height:38px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff; padding:0 12px; font-size:12px; outline:none; font-family:var(--font-main);">
+              <!-- Sincronizador oculto para compatibilidade com rotinas do DU Banner -->
+              <input type="hidden" id="duBannerUrlInput" oninput="var u=document.getElementById('bannerUrlInput'); if(u){u.value=this.value; previewBannerUrl();}">
+              <button onclick="openDuBannerGallery()" style="padding:0 14px; height:38px; background:rgba(168,85,247,0.18); border:1px solid rgba(168,85,247,0.4); color:#c4b5fd; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:6px;">
+                🖼️ Galeria de GIFs
+              </button>
+              <button onclick="clearBannerConfig()" title="Limpar campo do banner" style="padding:0 12px; height:38px; background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.3); color:#f87171; border-radius:8px; font-size:15px; cursor:pointer;">
+                🗑️
+              </button>
+            </div>
+            <div style="font-size:10.5px; color:var(--text-muted); line-height:1.5;">
+              ⚠️ Use link direto para o arquivo (.gif, .png, .jpg, .mp4). Imgur, Giphy, Tenor, Catbox e Discord CDN.
+            </div>
+          </div>
+
+          <!-- Passo 3: Link do Avatar (Foto de Perfil) -->
+          <div style="margin-bottom: 16px;">
+            <div style="font-size: 12px; font-weight: 700; color: #38bdf8; margin-bottom: 6px; display:flex; align-items:center; gap:6px;">
+              <span style="background:rgba(56,189,248,0.25);border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;">3</span>
+              Avatar / Foto de Perfil (GIF ou Imagem)
+            </div>
+            <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+              <input type="url" id="avatarUrlInput" placeholder="https://i.imgur.com/avatar.gif   ou   https://media.giphy.com/..." oninput="previewBannerUrl();" style="flex:1; height:38px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff; padding:0 12px; font-size:12px; outline:none; font-family:var(--font-main);">
+              <button onclick="openDuBannerGallery()" style="padding:0 14px; height:38px; background:rgba(56,189,248,0.18); border:1px solid rgba(56,189,248,0.4); color:#7dd3fc; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:6px;">
+                👤 Galeria de GIFs
+              </button>
+              <button onclick="clearAvatarConfig()" title="Limpar campo do avatar" style="padding:0 12px; height:38px; background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.3); color:#f87171; border-radius:8px; font-size:15px; cursor:pointer;">
+                🗑️
+              </button>
+            </div>
+            <div style="font-size:10.5px; color:var(--text-muted); line-height:1.5;">
+              ⚠️ O avatar pode ser imagem (.png, .jpg) ou GIF animado (.gif). Ficará visível para quem usa DiscordUnlock!
+            </div>
+          </div>
+
+          <!-- Preview box integrado estilo Discord (Banner 5:2 + Avatar Sobreposto) -->
+          <div id="bannerPreviewBox" style="display:none; margin-bottom:28px; border-radius:12px; overflow:visible; position:relative; background:rgba(0,0,0,0.4); border:1px solid rgba(168,85,247,0.35);">
+            <div id="bannerPreviewInner" style="width:100%; aspect-ratio:5/2; overflow:hidden; position:relative; border-radius:12px 12px 0 0;">
+              <img id="bannerPreviewImg" src="" alt="Preview do Banner" style="width:100%; height:100%; object-fit:cover; object-position:center 50%; display:none; opacity:0.85;">
               <video id="bannerPreviewVid" src="" autoplay loop muted playsinline style="width:100%; height:100%; object-fit:cover; object-position:center 50%; display:none; opacity:0.85;"></video>
+              <div id="bannerPlaceholderText" style="display:flex; width:100%; height:100%; align-items:center; justify-content:center; color:rgba(255,255,255,0.25); font-size:12px; font-weight:600;">(Sem Banner Definido)</div>
             </div>
-            <div id="bannerPreviewErr" style="display:none; padding:28px; align-items:center; justify-content:center; color:#f87171; font-size:12px; font-weight:600; flex-direction:column; gap:4px;">
-              <span style="font-size:20px;">⚠️</span> Link inválido — use um link direto para o arquivo
+            <div id="bannerPreviewErr" style="display:none; padding:20px; align-items:center; justify-content:center; color:#f87171; font-size:12px; font-weight:600; flex-direction:column; gap:4px;">
+              <span style="font-size:20px;">⚠️</span> Link inválido ou inacessível — use um link direto para o arquivo de imagem/vídeo.
             </div>
-            <div style="position:absolute; bottom:6px; right:8px; background:rgba(0,0,0,0.6); color:#a78bfa; font-size:10px; font-weight:700; padding:2px 8px; border-radius:6px;">PREVIEW · 480×200</div>
+
+            <!-- Avatar Sobreposto estilo Perfil Real do Discord -->
+            <div id="avatarPreviewContainer" style="position:absolute; bottom:-22px; left:18px; width:72px; height:72px; border-radius:50%; border:4px solid #111522; background:#1e1f22; box-shadow:0 6px 18px rgba(0,0,0,0.7); overflow:hidden; display:flex; align-items:center; justify-content:center; z-index:10;">
+              <img id="avatarPreviewImg" src="" alt="Avatar" style="width:100%; height:100%; object-fit:cover; display:none;">
+              <video id="avatarPreviewVid" src="" autoplay loop muted playsinline style="width:100%; height:100%; object-fit:cover; display:none;"></video>
+              <span id="avatarPreviewFallback" style="font-size:28px; color:#94a3b8; user-select:none;">👤</span>
+            </div>
+
+            <div style="position:absolute; bottom:6px; right:8px; background:rgba(0,0,0,0.65); color:#a78bfa; font-size:10px; font-weight:700; padding:2px 8px; border-radius:6px; backdrop-filter:blur(4px);">
+              PREVIEW DO PERFIL · 480×200
+            </div>
           </div>
 
-          <!-- Controls: Opacity, Tamanho, Position Y -->
-          <div style="display:flex; flex-direction:column; gap:8px;">
+          <!-- Sliders de Ajuste Visual (Banner) -->
+          <div style="display:flex; flex-direction:column; gap:10px; padding:12px 14px; background:rgba(0,0,0,0.18); border:1px solid rgba(255,255,255,0.06); border-radius:9px; margin-bottom:16px;">
+            <div style="font-size:11px; font-weight:700; color:#cbd5e1; margin-bottom:2px;">⚙️ Ajustes de Exibição do Banner</div>
             <div style="display:flex; align-items:center; gap:10px;">
-              <label style="font-size:11px; color:var(--text-muted); font-weight:600; width:72px; flex-shrink:0;">Opacidade</label>
+              <label style="font-size:11px; color:var(--text-muted); font-weight:600; width:74px; flex-shrink:0;">Opacidade</label>
               <input type="range" id="bannerOpacitySlider" min="10" max="100" value="85" oninput="applyBannerPreviewStyles()" style="flex:1; accent-color:#a855f7; cursor:pointer;">
-              <span id="bannerOpacityVal" style="font-size:11px; color:#a78bfa; width:34px; text-align:right;">85%</span>
+              <span id="bannerOpacityVal" style="font-size:11px; color:#a78bfa; width:36px; text-align:right;">85%</span>
             </div>
             <div style="display:flex; align-items:center; gap:10px;">
-              <label style="font-size:11px; color:var(--text-muted); font-weight:600; width:72px; flex-shrink:0;">Tamanho</label>
+              <label style="font-size:11px; color:var(--text-muted); font-weight:600; width:74px; flex-shrink:0;">Altura</label>
               <input type="range" id="bannerHeightSlider" min="80" max="400" value="200" oninput="applyBannerPreviewStyles()" style="flex:1; accent-color:#a855f7; cursor:pointer;">
-              <span id="bannerHeightVal" style="font-size:11px; color:#a78bfa; width:40px; text-align:right;">200px</span>
+              <span id="bannerHeightVal" style="font-size:11px; color:#a78bfa; width:42px; text-align:right;">200px</span>
             </div>
             <div style="display:flex; align-items:center; gap:10px;">
-              <label style="font-size:11px; color:var(--text-muted); font-weight:600; width:72px; flex-shrink:0;">Posição Y</label>
+              <label style="font-size:11px; color:var(--text-muted); font-weight:600; width:74px; flex-shrink:0;">Posição Y</label>
               <input type="range" id="bannerPosSlider" min="0" max="100" value="50" oninput="applyBannerPreviewStyles()" style="flex:1; accent-color:#a855f7; cursor:pointer;">
-              <span id="bannerPosVal" style="font-size:11px; color:#a78bfa; width:34px; text-align:right;">50%</span>
+              <span id="bannerPosVal" style="font-size:11px; color:#a78bfa; width:36px; text-align:right;">50%</span>
             </div>
           </div>
+
+          <!-- Botões de Ação Principais -->
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button id="duBannerRegisterBtn" onclick="duBannerRegister()" style="flex:2; min-width:180px; padding:12px 16px; background:linear-gradient(135deg,rgba(56,189,248,0.25),rgba(99,102,241,0.25)); border:1px solid rgba(56,189,248,0.5); border-radius:9px; color:#7dd3fc; font-size:12.5px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px; transition:transform 0.1s, background 0.15s;">
+              🌐 Cadastrar Banner &amp; Avatar na Rede
+            </button>
+            <button id="duBannerRemoveBtn" onclick="duBannerRemove()" style="flex:1; min-width:140px; padding:12px 14px; background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35); border-radius:9px; color:#f87171; font-size:12.5px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+              🗑️ Remover Perfil
+            </button>
+            <button onclick="saveBannerConfig()" style="padding:12px 14px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.35); border-radius:9px; color:#34d399; font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;" title="Salva preferências locais no cliente">
+              💾 Salvar Local
+            </button>
+          </div>
+
         </div>
 
-        <!-- PASSO 2: Gerar tag -->
-        <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 16px; margin-bottom: 14px;">
-          <div style="font-size: 12px; font-weight: 700; color: #a78bfa; margin-bottom: 10px; display:flex; align-items:center; gap:6px;">
-            <span style="background:rgba(168,85,247,0.25);border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;">2</span>
-            Gere sua tag e cole no Sobre Mim do Discord
-          </div>
-          <div style="font-size:11px; color:var(--text-muted); margin-bottom:10px; line-height:1.55;">
-            A tag fica <strong style="color:#fff;">invisível</strong> para quem tem DU — seu banner aparece automaticamente. Para quem não tem DU, aparece como texto normal no About Me.
-          </div>
-          <button onclick="generateDuTag()" style="width:100%; padding:11px; background:linear-gradient(135deg,#a855f7,#6366f1); border:none; border-radius:8px; color:#fff; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px;">
-            🏷️ Gerar Tag para o About Me
-          </button>
-
-          <!-- Generated tag -->
-          <div id="generatedTagBox" style="display:none; margin-top:12px; background:rgba(0,0,0,0.3); border:1px solid rgba(168,85,247,0.3); border-radius:8px; padding:10px 12px;">
-            <div style="font-size:10px; color:var(--text-muted); font-weight:600; margin-bottom:6px;">📋 Cole isso no campo "Sobre Mim" no Discord:</div>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <code id="generatedTagText" style="flex:1; font-size:11.5px; color:#c4b5fd; word-break:break-all; background:rgba(0,0,0,0.2); padding:6px 8px; border-radius:5px;"></code>
-              <button onclick="copyDuTag()" style="padding:6px 12px; background:rgba(168,85,247,0.2); border:1px solid rgba(168,85,247,0.4); border-radius:6px; color:#e9d5ff; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap;">📋 Copiar</button>
-            </div>
-            <div style="margin-top:8px; font-size:10px; color:var(--text-muted);">Depois de colar, clique em <strong style="color:#fff;">Salvar</strong> no Discord.</div>
-          </div>
-        </div>
-
-        <!-- PASSO 3: Salvar config local -->
-        <div style="margin-bottom:14px;">
-          <button onclick="saveBannerConfig()" style="width:100%; padding:10px; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.4); border-radius:8px; color:#34d399; font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px;">
-            💾 Salvar configuração (aplica ao abrir o Discord)
-          </button>
-        </div>
-
-        <!-- USRBG SECTION -->
-        <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <div>
-              <div style="font-size:13px; font-weight:700; color:#fff; display:flex; align-items:center; gap:8px;">
-                🌐 USRBG — Banner visível para TODOS
+        <!-- MODAL DA GALERIA DE TEMAS & BANNERS (LOJA DU) -->
+        <div id="duBannerGalleryModal" style="display:none; position:fixed; inset:0; z-index:200000; background:rgba(0,0,0,0.85); align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(6px);" onclick="if(event.target===this)closeDuBannerGallery()">
+          <div style="width:min(900px,96vw); height:min(680px,90vh); display:flex; flex-direction:column; background:#111522; border:1px solid rgba(56,189,248,0.45); border-radius:14px; padding:20px; box-shadow:0 20px 60px rgba(0,0,0,0.85); overflow:hidden;">
+            
+            <!-- Header do Modal -->
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:12px;">
+              <div>
+                <div style="font-size:16px; font-weight:800; color:#fff; display:flex; align-items:center; gap:8px;">
+                  <span>🛍️</span> Loja de Temas &amp; Galeria DU
+                  <span style="font-size:10px; background:linear-gradient(135deg,rgba(56,189,248,0.25),rgba(168,85,247,0.25)); color:#a5b4fc; border:1px solid rgba(168,85,247,0.4); padding:2px 8px; border-radius:12px; font-weight:700;">NUVEM</span>
+                </div>
+                <div style="font-size:11.5px; color:#94a3b8; margin-top:3px;">
+                  Explore GIFs e temas animados cadastrados pela ADM. Escolha aplicar como Banner, Avatar ou Ambos com 1 clique!
+                </div>
               </div>
-              <div style="font-size:11px; color:var(--text-muted); margin-top:3px;">Banners públicos de usuários do USRBG (BD/DU veem)</div>
+              <button onclick="closeDuBannerGallery()" style="border:0; background:rgba(255,255,255,0.06); color:#cbd5e1; cursor:pointer; font-size:18px; line-height:1; width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; transition:background 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.2)';this.style.color='#f87171'" onmouseout="this.style.background='rgba(255,255,255,0.06)';this.style.color='#cbd5e1'">✕</button>
             </div>
-            <label class="toggle-switch" style="flex-shrink:0; margin-left:12px;">
-              <input type="checkbox" id="usrbgToggle" checked onchange="saveUsrbgToggle(this.checked)">
-              <span class="toggle-slider"></span>
-            </label>
+
+            <!-- Barra de Busca e Ações -->
+            <div style="display:flex; gap:8px; margin-bottom:12px;">
+              <div style="flex:1; position:relative; display:flex; align-items:center;">
+                <span style="position:absolute; left:12px; font-size:13px; color:#64748b; pointer-events:none;">🔍</span>
+                <input type="text" id="duBannerGallerySearch" placeholder="Pesquisar por nome ou tag (ex: anime, fofo, peraq, cyberpunk, games, meme)..." oninput="onDuBannerGallerySearch(this.value)" style="width:100%; height:38px; background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff; padding:0 34px 0 34px; font-size:12px; outline:none; font-family:var(--font-main); transition:border 0.2s;" onfocus="this.style.borderColor='rgba(56,189,248,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'">
+                <button id="duBannerGalleryClearSearch" onclick="clearDuBannerGallerySearch()" style="position:absolute; right:8px; border:0; background:transparent; color:#64748b; cursor:pointer; font-size:13px; display:none; padding:4px;">✕</button>
+              </div>
+              <button onclick="loadDuBannerGallery(true)" style="padding:0 14px; height:38px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#cbd5e1; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px; white-space:nowrap; transition:background 0.2s;" title="Atualizar galeria da nuvem">
+                🔄 Atualizar
+              </button>
+            </div>
+
+            <!-- Categorias / Tags Filter Chips -->
+            <div id="duBannerGalleryCategories" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; max-height:68px; overflow-y:auto;"></div>
+
+            <!-- Grid de Temas com Scrollbar -->
+            <div id="duBannerGalleryGrid" style="flex:1; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; padding-right:4px;">
+              <div style="color:#64748b; font-size:12px; text-align:center; padding:30px; grid-column:1/-1;">Carregando temas da galeria...</div>
+            </div>
+
+            <!-- Footer do Modal com contagem e status -->
+            <div style="display:flex; justify-content:space-between; align-items:center; padding-top:10px; border-top:1px solid rgba(255,255,255,0.06); font-size:11px; color:#64748b;">
+              <span id="duBannerGalleryCount">Carregando itens...</span>
+              <span>Dica: novos temas podem ser cadastrados pelo Painel de Administração</span>
+            </div>
+
           </div>
-          <div style="font-size:11px; color:var(--text-muted); margin-bottom:12px; line-height:1.6;">
-            Com o USRBG, seu banner fica visível para <strong style="color:#fff;">todos</strong> que usam BetterDiscord ou DU — sem precisar instalar nada. Cadastre seu banner no site com login pelo Discord.
-          </div>
-          <button onclick="sendToCpp('open_external_url', {url:'https://usrbg.is-hardly.online'})" style="width:100%; padding:11px; background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.45); border-radius:8px; color:#818cf8; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;">
-            🔗 Abrir site do USRBG no navegador
-          </button>
-          <div style="font-size:10px; color:var(--text-muted); margin-top:7px; text-align:center; line-height:1.5;">Abre no seu navegador padrão. Faz login com Discord → sobe o GIF → pronto.<br><span style="color:#f59e0b;">⚠️ Se o site não abrir, pode estar temporariamente offline.</span></div>
         </div>
 
-        <!-- STATUS -->
+        <!-- MENSAGEM DE STATUS LOCAL -->
         <div id="bannerStatusMsg" style="display: none; margin-top: 4px; padding: 10px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;"></div>
 
       </div><!-- /tab-profile-banner -->
@@ -5763,11 +5923,13 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
 
           <!-- Badges de Recursos -->
           <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;">
+            <span class="guide-badge">🎥 Gravação até 4K • 120 FPS</span>
+            <span class="guide-badge">⚡ Replay Instantâneo</span>
             <span class="guide-badge">📺 1440p 60FPS</span>
-            <span class="guide-badge">☁️ Upload Gofile Anônimo ou com Conta</span>
-            <span class="guide-badge">🛡️ Tunelamento Zero Lag</span>
+            <span class="guide-badge">☁️ Arquivos Grandes</span>
+            <span class="guide-badge">🎨 Galeria DU (Banners &amp; Avatares)</span>
             <span class="guide-badge">✨ FakeNitro Emojis</span>
-            <span class="guide-badge">🎨 110+ Temas</span>
+            <span class="guide-badge">🛡️ Tunelamento Zero Lag</span>
             <span class="guide-badge">🔒 100% Seguro</span>
           </div>
         </div>
@@ -5775,10 +5937,12 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
         <!-- Menu de Navegação Rápida (Sub-Abas) -->
         <div class="guide-nav-bar" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 18px;">
           <button class="guide-nav-btn active" onclick="switchGuideSection('sec-stream', this)">📺 Transmissão &amp; Go Live</button>
+          <button class="guide-nav-btn" onclick="switchGuideSection('sec-recorder', this)">🎥 Gravador &amp; Clipes (v9.0)</button>
           <button class="guide-nav-btn" onclick="switchGuideSection('sec-cloud', this)">☁️ Arquivos Grandes (Nuvem)</button>
           <button class="guide-nav-btn" onclick="switchGuideSection('sec-emojis', this)">✨ Emojis Globais</button>
-          <button class="guide-nav-btn" onclick="switchGuideSection('sec-themes', this)">🎨 Temas &amp; Plugins</button>
+          <button class="guide-nav-btn" onclick="switchGuideSection('sec-themes', this)">🎨 Temas &amp; Galeria DU</button>
           <button class="guide-nav-btn" onclick="switchGuideSection('sec-wireguard', this)">🛡️ Roteamento &amp; VPN</button>
+          <button class="guide-nav-btn" onclick="switchGuideSection('sec-about', this)">ℹ️ Sobre &amp; Versão 9.0</button>
           <button class="guide-nav-btn" onclick="switchGuideSection('sec-faq', this)">❓ Perguntas Frequentes</button>
         </div>
 
@@ -5821,6 +5985,50 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
 
             <div class="guide-highlight" style="border-left-color: #10b981; background: rgba(16, 185, 129, 0.08);">
               <strong style="color: #10b981;">🎮 Garantia de Zero Lag em Jogos:</strong> O Discord Unlock utiliza tecnologia de <em>Split-Tunneling Estrito</em>. Somente o tráfego do Discord é roteado. Seus jogos (Valorant, CS2, League of Legends, etc.), navegadores e downloads permanecem na sua internet direta, sem aumento de ping.
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO: GRAVADOR & CLIPES (v9.0) -->
+        <div id="sec-recorder" class="guide-section-content" style="display: none;">
+          <div class="guide-box">
+            <div class="guide-box-header">
+              <div class="guide-box-icon">🎥</div>
+              <div>
+                <div class="guide-box-title">Gravador DXGI de Alta Performance &amp; Replay Instantâneo</div>
+                <div class="guide-box-subtitle">Captura nativa por hardware GPU (DirectX 11) até 4K • 120 FPS e 150 Mbps de Bitrate</div>
+              </div>
+            </div>
+
+            <div class="guide-text">
+              O novo motor de gravação do <strong>Discord Unlock v9.0</strong> captura diretamente da GPU via <strong>DXGI Desktop Duplication API</strong> e codifica com <strong>Media Foundation (H.264 / NVENC / Intel QSV / AMD VCE)</strong>. Sem perda de quadros em jogos, consumo mínimo de CPU e sem telas pretas.
+            </div>
+
+            <div class="guide-highlight" style="border-left-color: #8b5cf6; background: rgba(139, 92, 246, 0.10);">
+              <strong style="color: #a78bfa;">⚡ Replay Instantâneo Inteligente:</strong> Mantém um buffer contínuo em memória RAM com os últimos segundos da partida (15s, 30s, 60s, 2min ou 5min). Pressione <kbd style="background: #334155; padding: 2px 6px; border-radius: 4px; font-size: 11px;">Ctrl + F10</kbd> a qualquer momento no meio de um jogo para salvar instantaneamente aquela jogada épica!
+            </div>
+
+            <div class="guide-steps-grid">
+              <div class="guide-step-card">
+                <div class="step-badge">Qualidade Máxima</div>
+                <div class="step-title">Até 4K &amp; 120 FPS</div>
+                <div class="step-desc">Selecione entre 720p, 1080p, 1440p (2K) ou 2160p (4K) a 30, 60 ou 120 FPS, com controle de bitrate personalizável de até 150 Mbps para fidelidade visual absoluta.</div>
+              </div>
+              <div class="guide-step-card">
+                <div class="step-badge">Áudio Cristalino</div>
+                <div class="step-title">Sistema &amp; Microfone</div>
+                <div class="step-desc">Captura simultânea do áudio do jogo / Discord (WASAPI loopback) e do seu microfone, gravados em faixa estéreo cristalina sem dessincronização.</div>
+              </div>
+              <div class="guide-step-card">
+                <div class="step-badge">Corte Lossless</div>
+                <div class="step-title">Editor de Clipes Integrado</div>
+                <div class="step-desc">Ajuste os pontos de início e fim e gire seu vídeo (90°, 180°, 270°) com corte imediato sem recodificar, mantendo 100% da qualidade original em segundos.</div>
+              </div>
+              <div class="guide-step-card">
+                <div class="step-badge">Envio Imediato</div>
+                <div class="step-title">Galeria &amp; Nuvem</div>
+                <div class="step-desc">Assista aos clipes salvos na Galeria nativa, abra na pasta do Windows ou envie diretamente para seus amigos com o upload de nuvem sem limite.</div>
+              </div>
             </div>
           </div>
         </div>
@@ -5899,14 +6107,14 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
           </div>
         </div>
 
-        <!-- SEÇÃO 4: TEMAS & PLUGINS -->
+        <!-- SEÇÃO 4: TEMAS & GALERIA DU -->
         <div id="sec-themes" class="guide-section-content" style="display: none;">
           <div class="guide-box">
             <div class="guide-box-header">
               <div class="guide-box-icon">🎨</div>
               <div>
-                <div class="guide-box-title">Loja de Temas, Wallpapers Animados &amp; Plugins</div>
-                <div class="guide-box-subtitle">Mais de 110 temas e dezenas de extensões ativáveis com 1 clique</div>
+                <div class="guide-box-title">Loja de Temas, Wallpapers Animados &amp; Galeria DU</div>
+                <div class="guide-box-subtitle">Mais de 110 temas, papéis de parede dinâmicos e Banners &amp; Avatares animados</div>
               </div>
             </div>
 
@@ -5917,14 +6125,19 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
                 <div class="step-desc">Acesse a aba <em>Temas</em> no menu lateral, escolha seu tema favorito (Dark, AMOLED, Anime, Minimalista, Cyberpunk) e clique em Aplicar.</div>
               </div>
               <div class="guide-step-card">
+                <div class="step-badge">Galeria DU</div>
+                <div class="step-title">Banners &amp; Avatares Animados</div>
+                <div class="step-desc">Personalize seu Discord com banners de perfil em movimento e avatares animados de alta qualidade prontos para download e aplicação.</div>
+              </div>
+              <div class="guide-step-card">
                 <div class="step-badge">Vídeo Wallpapers</div>
                 <div class="step-title">Papéis de Parede Animados</div>
-                <div class="step-desc">Você pode usar vídeos MP4 em alta definição como fundo dinâmico e interativo no seu Discord com efeitos visuais modernos.</div>
+                <div class="step-desc">Use vídeos MP4 em alta definição ou cenas Wallpaper Engine interativas com suporte a shaders GLSL como fundo dinâmico do Discord.</div>
               </div>
               <div class="guide-step-card">
                 <div class="step-badge">Plugins Úteis</div>
                 <div class="step-title">Extensões Populares</div>
-                <div class="step-desc">Tradutor em tempo real no chat, controles do Spotify integrados na barra inferior, visualizador de canais ocultos e ajuste de volume individual.</div>
+                <div class="step-desc">Tradutor em tempo real no chat, controles do Spotify na barra inferior, visualizador de canais ocultos e ajuste de volume individual.</div>
               </div>
             </div>
           </div>
@@ -5956,6 +6169,56 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
                 <div class="step-title">Importar Arquivo .conf</div>
                 <div class="step-desc">Quer usar Cloudflare WARP, Mullvad, Surfshark ou sua VPS própria? Basta selecionar a aba <em>Arquivo .conf</em> na tela inicial e carregar seu arquivo.</div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO: SOBRE & VERSÃO 9.0 -->
+        <div id="sec-about" class="guide-section-content" style="display: none;">
+          <div class="guide-box">
+            <div class="guide-box-header">
+              <div class="guide-box-icon">ℹ️</div>
+              <div>
+                <div class="guide-box-title">Discord Unlock — Versão 9.0 Oficial</div>
+                <div class="guide-box-subtitle">Central Completa de Desbloqueio, Performance, Clipes e Personalização</div>
+              </div>
+            </div>
+
+            <div class="guide-text">
+              O <strong>Discord Unlock v9.0</strong> é o marco definitivo de performance e utilidade para usuários de Discord no Brasil. Projetado com arquitetura modular de alto desempenho em C++20 nativo e WebView2 moderno, une rede otimizada, gravação de tela com aceleração DXGI e ecossistema multimídia completo.
+            </div>
+
+            <div class="section-title" style="margin-top: 14px; margin-bottom: 10px; font-size: 14px;">🚀 Novidades &amp; Destaques da Versão 9.0</div>
+            <div class="guide-steps-grid">
+              <div class="guide-step-card">
+                <div class="step-badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border-color: rgba(16, 185, 129, 0.4);">Novo</div>
+                <div class="step-title">Gravador DXGI 4K • 120 FPS</div>
+                <div class="step-desc">Captura fluida acelerada por hardware DirectX 11 / Media Foundation com até 150 Mbps de taxa de bits e baixíssima latência.</div>
+              </div>
+              <div class="guide-step-card">
+                <div class="step-badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border-color: rgba(16, 185, 129, 0.4);">Novo</div>
+                <div class="step-title">Replay Instantâneo (Ctrl+F10)</div>
+                <div class="step-desc">Buffer de gravação contínua na memória RAM de 15s até 5 minutos para salvar jogadas memoráveis com um único comando global.</div>
+              </div>
+              <div class="guide-step-card">
+                <div class="step-badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border-color: rgba(16, 185, 129, 0.4);">Novo</div>
+                <div class="step-title">Editor Lossless de Clipes</div>
+                <div class="step-desc">Corte rápido e rotação de vídeos sem re-codificação, preservando a nitidez original instantaneamente.</div>
+              </div>
+              <div class="guide-step-card">
+                <div class="step-badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border-color: rgba(16, 185, 129, 0.4);">Novo</div>
+                <div class="step-title">Galeria DU com Banners</div>
+                <div class="step-desc">Acesso a catálogo exclusivo de banners animados e avatares estilizados prontos para enriquecer o perfil.</div>
+              </div>
+            </div>
+
+            <div class="guide-highlight" style="border-left-color: #10b981; background: rgba(16, 185, 129, 0.08); margin-top: 14px;">
+              <strong style="color: #10b981;">🛡️ Segurança &amp; Integridade Absoluta:</strong> O Discord Unlock opera 100% no cliente (client-side) e em nível de driver WFP do Windows. Não há injeção de DLLs arriscadas no processo do Discord, não há roubo de credenciais ou tokens e nenhuma alteração nos executáveis oficiais da Discord Inc.
+            </div>
+
+            <div style="margin-top: 16px; padding: 12px 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+              <div><strong>Discord Unlock</strong> • Versão 9.0 (Build 2026.09)</div>
+              <div>Desenvolvido com foco em velocidade, estabilidade e liberdade de uso.</div>
             </div>
           </div>
         </div>
@@ -9353,6 +9616,61 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       }
     }
 
+    function onRecResSelectChange() {
+      const resVal = document.getElementById('recResSelect')?.value || '1080p60';
+      const panel = document.getElementById('recCustomPanel');
+      if (panel) {
+        panel.style.display = resVal === 'custom' ? 'block' : 'none';
+      }
+      updateRecorderSettingsFromUI();
+    }
+
+    function onRecCustomPresetChange() {
+      const preset = document.getElementById('recCustomResPreset')?.value;
+      const wrap = document.getElementById('recCustomManualResWrap');
+      const wInput = document.getElementById('recCustomWidth');
+      const hInput = document.getElementById('recCustomHeight');
+      if (preset === 'manual') {
+        if (wrap) wrap.style.display = 'flex';
+      } else {
+        if (wrap) wrap.style.display = 'none';
+        if (preset) {
+          const parts = preset.split('x');
+          if (parts.length === 2) {
+            if (wInput) wInput.value = parts[0];
+            if (hInput) hInput.value = parts[1];
+          }
+        }
+      }
+      updateRecorderSettingsFromUI();
+    }
+
+    function onCustomResolutionInputChange() {
+      const wInput = document.getElementById('recCustomWidth');
+      const hInput = document.getElementById('recCustomHeight');
+      if (wInput) {
+        let w = parseInt(wInput.value, 10) || 1920;
+        if (w < 320) w = 320;
+        if (w > 3840) w = 3840;
+        w = Math.round(w / 2) * 2;
+        wInput.value = w;
+      }
+      if (hInput) {
+        let h = parseInt(hInput.value, 10) || 1080;
+        if (h < 240) h = 240;
+        if (h > 2160) h = 2160;
+        h = Math.round(h / 2) * 2;
+        hInput.value = h;
+      }
+      updateRecorderSettingsFromUI();
+    }
+
+    function onRecCustomBitrateInput(val) {
+      const mbps = Math.max(2, Math.min(150, parseInt(val, 10) || 35));
+      const lbl = document.getElementById('recCustomBitrateLabel');
+      if (lbl) lbl.textContent = mbps + ' Mbps';
+    }
+
     function updateRecorderSettingsFromUI() {
       const selVal = document.getElementById('recTargetSelect')?.value || 'monitor:0';
       let captureTarget = 'monitor';
@@ -9396,6 +9714,16 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
         targetWidth = 1920; targetHeight = 1080; bitrate = 20000000;
       } else if (resVal === '720p60') {
         targetWidth = 1280; targetHeight = 720; bitrate = 8000000;
+      } else if (resVal === 'custom') {
+        const wVal = parseInt(document.getElementById('recCustomWidth')?.value || '1920', 10);
+        const hVal = parseInt(document.getElementById('recCustomHeight')?.value || '1080', 10);
+        targetWidth = Math.max(320, Math.min(3840, Math.round(wVal / 2) * 2));
+        targetHeight = Math.max(240, Math.min(2160, Math.round(hVal / 2) * 2));
+        const fpsVal = parseInt(document.getElementById('recCustomFpsSelect')?.value || '60', 10);
+        fps = Math.max(15, Math.min(120, fpsVal));
+        const mbpsVal = parseInt(document.getElementById('recCustomBitrateInput')?.value || '35', 10);
+        const clampedMbps = Math.max(2, Math.min(150, mbpsVal));
+        bitrate = clampedMbps * 1000000;
       }
 
       sendToCpp('recorder_save_settings', {
@@ -9510,6 +9838,43 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       }
       if (document.getElementById('recResSelect') && msg.resolutionMode) {
         document.getElementById('recResSelect').value = msg.resolutionMode;
+        const panel = document.getElementById('recCustomPanel');
+        if (panel) {
+          panel.style.display = msg.resolutionMode === 'custom' ? 'block' : 'none';
+        }
+        if (msg.resolutionMode === 'custom') {
+          const w = msg.resolutionWidth || 1920;
+          const h = msg.resolutionHeight || 1080;
+          const wInput = document.getElementById('recCustomWidth');
+          const hInput = document.getElementById('recCustomHeight');
+          if (wInput) wInput.value = w;
+          if (hInput) hInput.value = h;
+
+          const presetSelect = document.getElementById('recCustomResPreset');
+          const wrap = document.getElementById('recCustomManualResWrap');
+          const dimStr = w + 'x' + h;
+          if (presetSelect) {
+            if (Array.from(presetSelect.options).some(o => o.value === dimStr)) {
+              presetSelect.value = dimStr;
+              if (wrap) wrap.style.display = 'none';
+            } else {
+              presetSelect.value = 'manual';
+              if (wrap) wrap.style.display = 'flex';
+            }
+          }
+
+          if (msg.fps && document.getElementById('recCustomFpsSelect')) {
+            document.getElementById('recCustomFpsSelect').value = String(Math.min(120, Math.max(15, msg.fps)));
+          }
+
+          if (msg.bitrate) {
+            const mbps = Math.max(2, Math.min(150, Math.round(msg.bitrate / 1000000)));
+            const bInput = document.getElementById('recCustomBitrateInput');
+            const bLabel = document.getElementById('recCustomBitrateLabel');
+            if (bInput) bInput.value = mbps;
+            if (bLabel) bLabel.textContent = mbps + ' Mbps';
+          }
+        }
       }
       if (document.getElementById('recAudioSelect')) {
         document.getElementById('recAudioSelect').value = msg.audioMode || 'pc';
@@ -9874,9 +10239,17 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       const video = document.getElementById('clipTrimVideo');
       const status = document.getElementById('clipTrimVideoStatus');
       if (!modal || !start || !end || !video) return;
-      title.textContent = '✂️ Cortar: ' + filename;
+      title.textContent = '✂️ Editar: ' + filename;
       start.min = 0; start.max = Math.max(0.1, activeClipTrim.durationSec - 0.1); start.step = 0.1; start.value = 0;
       end.min = 0.1; end.max = activeClipTrim.durationSec; end.step = 0.1; end.value = activeClipTrim.durationSec;
+      // Pre-fill rename field with current name (without extension)
+      const renameInput = document.getElementById('clipRenameInput');
+      if (renameInput) renameInput.value = filename.replace(/\.[^.]+$/, '');
+      if (typeof setClipTrimRotation === 'function') setClipTrimRotation(0);
+      else {
+        const rotateStatus = document.getElementById('clipRotateStatus');
+        if (rotateStatus) rotateStatus.textContent = '';
+      }
       if (status) {
         status.style.display = 'flex';
         status.textContent = 'Carregando prévia do vídeo...';
@@ -9884,6 +10257,9 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       updateClipTrimPreview();
       modal.style.display = 'flex';
       video.pause();
+      video.muted = false;
+      const muteBtn = document.getElementById('clipTrimMuteBtn');
+      if (muteBtn) muteBtn.textContent = '🔊';
       video.src = clipTrimFileUrl(filePath);
       video.load();
     }
@@ -9893,9 +10269,11 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       const video = document.getElementById('clipTrimVideo');
       if (video) {
         video.pause();
+        video.style.transform = 'none';
         video.removeAttribute('src');
         video.load();
       }
+      if (typeof setClipTrimRotation === 'function') setClipTrimRotation(0);
       if (modal) modal.style.display = 'none';
       activeClipTrim = null;
     }
@@ -9983,7 +10361,27 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
     function syncClipTrimPlayButton() {
       const video = document.getElementById('clipTrimVideo');
       const btn = document.getElementById('clipTrimPlayBtn');
+      const centerPlay = document.getElementById('clipTrimCenterPlay');
       if (btn && video) btn.textContent = video.paused ? '▶ Reproduzir trecho' : '⏸ Pausar prévia';
+      if (centerPlay && video) centerPlay.style.display = video.paused ? 'flex' : 'none';
+    }
+
+    function toggleClipTrimMute() {
+      const video = document.getElementById('clipTrimVideo');
+      const btn = document.getElementById('clipTrimMuteBtn');
+      if (!video) return;
+      video.muted = !video.muted;
+      if (btn) btn.textContent = video.muted ? '🔇' : '🔊';
+    }
+
+    function toggleClipTrimFullscreen() {
+      const wrapper = document.getElementById('clipTrimVideoWrapper') || document.getElementById('clipTrimVideo');
+      if (!wrapper) return;
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      } else {
+        wrapper.requestFullscreen().catch(() => {});
+      }
     }
 
     function toggleClipTrimPlayback() {
@@ -10017,6 +10415,56 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       handleClipTrimTimeUpdate();
     }
 
+    let clipTrimRotation = 0;
+
+    function setClipTrimRotation(deg) {
+      clipTrimRotation = ((Number(deg) || 0) % 360 + 360) % 360;
+      const video = document.getElementById('clipTrimVideo');
+      if (video) {
+        video.style.transition = 'transform 0.22s ease';
+        if (clipTrimRotation === 90) {
+          video.style.transform = 'rotate(90deg) scale(0.5625)';
+        } else if (clipTrimRotation === 180) {
+          video.style.transform = 'rotate(180deg)';
+        } else if (clipTrimRotation === 270) {
+          video.style.transform = 'rotate(270deg) scale(0.5625)';
+        } else {
+          video.style.transform = 'none';
+        }
+      }
+      const rots = [0, 90, 180, 270];
+      rots.forEach(r => {
+        const b = document.getElementById('clipRotBtn' + r);
+        if (b) {
+          if (r === clipTrimRotation) {
+            b.style.border = '1px solid #38bdf8';
+            b.style.background = 'rgba(56,189,248,.25)';
+            b.style.color = '#fff';
+            b.style.fontWeight = '800';
+            b.style.boxShadow = '0 0 10px rgba(56,189,248,.35)';
+          } else {
+            b.style.border = '1px solid rgba(251,191,36,.35)';
+            b.style.background = 'rgba(251,191,36,.08)';
+            b.style.color = '#fde68a';
+            b.style.fontWeight = '700';
+            b.style.boxShadow = 'none';
+          }
+        }
+      });
+      const statusEl = document.getElementById('clipRotateStatus');
+      if (statusEl) {
+        if (clipTrimRotation === 0) {
+          statusEl.textContent = '';
+        } else {
+          statusEl.textContent = 'Orientação ' + clipTrimRotation + '° selecionada (será aplicada ao Salvar Corte).';
+        }
+      }
+    }
+
+    function rotateClip(degrees) {
+      setClipTrimRotation(degrees);
+    }
+
     function saveClipTrim() {
       if (!activeClipTrim) return;
       const video = document.getElementById('clipTrimVideo');
@@ -10025,7 +10473,12 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       const endSec = Number(Number(document.getElementById('clipTrimEnd').value).toFixed(3));
       const btn = document.getElementById('clipTrimSaveBtn');
       if (btn) { btn.disabled = true; btn.textContent = 'Processando corte...'; }
-      sendToCpp('recorder_trim_clip', { filePath: activeClipTrim.filePath, startSec, endSec });
+      sendToCpp('recorder_trim_clip', {
+        filePath: activeClipTrim.filePath,
+        startSec,
+        endSec,
+        rotation: clipTrimRotation
+      });
     }
 
     function handleRecorderTrimResult(msg) {
@@ -10038,6 +10491,48 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
         sendToCpp('recorder_get_clips');
       } else {
         showToast(msg.error || 'Não foi possível cortar este clipe.', false);
+      }
+    }
+
+    function saveClipRename() {
+      if (!activeClipTrim) return;
+      const nameInput = document.getElementById('clipRenameInput');
+      const newName = (nameInput ? nameInput.value : '').trim();
+      if (!newName) { showToast('Digite um nome para o clipe.', false); return; }
+      const btn = document.getElementById('clipRenameSaveBtn');
+      if (btn) { btn.disabled = true; btn.textContent = 'Renomeando...'; }
+      sendToCpp('recorder_rename_clip', { filePath: activeClipTrim.filePath, newName });
+    }
+
+    function handleRecorderRenameResult(msg) {
+      const btn = document.getElementById('clipRenameSaveBtn');
+      if (btn) { btn.disabled = false; btn.textContent = 'Renomear'; }
+      if (msg.success) {
+        // Update activeClipTrim so trim still works after rename
+        if (activeClipTrim && msg.newPath) {
+          activeClipTrim.filePath = msg.newPath;
+          activeClipTrim.filename = msg.newFilename || msg.newPath.split(/[\\/]/).pop();
+          const title = document.getElementById('clipTrimTitle');
+          if (title) title.textContent = '✂️ Editar: ' + activeClipTrim.filename;
+          const nameInput = document.getElementById('clipRenameInput');
+          if (nameInput) nameInput.value = '';
+        }
+        showToast('Clipe renomeado para: ' + (msg.newFilename || 'novo nome') + '.');
+        sendToCpp('recorder_get_clips');
+      } else {
+        showToast(msg.error || 'Não foi possível renomear o clipe.', false);
+      }
+    }
+
+    function handleRecorderRotateResult(msg) {
+      const statusEl = document.getElementById('clipRotateStatus');
+      if (statusEl) statusEl.textContent = '';
+      if (msg.success) {
+        playSound('success');
+        showToast('Vídeo girado salvo: ' + (msg.filename || 'clipe girado') + '.');
+        sendToCpp('recorder_get_clips');
+      } else {
+        showToast(msg.error || 'Não foi possível girar o vídeo.', false);
       }
     }
 
@@ -13626,65 +14121,106 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       fetchLiveBetterDiscordPlugins();
     }
 
-    // ── Banner de Perfil DU ─────────────────────────────────────────────────
+    // ── Banner & Avatar de Perfil DU ───────────────────────────────────────
     function previewBannerUrl() {
-      const url = (document.getElementById('bannerUrlInput') || {}).value || '';
+      const bannerUrl = ((document.getElementById('bannerUrlInput') || {}).value || '').trim();
+      const avatarUrl = ((document.getElementById('avatarUrlInput') || {}).value || '').trim();
       const box = document.getElementById('bannerPreviewBox');
-      const img = document.getElementById('bannerPreviewImg');
-      const vid = document.getElementById('bannerPreviewVid');
-      const err = document.getElementById('bannerPreviewErr');
+      const bannerImg = document.getElementById('bannerPreviewImg');
+      const bannerVid = document.getElementById('bannerPreviewVid');
+      const bannerPlaceholder = document.getElementById('bannerPlaceholderText');
+      const bannerErr = document.getElementById('bannerPreviewErr');
+      const avatarImg = document.getElementById('avatarPreviewImg');
+      const avatarVid = document.getElementById('avatarPreviewVid');
+      const avatarFallback = document.getElementById('avatarPreviewFallback');
+
       if (!box) return;
-      // Se URL vazia, esconde preview
-      if (!url.trim()) {
+
+      // Se ambos vazios, esconde o box
+      if (!bannerUrl && !avatarUrl) {
         box.style.display = 'none';
-        if (img) { img.style.display = 'none'; img.src = ''; }
-        if (vid) { vid.style.display = 'none'; vid.src = ''; }
-        if (err) err.style.display = 'none';
+        if (bannerImg) { bannerImg.style.display = 'none'; bannerImg.src = ''; }
+        if (bannerVid) { bannerVid.style.display = 'none'; bannerVid.src = ''; }
+        if (avatarImg) { avatarImg.style.display = 'none'; avatarImg.src = ''; }
+        if (avatarVid) { avatarVid.style.display = 'none'; avatarVid.src = ''; }
+        if (bannerErr) bannerErr.style.display = 'none';
         return;
       }
+
       box.style.display = 'block';
-      const isVideo = /\.(mp4|webm|ogg)(\?|$)/i.test(url);
-      if (isVideo) {
-        if (img) img.style.display = 'none';
-        if (err) err.style.display = 'none';
-        if (vid) {
-          vid.style.display = 'block';
-          vid.src = url;
-          vid.load();
-          vid.onerror = () => {
-            vid.style.display = 'none';
-            if (err) err.style.display = 'flex';
-          };
-        }
+
+      // 1. Processa Banner
+      if (!bannerUrl) {
+        if (bannerImg) bannerImg.style.display = 'none';
+        if (bannerVid) bannerVid.style.display = 'none';
+        if (bannerPlaceholder) bannerPlaceholder.style.display = 'flex';
+        if (bannerErr) bannerErr.style.display = 'none';
       } else {
-        if (vid) { vid.style.display = 'none'; vid.src = ''; }
-        if (err) err.style.display = 'none';
-        if (img) {
-          img.style.display = 'block';
-          img.src = url;
-          img.onerror = () => {
-            img.style.display = 'none';
-            if (err) err.style.display = 'flex';
-          };
-          img.onload = () => {
-            if (err) err.style.display = 'none';
-          };
+        if (bannerPlaceholder) bannerPlaceholder.style.display = 'none';
+        const isVid = /\.(mp4|webm|ogg)(\?|$)/i.test(bannerUrl);
+        if (isVid) {
+          if (bannerImg) bannerImg.style.display = 'none';
+          if (bannerVid) {
+            bannerVid.style.display = 'block';
+            bannerVid.src = bannerUrl;
+            bannerVid.load();
+            bannerVid.onerror = () => { bannerVid.style.display = 'none'; if (bannerErr) bannerErr.style.display = 'flex'; };
+          }
+        } else {
+          if (bannerVid) { bannerVid.style.display = 'none'; bannerVid.src = ''; }
+          if (bannerImg) {
+            bannerImg.style.display = 'block';
+            bannerImg.src = bannerUrl;
+            bannerImg.onerror = () => { bannerImg.style.display = 'none'; if (bannerErr) bannerErr.style.display = 'flex'; };
+            bannerImg.onload = () => { if (bannerErr) bannerErr.style.display = 'none'; };
+          }
+        }
+      }
+
+      // 2. Processa Avatar
+      if (!avatarUrl) {
+        if (avatarImg) { avatarImg.style.display = 'none'; avatarImg.src = ''; }
+        if (avatarVid) { avatarVid.style.display = 'none'; avatarVid.src = ''; }
+        if (avatarFallback) avatarFallback.style.display = 'block';
+      } else {
+        const isAvatarVid = /\.(mp4|webm|ogg)(\?|$)/i.test(avatarUrl);
+        if (isAvatarVid) {
+          if (avatarImg) { avatarImg.style.display = 'none'; avatarImg.src = ''; }
+          if (avatarFallback) avatarFallback.style.display = 'none';
+          if (avatarVid) {
+            avatarVid.style.display = 'block';
+            avatarVid.src = avatarUrl;
+            avatarVid.load();
+            avatarVid.onerror = () => { avatarVid.style.display = 'none'; if (avatarFallback) avatarFallback.style.display = 'block'; };
+          }
+        } else {
+          if (avatarVid) { avatarVid.style.display = 'none'; avatarVid.src = ''; }
+          if (avatarImg) {
+            avatarImg.style.display = 'block';
+            avatarImg.src = avatarUrl;
+            avatarImg.onerror = () => { avatarImg.style.display = 'none'; if (avatarFallback) avatarFallback.style.display = 'block'; };
+            avatarImg.onload = () => { if (avatarFallback) avatarFallback.style.display = 'none'; };
+          }
         }
       }
     }
 
     function clearBannerConfig() {
       playSound('click');
-      const inp = document.getElementById('bannerUrlInput');
-      if (inp) inp.value = '';
-      previewBannerUrl(); // isso já vai esconder o preview
-      const tagBox = document.getElementById('generatedTagBox');
-      if (tagBox) tagBox.style.display = 'none';
-      // Remove do localStorage e salva config vazia no C++
-      try { localStorage.removeItem('du_profile_banner'); } catch(e) {}
-      const cfg = { enabled: false, url: '', opacity: 85 };
-      sendToCpp(JSON.stringify({ action: 'set_profile_banner', data: JSON.stringify(cfg) }));
-      showBannerStatus('🗑️ Banner removido com sucesso.', true);
+      const bInp = document.getElementById('bannerUrlInput');
+      const duInp = document.getElementById('duBannerUrlInput');
+      if (bInp) bInp.value = '';
+      if (duInp) duInp.value = '';
+      previewBannerUrl();
+      showToast('🗑️ Campo do banner limpo.');
+    }
+
+    function clearAvatarConfig() {
+      playSound('click');
+      const aInp = document.getElementById('avatarUrlInput');
+      if (aInp) aInp.value = '';
+      previewBannerUrl();
+      showToast('🗑️ Campo do avatar limpo.');
     }
 
     function applyBannerPreviewStyles() {
@@ -13697,7 +14233,6 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       if (opVal) opVal.textContent = opacity + '%';
       if (htVal) htVal.textContent = height + 'px';
       if (pyVal) pyVal.textContent = posY + '%';
-      // override height (aspect-ratio:5/2 é o padrão automático; o slider permite ajustar)
       const inner = document.getElementById('bannerPreviewInner');
       if (inner) inner.style.height = height + 'px';
       const img = document.getElementById('bannerPreviewImg');
@@ -13708,58 +14243,18 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       if (vid) { vid.style.opacity = op; vid.style.objectPosition = pos; }
     }
 
-    function generateDuTag() {
-      playSound('click');
-      const url = (document.getElementById('bannerUrlInput') || {}).value || '';
-      if (!url || !url.startsWith('http')) {
-        showBannerStatus('⚠️ Cole uma URL válida antes de gerar a tag!', false);
-        return;
-      }
-      const tag = '[DU:' + url + ']';
-      const tagBox = document.getElementById('generatedTagBox');
-      const tagText = document.getElementById('generatedTagText');
-      if (tagText) tagText.textContent = tag;
-      if (tagBox) tagBox.style.display = 'block';
-      previewBannerUrl();
-      showBannerStatus('✅ Tag gerada! Copie e cole no Sobre Mim do Discord.', true);
-    }
-
-    function copyDuTag() {
-      playSound('click');
-      const text = (document.getElementById('generatedTagText') || {}).textContent || '';
-      if (!text) return;
-      navigator.clipboard.writeText(text).then(() => {
-        showBannerStatus('📋 Tag copiada para a área de transferência!', true);
-      }).catch(() => {
-        // fallback
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        showBannerStatus('📋 Tag copiada!', true);
-      });
-    }
-
     function saveBannerConfig() {
       playSound('click');
-      const url = (document.getElementById('bannerUrlInput') || {}).value || '';
-      const opacity = (document.getElementById('bannerOpacitySlider') || {}).value || 85;
-      const cfg = { enabled: true, url: url, opacity: parseInt(opacity) };
+      const bannerUrl = ((document.getElementById('bannerUrlInput') || document.getElementById('duBannerUrlInput') || {}).value || '').trim();
+      const avatarUrl = ((document.getElementById('avatarUrlInput') || {}).value || '').trim();
+      const opacity   = parseInt((document.getElementById('bannerOpacitySlider') || {}).value || 85);
+      const height    = parseInt((document.getElementById('bannerHeightSlider')  || {}).value || 200);
+      const posY      = parseInt((document.getElementById('bannerPosSlider')     || {}).value || 50);
+      const cfg = { enabled: true, url: bannerUrl, bannerUrl: bannerUrl, avatarUrl: avatarUrl, opacity: opacity, height: height, posY: posY };
       const payload = JSON.stringify({ action: 'set_profile_banner', data: JSON.stringify(cfg) });
       sendToCpp(payload);
-      // Also store in localStorage for immediate use in this session
       try { localStorage.setItem('du_profile_banner', JSON.stringify(cfg)); } catch(e) {}
-      showBannerStatus('💾 Config salva! Reinicie o Discord para aplicar.', true);
-    }
-
-    function saveUsrbgToggle(enabled) {
-      playSound('click');
-      sendToCpp(JSON.stringify({ action: 'set_profile_banner', data: JSON.stringify({ usrbg_enabled: enabled }) }));
-      showToast(enabled ? '✅ USRBG ativado' : '❌ USRBG desativado');
-      // Toggle the USRBG style in any open Discord windows via the hook
-      try { localStorage.setItem('du_usrbg_enabled', enabled ? '1' : '0'); } catch(e) {}
+      showBannerStatus('💾 Preferências locais salvas com sucesso!', true);
     }
 
     function showBannerStatus(msg, success) {
@@ -13774,15 +14269,358 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       el._hideTimer = setTimeout(() => { el.style.display = 'none'; }, 4000);
     }
 
+    // ─── DU BANNER & AVATAR SYSTEM ──────────────────────────────────────────
+    const DU_BANNER_API = 'https://discord-unlock-api.st4rs.workers.dev';
+    let duBannerGalleryItems = [];
+    let duBannerActiveCategory = 'Todos';
+    let duBannerSearchQuery = '';
+
+    function saveDuBannerToggle(enabled) {
+      playSound('click');
+      try { localStorage.setItem('du_banner_enabled', enabled ? '1' : '0'); } catch(e) {}
+      showToast(enabled ? '✅ Exibição de DU Banner e Avatar ativada' : '❌ Exibição desativada');
+      injectDuBannerCss();
+    }
+
+    async function duBannerLoadStatus() {
+      const idEl = document.getElementById('duBannerDiscordId');
+      const badge = document.getElementById('duBannerStatusBadge');
+      if (!idEl || !badge) return;
+      const id = (idEl.value || '').trim();
+      if (!/^\d{17,21}$/.test(id)) { showToast('ID Discord inválido. Deve ter 17-21 dígitos.', false); return; }
+      badge.style.display = 'block';
+      badge.innerHTML = '<span style="color:#94a3b8;font-size:11px;">🔍 Consultando perfil na rede DU...</span>';
+      try {
+        const r = await fetch(DU_BANNER_API + '/du-banner/' + id);
+        if (r.ok) {
+          const d = await r.json();
+          const hasBanner = !!(d.bannerUrl || d.url);
+          const hasAvatar = !!d.avatarUrl;
+          badge.innerHTML = `<div style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.35);border-radius:8px;padding:9px 12px;font-size:11.5px;color:#34d399;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;"><div>✅ <strong>Perfil Ativo na Rede DU!</strong> — ${hasBanner ? '🖼️ Banner Ativo' : ''} ${hasBanner && hasAvatar ? '·' : ''} ${hasAvatar ? '👤 Avatar Ativo' : ''}</div><span style="font-size:10px;color:#94a3b8;">Visível para todos os usuários</span></div>`;
+          const urlInp = document.getElementById('bannerUrlInput');
+          const duInp = document.getElementById('duBannerUrlInput');
+          const avInp = document.getElementById('avatarUrlInput');
+          if (urlInp && d.bannerUrl) {
+            urlInp.value = d.bannerUrl;
+            if (duInp) duInp.value = d.bannerUrl;
+          }
+          if (avInp && d.avatarUrl) {
+            avInp.value = d.avatarUrl;
+          }
+          previewBannerUrl();
+        } else {
+          badge.innerHTML = '<div style="background:rgba(100,116,139,0.12);border:1px solid rgba(100,116,139,0.25);border-radius:8px;padding:9px 12px;font-size:11.5px;color:#94a3b8;">ℹ️ Nenhum perfil/banner cadastrado para este ID na rede global DU.</div>';
+        }
+      } catch(e) {
+        badge.innerHTML = '<div style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.25);border-radius:8px;padding:9px 12px;font-size:11.5px;color:#f87171;">❌ Falha na comunicação com o servidor.</div>';
+      }
+    }
+
+    async function duBannerRegister() {
+      const idEl = document.getElementById('duBannerDiscordId');
+      const urlEl = document.getElementById('bannerUrlInput') || document.getElementById('duBannerUrlInput');
+      const avEl = document.getElementById('avatarUrlInput');
+      const btn = document.getElementById('duBannerRegisterBtn');
+      if (!idEl) return;
+      const discordId = (idEl.value || '').trim();
+      const bannerUrl = (urlEl ? urlEl.value : '').trim();
+      const avatarUrl = (avEl ? avEl.value : '').trim();
+      if (!/^\d{17,21}$/.test(discordId)) { showToast('Informe seu ID do Discord (17 a 21 dígitos).', false); return; }
+      if (!bannerUrl && !avatarUrl) { showToast('Preencha ao menos uma URL para o Banner ou para o Avatar.', false); return; }
+      if (bannerUrl && !bannerUrl.startsWith('https://')) { showToast('Informe uma URL de banner segura (HTTPS direto para o arquivo).', false); return; }
+      if (avatarUrl && !avatarUrl.startsWith('https://')) { showToast('Informe uma URL de avatar segura (HTTPS direto para o arquivo).', false); return; }
+      const licenseKey = typeof g_savedKey !== 'undefined' ? g_savedKey : (localStorage.getItem('du_license_key') || '');
+      if (!licenseKey) { showToast('Chave de licença não encontrada. Ative o aplicativo primeiro.', false); return; }
+      playSound('click');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Gravando na rede DU...'; }
+      try {
+        const r = await fetch(DU_BANNER_API + '/du-banner', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ discordId, bannerUrl, avatarUrl, licenseKey })
+        });
+        const d = await r.json();
+        if (r.ok && d.ok) {
+          showToast('✅ ' + (d.message || 'Perfil atualizado na rede DU com sucesso!'));
+          try { localStorage.setItem('du_banner_discord_id', discordId); } catch(e) {}
+          saveBannerConfig();
+          duBannerLoadStatus();
+        } else {
+          showToast('❌ ' + (d.message || d.error || 'Erro ao cadastrar perfil.'), false);
+        }
+      } catch(e) {
+        showToast('❌ Sem conexão com o servidor.', false);
+      }
+      if (btn) { btn.disabled = false; btn.textContent = '🌐 Cadastrar Banner & Avatar na Rede'; }
+    }
+
+    async function duBannerRemove() {
+      const idEl = document.getElementById('duBannerDiscordId');
+      if (!idEl) return;
+      const discordId = (idEl.value || '').trim();
+      const licenseKey = typeof g_savedKey !== 'undefined' ? g_savedKey : (localStorage.getItem('du_license_key') || '');
+      if (!discordId) { showToast('Preencha ou detecte seu ID do Discord primeiro.', false); return; }
+      if (!licenseKey) { showToast('Chave de licença não encontrada. Ative o aplicativo primeiro.', false); return; }
+      playSound('click');
+      const btn = document.getElementById('duBannerRemoveBtn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Removendo...'; }
+      try {
+        const r = await fetch(DU_BANNER_API + '/du-banner', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ discordId, licenseKey })
+        });
+        const d = await r.json();
+        if (r.ok && d.ok) {
+          showToast('🗑️ ' + (d.message || 'Perfil removido da rede DU!'));
+          const bInp = document.getElementById('bannerUrlInput');
+          if (bInp) bInp.value = '';
+          const duInp = document.getElementById('duBannerUrlInput');
+          if (duInp) duInp.value = '';
+          const aInp = document.getElementById('avatarUrlInput');
+          if (aInp) aInp.value = '';
+          previewBannerUrl();
+          clearBannerConfig();
+          duBannerLoadStatus();
+        } else {
+          showToast('❌ ' + (d.message || d.error || 'Erro ao remover perfil.'), false);
+        }
+      } catch(e) {
+        showToast('❌ Sem conexão com o servidor.', false);
+      }
+      if (btn) { btn.disabled = false; btn.textContent = '🗑️ Remover Perfil'; }
+    }
+
+    async function openDuBannerGallery() {
+      const modal = document.getElementById('duBannerGalleryModal');
+      if (!modal) return;
+      modal.style.display = 'flex';
+      if (duBannerGalleryItems.length === 0) await loadDuBannerGallery(false);
+      else renderDuBannerGallery();
+    }
+
+    function closeDuBannerGallery() {
+      const modal = document.getElementById('duBannerGalleryModal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    async function loadDuBannerGallery(force) {
+      const grid = document.getElementById('duBannerGalleryGrid');
+      const countEl = document.getElementById('duBannerGalleryCount');
+      if (grid && (!duBannerGalleryItems.length || force)) {
+        grid.innerHTML = '<div style="color:#64748b;font-size:12px;text-align:center;padding:30px;grid-column:1/-1;">⏳ Sincronizando temas com o servidor...</div>';
+      }
+      try {
+        const r = await fetch(DU_BANNER_API + '/du-banner/gallery');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const d = await r.json();
+        duBannerGalleryItems = d.items || [];
+        renderDuBannerGalleryCategories();
+        renderDuBannerGallery();
+        if (countEl) countEl.textContent = duBannerGalleryItems.length + ' temas disponíveis na loja';
+        if (force) showToast('🔄 Loja de temas atualizada!');
+      } catch(e) {
+        if (grid) grid.innerHTML = '<div style="color:#f87171;font-size:12px;text-align:center;padding:24px;grid-column:1/-1;">❌ Falha ao carregar a galeria da nuvem.<br><span style="font-size:10.5px;color:#94a3b8;">Verifique sua conexão ou tente novamente.</span></div>';
+        if (countEl) countEl.textContent = 'Erro de sincronização';
+      }
+    }
+
+    function renderDuBannerGalleryCategories() {
+      const el = document.getElementById('duBannerGalleryCategories');
+      if (!el) return;
+      const tagSet = new Set();
+      duBannerGalleryItems.forEach(item => {
+        if (item.category) {
+          item.category.split(',').forEach(tag => {
+            const trimmed = tag.trim();
+            if (trimmed) tagSet.add(trimmed);
+          });
+        }
+      });
+      const cats = ['Todos', ...Array.from(tagSet).sort()];
+      el.innerHTML = cats.map(c => `
+        <button onclick="filterDuBannerGallery('${c.replace(/'/g, "\\'")}')" 
+          style="padding:4px 11px;border-radius:18px;border:1px solid ${c === duBannerActiveCategory ? 'rgba(56,189,248,0.8)' : 'rgba(255,255,255,0.1)'};background:${c === duBannerActiveCategory ? 'rgba(56,189,248,0.22)' : 'rgba(255,255,255,0.04)'};color:${c === duBannerActiveCategory ? '#7dd3fc' : '#94a3b8'};font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s;" 
+          id="duGalCat_${c}">
+          ${c === 'Todos' ? '🌟 Todos' : '#' + c}
+        </button>
+      `).join('');
+    }
+
+    function filterDuBannerGallery(cat) {
+      playSound('click');
+      duBannerActiveCategory = cat;
+      renderDuBannerGalleryCategories();
+      renderDuBannerGallery();
+    }
+
+    function onDuBannerGallerySearch(val) {
+      duBannerSearchQuery = (val || '').trim().toLowerCase();
+      const clearBtn = document.getElementById('duBannerGalleryClearSearch');
+      if (clearBtn) clearBtn.style.display = duBannerSearchQuery ? 'block' : 'none';
+      renderDuBannerGallery();
+    }
+
+    function clearDuBannerGallerySearch() {
+      const inp = document.getElementById('duBannerGallerySearch');
+      if (inp) inp.value = '';
+      onDuBannerGallerySearch('');
+    }
+
+    function renderDuBannerGallery() {
+      const grid = document.getElementById('duBannerGalleryGrid');
+      const countEl = document.getElementById('duBannerGalleryCount');
+      if (!grid) return;
+
+      if (!duBannerGalleryItems.length) {
+        grid.innerHTML = `
+          <div style="grid-column:1/-1;text-align:center;padding:36px 20px;background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.1);border-radius:12px;">
+            <div style="font-size:32px;margin-bottom:8px;">🎨</div>
+            <div style="font-size:13.5px;font-weight:700;color:#cbd5e1;margin-bottom:4px;">A Loja de Temas está pronta!</div>
+            <div style="font-size:11.5px;color:#64748b;max-width:440px;margin:0 auto 14px auto;">
+              Nenhum tema ou GIF foi cadastrado ainda. Pelo <strong>Painel de ADM</strong>, você pode colar links diretos de GIFs (Klipy, Giphy, Tenor, Imgur) e eles aparecerão aqui com tags pesquisáveis para todos os usuários!
+            </div>
+            <button onclick="loadDuBannerGallery(true)" style="padding:7px 16px;background:rgba(56,189,248,0.15);border:1px solid rgba(56,189,248,0.35);color:#7dd3fc;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;">
+              🔄 Verificar Novamente
+            </button>
+          </div>
+        `;
+        if (countEl) countEl.textContent = '0 temas cadastrados';
+        return;
+      }
+
+      const filtered = duBannerGalleryItems.filter(item => {
+        let matchCat = true;
+        if (duBannerActiveCategory !== 'Todos') {
+          const itemTags = (item.category || '').toLowerCase().split(',').map(s => s.trim());
+          const activeTag = duBannerActiveCategory.toLowerCase();
+          matchCat = itemTags.includes(activeTag) || (item.name || '').toLowerCase().includes(activeTag);
+        }
+        if (!matchCat) return false;
+
+        if (duBannerSearchQuery) {
+          const text = ((item.name || '') + ' ' + (item.category || '')).toLowerCase();
+          return text.includes(duBannerSearchQuery);
+        }
+        return true;
+      });
+
+      if (countEl) countEl.textContent = `Mostrando ${filtered.length} de ${duBannerGalleryItems.length} temas`;
+
+      if (!filtered.length) {
+        grid.innerHTML = `
+          <div style="grid-column:1/-1;text-align:center;padding:36px 20px;color:#94a3b8;">
+            <div style="font-size:26px;margin-bottom:8px;">🔍</div>
+            <div style="font-size:13px;font-weight:700;color:#cbd5e1;margin-bottom:4px;">Nenhum tema encontrado</div>
+            <div style="font-size:11.5px;color:#64748b;">Nenhum item correspondeu à busca "${duBannerSearchQuery}". Tente outra tag ou clique em Todos.</div>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = filtered.map(item => {
+        const isVid = /\.(mp4|webm|ogg)(\?|$)/i.test(item.url);
+        const safeUrl = item.url.replace(/'/g, "\\'");
+        const safeName = (item.name || 'Tema DU').replace(/'/g, "\\'");
+        const mediaHtml = isVid
+          ? `<video src="${item.url}" autoplay loop muted playsinline style="width:100%;height:110px;object-fit:cover;display:block;background:#06080e;"></video>`
+          : `<img src="${item.thumbnail || item.url}" alt="${item.name || ''}" loading="lazy" style="width:100%;height:110px;object-fit:cover;display:block;background:#06080e;" onerror="this.onerror=null;this.src='https://placehold.co/300x160/1e293b/94a3b8?text=Tema+DU';">`;
+        
+        const tags = (item.category || 'Geral').split(',').map(t => t.trim()).filter(Boolean);
+        const tagBadges = tags.slice(0, 2).map(t => `<span style="font-size:9px;background:rgba(56,189,248,0.18);border:1px solid rgba(56,189,248,0.3);color:#7dd3fc;padding:1px 6px;border-radius:4px;">${t}</span>`).join(' ');
+
+        return `
+          <div style="background:#0c1017;border:1px solid rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;transition:all 0.2s;box-shadow:0 4px 14px rgba(0,0,0,0.35);" onmouseover="this.style.borderColor='rgba(56,189,248,0.5)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)';this.style.transform='none'">
+            <div style="position:relative;width:100%;overflow:hidden;">
+              ${mediaHtml}
+              <div style="position:absolute;top:6px;left:6px;display:flex;gap:4px;flex-wrap:wrap;">
+                ${tagBadges}
+              </div>
+            </div>
+            <div style="padding:10px 10px 12px 10px;display:flex;flex-direction:column;gap:8px;flex:1;justify-content:space-between;">
+              <div style="font-size:11.5px;font-weight:700;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${item.name || ''}">
+                ${item.name || 'Tema DU'}
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;">
+                <button onclick="applyDuGalleryItem('${safeUrl}', '${safeName}', 'banner', this)" style="padding:5px 0;background:rgba(168,85,247,0.18);border:1px solid rgba(168,85,247,0.38);color:#c4b5fd;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:3px;transition:background 0.15s;" title="Aplicar como capa de fundo / Banner">
+                  🖼️ Banner
+                </button>
+                <button onclick="applyDuGalleryItem('${safeUrl}', '${safeName}', 'avatar', this)" style="padding:5px 0;background:rgba(56,189,248,0.18);border:1px solid rgba(56,189,248,0.38);color:#7dd3fc;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:3px;transition:background 0.15s;" title="Aplicar como foto de perfil / Avatar">
+                  👤 Avatar
+                </button>
+                <button onclick="applyDuGalleryItem('${safeUrl}', '${safeName}', 'both', this)" style="grid-column:1/-1;padding:5px 0;background:rgba(16,185,129,0.18);border:1px solid rgba(16,185,129,0.38);color:#6ee7b7;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;transition:background 0.15s;" title="Aplicar no Banner E no Avatar ao mesmo tempo">
+                  ✨ Usar no Banner &amp; Avatar
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function applyDuGalleryItem(url, name, target, btn) {
+      playSound('click');
+      if (target === 'banner' || target === 'both') {
+        const inp1 = document.getElementById('bannerUrlInput');
+        const inp2 = document.getElementById('duBannerUrlInput');
+        if (inp1) inp1.value = url;
+        if (inp2) inp2.value = url;
+      }
+      if (target === 'avatar' || target === 'both') {
+        const avInp = document.getElementById('avatarUrlInput');
+        if (avInp) avInp.value = url;
+      }
+      previewBannerUrl();
+
+      if (btn) {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '✅ OK!';
+        setTimeout(() => { btn.innerHTML = orig; }, 1200);
+      }
+
+      if (target === 'banner') showToast('🖼️ Banner definido: ' + name);
+      else if (target === 'avatar') showToast('👤 Avatar definido: ' + name);
+      else showToast('✨ Banner & Avatar definidos: ' + name);
+    }
+
+    function selectDuBannerFromGallery(url, name) {
+      applyDuGalleryItem(url, name, 'banner');
+      closeDuBannerGallery();
+    }
+
+    async function injectDuBannerCss() {
+      const enabled = localStorage.getItem('du_banner_enabled') !== '0';
+      const STYLE_ID = 'du-banner-css-inject';
+      const existing = document.getElementById(STYLE_ID);
+      if (!enabled) { if (existing) existing.remove(); return; }
+      try {
+        const r = await fetch(DU_BANNER_API + '/du-banner/css');
+        if (!r.ok) return;
+        const css = await r.text();
+        if (existing) { existing.textContent = css; return; }
+        const style = document.createElement('style');
+        style.id = STYLE_ID;
+        style.textContent = css;
+        document.head.appendChild(style);
+      } catch(e) {}
+    }
+
     function initBannerTab() {
       // Load saved config
       try {
         const raw = localStorage.getItem('du_profile_banner');
         if (raw) {
           const cfg = JSON.parse(raw);
-          if (cfg.url) {
+          if (cfg.url || cfg.bannerUrl) {
+            const bUrl = cfg.bannerUrl || cfg.url;
             const inp = document.getElementById('bannerUrlInput');
-            if (inp) inp.value = cfg.url;
+            if (inp) inp.value = bUrl;
+            const inp2 = document.getElementById('duBannerUrlInput');
+            if (inp2) inp2.value = bUrl;
+          }
+          if (cfg.avatarUrl) {
+            const avInp = document.getElementById('avatarUrlInput');
+            if (avInp) avInp.value = cfg.avatarUrl;
           }
           if (cfg.opacity) {
             const sl = document.getElementById('bannerOpacitySlider');
@@ -13790,15 +14628,55 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
             if (sl) sl.value = cfg.opacity;
             if (vl) vl.textContent = cfg.opacity + '%';
           }
+          if (cfg.height) {
+            const sh = document.getElementById('bannerHeightSlider');
+            const vh = document.getElementById('bannerHeightVal');
+            if (sh) sh.value = cfg.height;
+            if (vh) vh.textContent = cfg.height + 'px';
+          }
+          if (cfg.posY !== undefined) {
+            const sy = document.getElementById('bannerPosSlider');
+            const vy = document.getElementById('bannerPosVal');
+            if (sy) sy.value = cfg.posY;
+            if (vy) vy.textContent = cfg.posY + '%';
+          }
+          applyBannerPreviewStyles();
+          previewBannerUrl();
         }
-        const usrbg = localStorage.getItem('du_usrbg_enabled');
-        if (usrbg === '0') {
-          const tog = document.getElementById('usrbgToggle');
+        // Restore DU Banner state
+        const savedDuId = localStorage.getItem('du_banner_discord_id');
+        if (savedDuId) {
+          const idEl = document.getElementById('duBannerDiscordId');
+          if (idEl && !idEl.value) { idEl.value = savedDuId; duBannerLoadStatus(); }
+        }
+        const duEnabled = localStorage.getItem('du_banner_enabled');
+        if (duEnabled === '0') {
+          const tog = document.getElementById('duBannerToggle');
           if (tog) tog.checked = false;
         }
+        // Auto-detect Discord user ID from hook
+        (async () => {
+          try {
+            const r = await fetch('http://127.0.0.1:45123/current_user_id', { cache: 'no-store' });
+            if (!r.ok) return;
+            const data = await r.json();
+            const uid = (data.userId || '').trim();
+            if (uid && /^\d{10,22}$/.test(uid)) {
+              const idEl = document.getElementById('duBannerDiscordId');
+              if (idEl && !idEl.value) {
+                idEl.value = uid;
+                try { localStorage.setItem('du_banner_discord_id', uid); } catch(e) {}
+                duBannerLoadStatus();
+              }
+            }
+          } catch(e) {}
+        })();
+        // Inject DU Banner CSS on tab open
+        injectDuBannerCss();
       } catch(e) {}
     }
     // ────────────────────────────────────────────────────────────────────────
+
 
     function updateServerSubtitle(server) {
       const sub = document.getElementById('serverRoutingSubtitle');
@@ -15077,6 +15955,10 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
         handleRecorderClipSaved(msg);
       } else if (msg.type === 'recorder_trim_result') {
         handleRecorderTrimResult(msg);
+      } else if (msg.type === 'recorder_rename_result') {
+        handleRecorderRenameResult(msg);
+      } else if (msg.type === 'recorder_rotate_result') {
+        handleRecorderRotateResult(msg);
       } else if (msg.type === 'discord_ram_cleaned') {
         handleDiscordRamCleaned(msg);
       } else if (msg.type === 'ram_cleanup_config') {
@@ -17883,7 +18765,7 @@ const char EMBEDDED_OVERLAY_HTML[] = R"raw_overlay_html(
 using namespace Microsoft::WRL;
 namespace fs = std::filesystem;
 
-const std::string CURRENT_VERSION = "8.9";
+const std::string CURRENT_VERSION = "9.0";
 const std::wstring CLOUD_API_HOST = L"discord-unlock-api.st4rs.workers.dev";
 const std::wstring THEMES_CATALOG_HOST = L"script.google.com";
 const std::wstring THEMES_CATALOG_PATH = L"/macros/s/AKfycbxJeT0t6WzljXxQH5FoyBhQkNad8oQWm7Wzf0aa40oh2fAO3XriJJWHmps3bLAtbpJgdA/exec";
@@ -23044,6 +23926,25 @@ try {
         res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
         return res.end(JSON.stringify({ ok: true, version: '3.6' }));
       }
+      if (reqUrl.pathname === '/current_user_id') {
+        const idFile = path.join(appDataDir, 'DiscordUnlock', 'current_discord_id.txt');
+        let userId = '';
+        try { if (fs.existsSync(idFile)) userId = fs.readFileSync(idFile, 'utf8').trim(); } catch(e) {}
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-cache' });
+        return res.end(JSON.stringify({ ok: true, userId }));
+      }
+      if (reqUrl.pathname === '/write_discord_id') {
+        const id = (reqUrl.searchParams.get('id') || '').trim().replace(/[^0-9]/g, '');
+        if (id && id.length >= 10 && id.length <= 22) {
+          try {
+            const dir = path.join(appDataDir, 'DiscordUnlock');
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            fs.writeFileSync(path.join(dir, 'current_discord_id.txt'), id, 'utf8');
+          } catch(e) {}
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        return res.end('{"ok":true}');
+      }
       if (reqUrl.pathname === '/read_file') {
         const fileName = reqUrl.searchParams.get('file') || '';
         if (!fileName || fileName.includes('..') || fileName.includes('/') || fileName.includes('\\')) {
@@ -23286,23 +24187,59 @@ const bdWatermarkNukerJs = `
 
 // ── DU Profile Banner System ─────────────────────────────────────────────────
 // Injected into Discord renderer. Two layers:
-// 1. USRBG: imports the public USRBG CSS database (visible to any BD/DU user)
-// 2. DU Tag: reads [DU:url] from About Me and injects custom banner (DU-only)
+// 1. DU Banner Public: CSS do Worker — todos os usuarios DU veem os banners
+// 2. DU Tag: le [DU:url] do About Me e injeta banner customizado (modo local)
 const duProfileBannerJs = `
 (() => {
-  const STYLE_ID    = 'du-profile-banner-style';
-  const USRBG_ID    = 'du-usrbg-import';
-  const CONFIG_KEY  = 'du_profile_banner';
-  const TAG_REGEX   = /\[DU:([^\]]+)\]/i;
+  const STYLE_ID       = 'du-profile-banner-style';
+  const DU_BANNER_ID   = 'du-banner-css-inject';
+  const CONFIG_KEY     = 'du_profile_banner';
+  const TAG_REGEX      = /\[DU:([^\]]+)\]/i;
+  const DU_BANNER_API  = 'https://discord-unlock-api.st4rs.workers.dev';
 
-  // ── 1. USRBG CSS Import ─────────────────────────────────────────────────
-  function injectUsrbg() {
-    if (document.getElementById(USRBG_ID)) return;
-    const link = document.createElement('style');
-    link.id = USRBG_ID;
-    link.textContent = '@import url("https://discord-custom-covers.github.io/usrbg/dist/usrbg.css");';
-    (document.head || document.documentElement).appendChild(link);
+  // ── 1. DU Banner Public CSS (Worker, refresh a cada 5 min) ───────────────
+  function injectDuBannerPublicCss() {
+    const enabled = (() => { try { return localStorage.getItem('du_banner_enabled') !== '0'; } catch(e) { return true; } })();
+    const existing = document.getElementById(DU_BANNER_ID);
+    if (!enabled) { if (existing) existing.remove(); return; }
+    fetch(DU_BANNER_API + '/du-banner/css', { cache: 'no-store' })
+      .then(r => r.ok ? r.text() : null)
+      .then(css => {
+        if (!css) return;
+        let el = document.getElementById(DU_BANNER_ID);
+        if (!el) { el = document.createElement('style'); el.id = DU_BANNER_ID; (document.head || document.documentElement).appendChild(el); }
+        el.textContent = css;
+      })
+      .catch(() => {});
   }
+  injectDuBannerPublicCss();
+  setInterval(injectDuBannerPublicCss, 5 * 60 * 1000);
+
+  // ── Auto-save current Discord user ID for DU app ──────────────────────────
+  function saveDiscordUserId() {
+    try {
+      let uid = null;
+      // Try BdApi UserStore first
+      try {
+        const US = window.BdApi?.Webpack?.getStore?.('UserStore') ||
+                   window.BdApi?.Webpack?.getByKeys?.('getUser', 'getCurrentUser');
+        uid = US?.getCurrentUser?.()?.id;
+      } catch(e) {}
+      // Fallback: webpack internal modules
+      if (!uid) {
+        try {
+          const m = Object.values(webpackChunkdiscord_app?.__webpack_module_cache__ || {})
+            .map(v => v?.exports)
+            .find(e => e?.default?.getCurrentUser || e?.getCurrentUser);
+          uid = (m?.default || m)?.getCurrentUser?.()?.id;
+        } catch(e) {}
+      }
+      if (!uid) return;
+      fetch('http://127.0.0.1:45123/write_discord_id?id=' + encodeURIComponent(uid)).catch(() => {});
+    } catch(e) {}
+  }
+  // Try immediately and retry a few times until Discord loads
+  [1000, 3000, 7000, 15000].forEach(ms => setTimeout(saveDiscordUserId, ms));
 
   // ── 2. Base CSS for DU banners ──────────────────────────────────────────
   function injectBaseStyle() {
@@ -23465,6 +24402,7 @@ const duProfileBannerJs = `
 
   // ── 10. Self-banner: inject on own profile popout via config ───────────
   function applySelfBanner() {
+    if (ownConfig && ownConfig.avatarUrl) applySelfAvatar();
     if (!ownConfig || !ownConfig.enabled || !ownConfig.url) return;
     // Find own avatar in profile areas and inject
     document.querySelectorAll('[class*="userProfileOuter_"], [class*="userPopout_"]').forEach(c => {
@@ -23474,6 +24412,43 @@ const duProfileBannerJs = `
         injectBannerInto(bannerArea, ownConfig.url);
       }
     });
+  }
+
+  // ── 11. Self-avatar: inject on own user avatar elements via config ─────
+  const SELF_AVATAR_STYLE_ID = 'du-self-avatar-style';
+  function applySelfAvatar() {
+    if (!ownConfig || !ownConfig.avatarUrl) {
+      const ex = document.getElementById(SELF_AVATAR_STYLE_ID);
+      if (ex) ex.remove();
+      return;
+    }
+    let s = document.getElementById(SELF_AVATAR_STYLE_ID);
+    if (!s) {
+      s = document.createElement('style');
+      s.id = SELF_AVATAR_STYLE_ID;
+      (document.head || document.documentElement).appendChild(s);
+    }
+    const safeAvatar = ownConfig.avatarUrl.replace(/"/g, '%22');
+    let uid = null;
+    try {
+      const US = window.BdApi?.Webpack?.getStore?.('UserStore') ||
+                 window.BdApi?.Webpack?.getByKeys?.('getUser', 'getCurrentUser');
+      uid = US?.getCurrentUser?.()?.id;
+    } catch(e) {}
+    let css = '';
+    if (uid) {
+      css += 'img[src*="/avatars/' + uid + '/"],' +
+             '[data-user-id="' + uid + '"] img[class*="avatar_"],' +
+             '[data-userid="' + uid + '"] img[class*="avatar_"] {' +
+             '  content: url("' + safeAvatar + '") !important;' +
+             '  object-fit: cover !important;' +
+             '}\\n';
+    }
+    css += '[class*="accountProfileCard_"] img[class*="avatar_"] {' +
+           '  content: url("' + safeAvatar + '") !important;' +
+           '  object-fit: cover !important;' +
+           '}\\n';
+    s.textContent = css;
   }
 
   // ── Init ────────────────────────────────────────────────────────────────
@@ -28053,6 +29028,68 @@ static void saveHotkeysConfig() {
        << "}\n";
 }
 
+static fs::path getRecorderConfigPath() {
+  wchar_t appDataBuf[MAX_PATH] = {0};
+  GetEnvironmentVariableW(L"APPDATA", appDataBuf, MAX_PATH);
+  return fs::path(appDataBuf) / "DiscordUnlock" / "recorder_config.json";
+}
+
+static void loadRecorderConfig() {
+  fs::path p = getRecorderConfigPath();
+  std::error_code ec;
+  if (!fs::exists(p, ec)) return;
+  std::ifstream fIn(p.string());
+  if (!fIn.is_open()) return;
+  std::string content((std::istreambuf_iterator<char>(fIn)), std::istreambuf_iterator<char>());
+  if (content.empty()) return;
+
+  auto& rec = DiscordUnlock::ScreenRecorder::Instance();
+  auto s = rec.GetSettings();
+
+  std::string rmMode = extractJsonField(content, "resolutionMode");
+  if (!rmMode.empty()) s.resolutionMode = rmMode;
+  std::string rw = extractJsonField(content, "resolutionWidth");
+  if (!rw.empty()) { try { s.targetWidth = std::stoi(rw); } catch(...) {} }
+  std::string rh = extractJsonField(content, "resolutionHeight");
+  if (!rh.empty()) { try { s.targetHeight = std::stoi(rh); } catch(...) {} }
+  std::string fpsStr = extractJsonField(content, "fps");
+  if (!fpsStr.empty()) { try { s.fps = std::stoi(fpsStr); } catch(...) {} }
+  std::string brStr = extractJsonField(content, "bitrate");
+  if (!brStr.empty()) { try { s.bitrate = std::stoi(brStr); } catch(...) {} }
+  std::string am = extractJsonField(content, "audioMode");
+  if (!am.empty()) s.audioMode = am;
+  std::string rm = extractJsonField(content, "recordMic");
+  if (!rm.empty()) s.recordMic = (rm == "true" || rm == "1");
+  std::string micId = extractJsonField(content, "micDeviceId");
+  if (!micId.empty()) s.micDeviceId = toWide(micId);
+  std::string cursorMode = extractJsonField(content, "cursorMode");
+  if (!cursorMode.empty()) s.cursorMode = cursorMode;
+  std::string flip180 = extractJsonField(content, "flip180");
+  if (!flip180.empty()) s.flip180 = (flip180 == "true" || flip180 == "1");
+
+  rec.UpdateSettings(s);
+}
+
+static void saveRecorderConfig(const DiscordUnlock::RecorderSettings& s) {
+  fs::path p = getRecorderConfigPath();
+  std::error_code ec;
+  fs::create_directories(p.parent_path(), ec);
+  std::ofstream fOut(p.string(), std::ios::trunc);
+  if (!fOut.is_open()) return;
+  fOut << "{\n"
+       << "  \"resolutionMode\": \"" << escapeJsonString(s.resolutionMode) << "\",\n"
+       << "  \"resolutionWidth\": " << s.targetWidth << ",\n"
+       << "  \"resolutionHeight\": " << s.targetHeight << ",\n"
+       << "  \"fps\": " << s.fps << ",\n"
+       << "  \"bitrate\": " << s.bitrate << ",\n"
+       << "  \"audioMode\": \"" << escapeJsonString(s.audioMode) << "\",\n"
+       << "  \"recordMic\": " << (s.recordMic ? "true" : "false") << ",\n"
+       << "  \"micDeviceId\": \"" << escapeJsonString(toUtf8(s.micDeviceId)) << "\",\n"
+       << "  \"cursorMode\": \"" << escapeJsonString(s.cursorMode) << "\",\n"
+       << "  \"flip180\": " << (s.flip180 ? "true" : "false") << "\n"
+       << "}\n";
+}
+
 static void broadcastHotkeysConfig() {
   std::lock_guard<std::mutex> lock(g_hotkeysMutex);
   auto itemJson = [](const HotkeyConfigItem& it) {
@@ -28358,6 +29395,7 @@ void handleRecorderAction(const std::string& action, const std::string& json) {
     // Nunca permitir apagar o arquivo antes de um upload automático.
     if (s.autoUploadDeleteLocal) s.autoUploadCloud = true;
     rec.UpdateSettings(s);
+    saveRecorderConfig(s);
     if (s.replayBufferEnabled && !prevBuffer) {
       std::string err;
       rec.StartReplayBuffer(err);
@@ -28401,11 +29439,16 @@ void handleRecorderAction(const std::string& action, const std::string& json) {
     std::string fp = extractJsonField(json, "filePath");
     double startValue = std::strtod(extractJsonField(json, "startSec").c_str(), nullptr);
     double endValue = std::strtod(extractJsonField(json, "endSec").c_str(), nullptr);
+    int rotation = 0;
+    try {
+      std::string rotStr = extractJsonField(json, "rotation");
+      if (!rotStr.empty()) rotation = std::stoi(rotStr);
+    } catch (...) {}
     double startSec = startValue > 0.0 ? startValue : 0.0;
     double endSec = endValue > 0.0 ? endValue : 0.0;
-    std::thread([fp, startSec, endSec]() {
+    std::thread([fp, startSec, endSec, rotation]() {
       std::wstring output; std::string err;
-      bool ok = !fp.empty() && DiscordUnlock::ScreenRecorder::Instance().TrimClip(toWide(fp), startSec, endSec, output, err);
+      bool ok = !fp.empty() && DiscordUnlock::ScreenRecorder::Instance().TrimClip(toWide(fp), startSec, endSec, rotation, output, err);
       if (ok) {
         postJsonToUI("{\"type\":\"recorder_trim_result\",\"success\":true,\"filename\":\"" + escapeJsonString(fs::path(output).filename().string()) + "\"}");
         broadcastRecorderClips();
@@ -28416,6 +29459,35 @@ void handleRecorderAction(const std::string& action, const std::string& json) {
     }).detach();
   } else if (action == "recorder_get_clips") {
     broadcastRecorderClips();
+  } else if (action == "recorder_rename_clip") {
+    std::string fp = extractJsonField(json, "filePath");
+    std::string newName = extractJsonField(json, "newName");
+    if (!fp.empty() && !newName.empty()) {
+      std::wstring outPath; std::string err;
+      bool ok = DiscordUnlock::ScreenRecorder::Instance().RenameClip(toWide(fp), toWide(newName), outPath, err);
+      if (ok) {
+        postJsonToUI("{\"type\":\"recorder_rename_result\",\"success\":true,\"newPath\":\"" + escapeJsonString(toUtf8(outPath)) + "\",\"newFilename\":\"" + escapeJsonString(fs::path(outPath).filename().string()) + "\"}");
+        broadcastRecorderClips();
+      } else {
+        postJsonToUI("{\"type\":\"recorder_rename_result\",\"success\":false,\"error\":\"" + escapeJsonString(err) + "\"}");
+      }
+    }
+  } else if (action == "recorder_rotate_clip") {
+    std::string fp = extractJsonField(json, "filePath");
+    int degrees = 90;
+    try { degrees = std::stoi(extractJsonField(json, "degrees")); } catch (...) {}
+    if (!fp.empty()) {
+      std::thread([fp, degrees]() {
+        std::wstring outPath; std::string err;
+        bool ok = DiscordUnlock::ScreenRecorder::Instance().RotateClip(toWide(fp), degrees, outPath, err);
+        if (ok) {
+          postJsonToUI("{\"type\":\"recorder_rotate_result\",\"success\":true,\"filename\":\"" + escapeJsonString(fs::path(outPath).filename().string()) + "\"}");
+          broadcastRecorderClips();
+        } else {
+          postJsonToUI("{\"type\":\"recorder_rotate_result\",\"success\":false,\"error\":\"" + escapeJsonString(err) + "\"}");
+        }
+      }).detach();
+    }
   } else if (action == "recorder_delete_clip") {
     std::string fp = extractJsonField(json, "filePath");
     const bool fromManualUpload = extractJsonField(json, "fromManualUpload") == "true";
@@ -32523,7 +33595,16 @@ void startDiscordUnlockActivities() {
           WireGuardParsedConfig cfg = parseWireGuardConfContent(c);
           if (cfg.valid) {
             std::string err;
-            if (startWireSockWireGuard(cfg, err)) {
+            // Retry up to 2 times (3s gap) — DNS/IP probing can fail transiently at boot
+            bool started = false;
+            for (int attempt = 0; attempt < 2 && !started; ++attempt) {
+              if (attempt > 0) {
+                logWireSock("AUTOSTART_RETRY", "Tentativa " + std::to_string(attempt + 1) + " de iniciar a rota automatica...");
+                std::this_thread::sleep_for(std::chrono::seconds(3));
+              }
+              started = startWireSockWireGuard(cfg, err);
+            }
+            if (started) {
               g_serverRoutingEnabled = true;
               tunnelActivated = true;
               postJsonToUI("{\"type\":\"bypass_state\",\"active\":true,\"verified\":true,\"server\":\"" + escapeJsonString(chosenName) + "\"}");
@@ -32610,6 +33691,7 @@ void sendInitialStateToUI() {
 
     loadHotkeysConfig();
     broadcastHotkeysConfig();
+    loadRecorderConfig();
     broadcastRecorderSettings();
 
     // 2. Restaurar status Proton e Custom VPN salvos

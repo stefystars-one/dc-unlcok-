@@ -1,22 +1,28 @@
-🚀 Discord Unlock — Versão 8.2
+🚀 Discord Unlock — Versão 9.0
 
-A versão 8.2 traz grandes otimizações na Galeria de Wallpapers Animados, resolução de duplicatas, suporte avançado a tags e controle de reprodução em segundo plano.
+A versão 9.0 é a maior e mais avançada atualização do Discord Unlock, trazendo um novo ecossistema de gravação DXGI por hardware, replays instantâneos, editor de clipes integrado e personalização visual incomparável.
 
-✨ Principais novidades da v8.2
+✨ Principais novidades da Versão 9.0
 
-🖼️ Eliminação Definitiva de Wallpapers Duplicados
-O motor de temas agora cruza inteligentemente os arquivos locais baixados com o catálogo da nuvem. Wallpapers do catálogo já baixados não geram mais clones ou duplicatas como "temas customizados" — o mesmo card passa diretamente para o estado "Aplicar Tema".
+🎥 Novo Gravador de Tela DXGI por Hardware (Até 4K • 120 FPS)
+Captura direta da GPU via DirectX 11 Desktop Duplication API e codificação por Media Foundation (H.264 / NVENC / Intel QSV / AMD VCE). Desempenho extremo sem queda de taxa de quadros e com taxa de bits personalizável de até 150 Mbps.
 
-🏷️ Correção de Subpastas e Tags Automáticas
-A indexação de temas no catálogo foi reestruturada para que subpastas de wallpapers não substituam o nome das categorias principais. Wallpapers dentro de pastas de categoria (Anime, Games, Carros, etc.) herdam sua tag correta sem poluir a lista com nomes de pastas internas.
+⚡ Replay Instantâneo em RAM (Buffer Contínuo)
+Grave jogadas épicas com a tecla de atalho global Ctrl + F10. O sistema guarda os últimos 15s, 30s, 60s, 2min ou 5min na memória RAM e exporta o clipe instantaneamente sem travar o jogo.
 
-🔍 Busca em Tempo Real e Filtros de Tags na Galeria
-Adicionada barra de pesquisa e botões de filtro rápido no topo da Galeria de Temas: navegue facilmente por Todos, Anime, Games, Carros, Espaço, Natureza, Geral ou apenas seus papéis de parede Baixados/Locais.
+✂️ Editor Lossless de Clipes Integrado
+Corte seus vídeos com precisão de milissegundos e gire em 90°, 180° ou 270° sem necessidade de recodificação, mantendo 100% da qualidade original do vídeo em segundos.
 
-⏸️ Controle de Reprodução: Pausar ao Minimizar ou Manter Rolando
-Agora você tem controle total sobre o comportamento do vídeo do wallpaper quando o Discord estiver minimizado ou em segundo plano. Desative a opção "Pausar ao Minimizar" para que seu wallpaper continue passando fluido e sem pausas a 60 FPS, mesmo com o Discord fora de foco!
+🎨 Galeria DU com Banners e Avatares Animados
+Catálogo exclusivo de temas, wallpapers em vídeo MP4 e novo suporte completo a banners animados de perfil e avatares estilizados para o Discord.
 
-📦 Catálogo Automatizado Google Drive Atualizado
-O script gerador de catálogo agora conta com desduplicação nativa por ID de arquivo e nome limpo, garantindo integridade de 100% no carregamento instantâneo.
+🎮 Correção nos Controles de Efeitos e Shaders GLSL
+Ajustes finos em tempo real de brilho, saturação e velocidade de reprodução com persistência instantânea e renderização acelerada de cenas Wallpaper Engine.
+
+🛡️ Tunelamento Zero Lag & Split-Tunneling WFP
+Conexão estável e segura com servidores de alta velocidade, garantindo transmissão em 1440p/60FPS com ping intocado em jogos online (Valorant, CS2, etc.).
+
+☁️ Compartilhamento Rápido na Nuvem
+Envio direto de vídeos pesados e clipes pelo Gofile com link automático no chat do Discord.
 
 — Stefy Stars ✨

@@ -4042,11 +4042,12 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
               <div>
                 <label class="form-label" style="font-size: 11px; margin-bottom: 4px; display: block; color: var(--text-muted);">Resolução &amp; Qualidade:</label>
-                <select id="recResSelect" class="form-input" onchange="updateRecorderSettingsFromUI()" style="width: 100%; font-size: 11.5px; padding: 6px 10px; background: #0f1118; border: 1px solid var(--card-border); color: #fff; border-radius: 6px;">
+                <select id="recResSelect" class="form-input" onchange="onRecResSelectChange()" style="width: 100%; font-size: 11.5px; padding: 6px 10px; background: #0f1118; border: 1px solid var(--card-border); color: #fff; border-radius: 6px;">
                   <option value="native">Nativa do Alvo (Máxima Qualidade - 50 Mbps)</option>
                   <option value="1440p60">2560x1440 • 60 FPS (2K Ultra - 35 Mbps)</option>
                   <option value="1080p60" selected>1920x1080 • 60 FPS (Full HD Gamer - 20 Mbps)</option>
                   <option value="720p60">1280x720 • 60 FPS (HD Leve - 8 Mbps)</option>
+                  <option value="custom">⚙️ Personalizado (Custom)...</option>
                 </select>
               </div>
               <div>
@@ -4055,6 +4056,63 @@
                   <option value="pc">🔊 Todo o Som do PC</option>
                   <option value="game">🎮 Somente Áudio do Jogo (Isolado)</option>
                 </select>
+              </div>
+            </div>
+
+            <!-- Painel de Configurações Personalizadas (Custom) -->
+            <div id="recCustomPanel" style="display:none; background:linear-gradient(135deg,rgba(99,102,241,.09),rgba(56,189,248,.05)); border:1px solid rgba(99,102,241,.35); border-radius:10px; padding:12px 14px; margin-bottom:12px;">
+              <div style="font-size:11.5px; font-weight:800; color:#c7d2fe; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px;">
+                <span style="display:flex; align-items:center; gap:6px;"><span>⚙️</span> Predefinição Personalizada</span>
+                <span style="font-size:10px; color:#38bdf8; background:rgba(56,189,248,.12); border:1px solid rgba(56,189,248,.28); padding:2px 8px; border-radius:10px; font-weight:700;">Máx 4K • 120 FPS • 150 Mbps</span>
+              </div>
+              <div style="display:grid; grid-template-columns: 1.2fr 1fr 1.3fr; gap:12px; align-items:start;">
+                <!-- 1. Resolução -->
+                <div>
+                  <label style="font-size:10.5px; color:#94a3b8; display:block; margin-bottom:5px; font-weight:700;">📐 Resolução:</label>
+                  <select id="recCustomResPreset" onchange="onRecCustomPresetChange()" style="width:100%; font-size:11px; padding:6px 8px; background:#090d16; border:1px solid rgba(99,102,241,.35); color:#fff; border-radius:6px; margin-bottom:6px; outline:none;">
+                    <option value="3840x2160">4K Ultra HD (3840x2160)</option>
+                    <option value="2560x1440">2K Quad HD (2560x1440)</option>
+                    <option value="1920x1080" selected>Full HD (1920x1080)</option>
+                    <option value="1600x900">HD+ (1600x900)</option>
+                    <option value="1280x720">HD (1280x720)</option>
+                    <option value="manual">Personalizada (Largura × Altura)</option>
+                  </select>
+                  <div id="recCustomManualResWrap" style="display:none; gap:6px; align-items:center;">
+                    <input id="recCustomWidth" type="number" min="320" max="3840" step="2" value="1920" placeholder="Largura (máx 3840)" onchange="onCustomResolutionInputChange()" style="width:50%; font-size:11px; padding:5px 7px; background:#090d16; border:1px solid rgba(255,255,255,.18); color:#fff; border-radius:6px; box-sizing:border-box;">
+                    <span style="color:#64748b; font-size:12px; font-weight:bold;">×</span>
+                    <input id="recCustomHeight" type="number" min="240" max="2160" step="2" value="1080" placeholder="Altura (máx 2160)" onchange="onCustomResolutionInputChange()" style="width:50%; font-size:11px; padding:5px 7px; background:#090d16; border:1px solid rgba(255,255,255,.18); color:#fff; border-radius:6px; box-sizing:border-box;">
+                  </div>
+                </div>
+
+                <!-- 2. FPS -->
+                <div>
+                  <label style="font-size:10.5px; color:#94a3b8; display:block; margin-bottom:5px; font-weight:700;">⏱️ Taxa de Quadros (FPS):</label>
+                  <select id="recCustomFpsSelect" onchange="updateRecorderSettingsFromUI()" style="width:100%; font-size:11px; padding:6px 8px; background:#090d16; border:1px solid rgba(99,102,241,.35); color:#fff; border-radius:6px; outline:none;">
+                    <option value="120">120 FPS (Ultra Fluidez / Gamer)</option>
+                    <option value="90">90 FPS (Competitivo)</option>
+                    <option value="60" selected>60 FPS (Padrão)</option>
+                    <option value="50">50 FPS</option>
+                    <option value="45">45 FPS</option>
+                    <option value="30">30 FPS (Econômico)</option>
+                    <option value="24">24 FPS (Cinemático)</option>
+                    <option value="15">15 FPS (Ultraleve)</option>
+                  </select>
+                </div>
+
+                <!-- 3. Bitrate (Mbps) -->
+                <div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                    <label style="font-size:10.5px; color:#94a3b8; font-weight:700;">🚀 Taxa de Bits:</label>
+                    <strong id="recCustomBitrateLabel" style="font-size:11.5px; color:#38bdf8; font-family:var(--font-mono);">35 Mbps</strong>
+                  </div>
+                  <input id="recCustomBitrateInput" type="range" min="2" max="150" step="1" value="35" oninput="onRecCustomBitrateInput(this.value)" onchange="updateRecorderSettingsFromUI()" style="width:100%; accent-color:#38bdf8; cursor:pointer;">
+                  <div style="display:flex; justify-content:space-between; font-size:9.5px; color:#64748b; margin-top:3px;">
+                    <span>2 Mbps</span>
+                    <span>50M</span>
+                    <span>100M</span>
+                    <span style="color:#a855f7; font-weight:700;">150 Mbps (Máx)</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -5095,11 +5153,13 @@
 
           <!-- Badges de Recursos -->
           <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;">
+            <span class="guide-badge">🎥 Gravação até 4K • 120 FPS</span>
+            <span class="guide-badge">⚡ Replay Instantâneo</span>
             <span class="guide-badge">📺 1440p 60FPS</span>
-            <span class="guide-badge">☁️ Upload Gofile Anônimo ou com Conta</span>
-            <span class="guide-badge">🛡️ Tunelamento Zero Lag</span>
+            <span class="guide-badge">☁️ Arquivos Grandes</span>
+            <span class="guide-badge">🎨 Galeria DU (Banners &amp; Avatares)</span>
             <span class="guide-badge">✨ FakeNitro Emojis</span>
-            <span class="guide-badge">🎨 110+ Temas</span>
+            <span class="guide-badge">🛡️ Tunelamento Zero Lag</span>
             <span class="guide-badge">🔒 100% Seguro</span>
           </div>
         </div>
@@ -5107,10 +5167,12 @@
         <!-- Menu de Navegação Rápida (Sub-Abas) -->
         <div class="guide-nav-bar" style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 18px;">
           <button class="guide-nav-btn active" onclick="switchGuideSection('sec-stream', this)">📺 Transmissão &amp; Go Live</button>
+          <button class="guide-nav-btn" onclick="switchGuideSection('sec-recorder', this)">🎥 Gravador &amp; Clipes (v9.0)</button>
           <button class="guide-nav-btn" onclick="switchGuideSection('sec-cloud', this)">☁️ Arquivos Grandes (Nuvem)</button>
           <button class="guide-nav-btn" onclick="switchGuideSection('sec-emojis', this)">✨ Emojis Globais</button>
-          <button class="guide-nav-btn" onclick="switchGuideSection('sec-themes', this)">🎨 Temas &amp; Plugins</button>
+          <button class="guide-nav-btn" onclick="switchGuideSection('sec-themes', this)">🎨 Temas &amp; Galeria DU</button>
           <button class="guide-nav-btn" onclick="switchGuideSection('sec-wireguard', this)">🛡️ Roteamento &amp; VPN</button>
+          <button class="guide-nav-btn" onclick="switchGuideSection('sec-about', this)">ℹ️ Sobre &amp; Versão 9.0</button>
           <button class="guide-nav-btn" onclick="switchGuideSection('sec-faq', this)">❓ Perguntas Frequentes</button>
         </div>
 
@@ -5153,6 +5215,50 @@
 
             <div class="guide-highlight" style="border-left-color: #10b981; background: rgba(16, 185, 129, 0.08);">
               <strong style="color: #10b981;">🎮 Garantia de Zero Lag em Jogos:</strong> O Discord Unlock utiliza tecnologia de <em>Split-Tunneling Estrito</em>. Somente o tráfego do Discord é roteado. Seus jogos (Valorant, CS2, League of Legends, etc.), navegadores e downloads permanecem na sua internet direta, sem aumento de ping.
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO: GRAVADOR & CLIPES (v9.0) -->
+        <div id="sec-recorder" class="guide-section-content" style="display: none;">
+          <div class="guide-box">
+            <div class="guide-box-header">
+              <div class="guide-box-icon">🎥</div>
+              <div>
+                <div class="guide-box-title">Gravador DXGI de Alta Performance &amp; Replay Instantâneo</div>
+                <div class="guide-box-subtitle">Captura nativa por hardware GPU (DirectX 11) até 4K • 120 FPS e 150 Mbps de Bitrate</div>
+              </div>
+            </div>
+
+            <div class="guide-text">
+              O novo motor de gravação do <strong>Discord Unlock v9.0</strong> captura diretamente da GPU via <strong>DXGI Desktop Duplication API</strong> e codifica com <strong>Media Foundation (H.264 / NVENC / Intel QSV / AMD VCE)</strong>. Sem perda de quadros em jogos, consumo mínimo de CPU e sem telas pretas.
+            </div>
+
+            <div class="guide-highlight" style="border-left-color: #8b5cf6; background: rgba(139, 92, 246, 0.10);">
+              <strong style="color: #a78bfa;">⚡ Replay Instantâneo Inteligente:</strong> Mantém um buffer contínuo em memória RAM com os últimos segundos da partida (15s, 30s, 60s, 2min ou 5min). Pressione <kbd style="background: #334155; padding: 2px 6px; border-radius: 4px; font-size: 11px;">Ctrl + F10</kbd> a qualquer momento no meio de um jogo para salvar instantaneamente aquela jogada épica!
+            </div>
+
+            <div class="guide-steps-grid">
+              <div class="guide-step-card">
+                <div class="step-badge">Qualidade Máxima</div>
+                <div class="step-title">Até 4K &amp; 120 FPS</div>
+                <div class="step-desc">Selecione entre 720p, 1080p, 1440p (2K) ou 2160p (4K) a 30, 60 ou 120 FPS, com controle de bitrate personalizável de até 150 Mbps para fidelidade visual absoluta.</div>
+              </div>
+              <div class="guide-step-card">
+                <div class="step-badge">Áudio Cristalino</div>
+                <div class="step-title">Sistema &amp; Microfone</div>
+                <div class="step-desc">Captura simultânea do áudio do jogo / Discord (WASAPI loopback) e do seu microfone, gravados em faixa estéreo cristalina sem dessincronização.</div>
+              </div>
+              <div class="guide-step-card">
+                <div class="step-badge">Corte Lossless</div>
+                <div class="step-title">Editor de Clipes Integrado</div>
+                <div class="step-desc">Ajuste os pontos de início e fim e gire seu vídeo (90°, 180°, 270°) com corte imediato sem recodificar, mantendo 100% da qualidade original em segundos.</div>
+              </div>
+              <div class="guide-step-card">
+                <div class="step-badge">Envio Imediato</div>
+                <div class="step-title">Galeria &amp; Nuvem</div>
+                <div class="step-desc">Assista aos clipes salvos na Galeria nativa, abra na pasta do Windows ou envie diretamente para seus amigos com o upload de nuvem sem limite.</div>
+              </div>
             </div>
           </div>
         </div>
@@ -5231,14 +5337,14 @@
           </div>
         </div>
 
-        <!-- SEÇÃO 4: TEMAS & PLUGINS -->
+        <!-- SEÇÃO 4: TEMAS & GALERIA DU -->
         <div id="sec-themes" class="guide-section-content" style="display: none;">
           <div class="guide-box">
             <div class="guide-box-header">
               <div class="guide-box-icon">🎨</div>
               <div>
-                <div class="guide-box-title">Loja de Temas, Wallpapers Animados &amp; Plugins</div>
-                <div class="guide-box-subtitle">Mais de 110 temas e dezenas de extensões ativáveis com 1 clique</div>
+                <div class="guide-box-title">Loja de Temas, Wallpapers Animados &amp; Galeria DU</div>
+                <div class="guide-box-subtitle">Mais de 110 temas, papéis de parede dinâmicos e Banners &amp; Avatares animados</div>
               </div>
             </div>
 
@@ -5249,14 +5355,19 @@
                 <div class="step-desc">Acesse a aba <em>Temas</em> no menu lateral, escolha seu tema favorito (Dark, AMOLED, Anime, Minimalista, Cyberpunk) e clique em Aplicar.</div>
               </div>
               <div class="guide-step-card">
+                <div class="step-badge">Galeria DU</div>
+                <div class="step-title">Banners &amp; Avatares Animados</div>
+                <div class="step-desc">Personalize seu Discord com banners de perfil em movimento e avatares animados de alta qualidade prontos para download e aplicação.</div>
+              </div>
+              <div class="guide-step-card">
                 <div class="step-badge">Vídeo Wallpapers</div>
                 <div class="step-title">Papéis de Parede Animados</div>
-                <div class="step-desc">Você pode usar vídeos MP4 em alta definição como fundo dinâmico e interativo no seu Discord com efeitos visuais modernos.</div>
+                <div class="step-desc">Use vídeos MP4 em alta definição ou cenas Wallpaper Engine interativas com suporte a shaders GLSL como fundo dinâmico do Discord.</div>
               </div>
               <div class="guide-step-card">
                 <div class="step-badge">Plugins Úteis</div>
                 <div class="step-title">Extensões Populares</div>
-                <div class="step-desc">Tradutor em tempo real no chat, controles do Spotify integrados na barra inferior, visualizador de canais ocultos e ajuste de volume individual.</div>
+                <div class="step-desc">Tradutor em tempo real no chat, controles do Spotify na barra inferior, visualizador de canais ocultos e ajuste de volume individual.</div>
               </div>
             </div>
           </div>
@@ -5288,6 +5399,56 @@
                 <div class="step-title">Importar Arquivo .conf</div>
                 <div class="step-desc">Quer usar Cloudflare WARP, Mullvad, Surfshark ou sua VPS própria? Basta selecionar a aba <em>Arquivo .conf</em> na tela inicial e carregar seu arquivo.</div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO: SOBRE & VERSÃO 9.0 -->
+        <div id="sec-about" class="guide-section-content" style="display: none;">
+          <div class="guide-box">
+            <div class="guide-box-header">
+              <div class="guide-box-icon">ℹ️</div>
+              <div>
+                <div class="guide-box-title">Discord Unlock — Versão 9.0 Oficial</div>
+                <div class="guide-box-subtitle">Central Completa de Desbloqueio, Performance, Clipes e Personalização</div>
+              </div>
+            </div>
+
+            <div class="guide-text">
+              O <strong>Discord Unlock v9.0</strong> é o marco definitivo de performance e utilidade para usuários de Discord no Brasil. Projetado com arquitetura modular de alto desempenho em C++20 nativo e WebView2 moderno, une rede otimizada, gravação de tela com aceleração DXGI e ecossistema multimídia completo.
+            </div>
+
+            <div class="section-title" style="margin-top: 14px; margin-bottom: 10px; font-size: 14px;">🚀 Novidades &amp; Destaques da Versão 9.0</div>
+            <div class="guide-steps-grid">
+              <div class="guide-step-card">
+                <div class="step-badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border-color: rgba(16, 185, 129, 0.4);">Novo</div>
+                <div class="step-title">Gravador DXGI 4K • 120 FPS</div>
+                <div class="step-desc">Captura fluida acelerada por hardware DirectX 11 / Media Foundation com até 150 Mbps de taxa de bits e baixíssima latência.</div>
+              </div>
+              <div class="guide-step-card">
+                <div class="step-badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border-color: rgba(16, 185, 129, 0.4);">Novo</div>
+                <div class="step-title">Replay Instantâneo (Ctrl+F10)</div>
+                <div class="step-desc">Buffer de gravação contínua na memória RAM de 15s até 5 minutos para salvar jogadas memoráveis com um único comando global.</div>
+              </div>
+              <div class="guide-step-card">
+                <div class="step-badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border-color: rgba(16, 185, 129, 0.4);">Novo</div>
+                <div class="step-title">Editor Lossless de Clipes</div>
+                <div class="step-desc">Corte rápido e rotação de vídeos sem re-codificação, preservando a nitidez original instantaneamente.</div>
+              </div>
+              <div class="guide-step-card">
+                <div class="step-badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border-color: rgba(16, 185, 129, 0.4);">Novo</div>
+                <div class="step-title">Galeria DU com Banners</div>
+                <div class="step-desc">Acesso a catálogo exclusivo de banners animados e avatares estilizados prontos para enriquecer o perfil.</div>
+              </div>
+            </div>
+
+            <div class="guide-highlight" style="border-left-color: #10b981; background: rgba(16, 185, 129, 0.08); margin-top: 14px;">
+              <strong style="color: #10b981;">🛡️ Segurança &amp; Integridade Absoluta:</strong> O Discord Unlock opera 100% no cliente (client-side) e em nível de driver WFP do Windows. Não há injeção de DLLs arriscadas no processo do Discord, não há roubo de credenciais ou tokens e nenhuma alteração nos executáveis oficiais da Discord Inc.
+            </div>
+
+            <div style="margin-top: 16px; padding: 12px 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+              <div><strong>Discord Unlock</strong> • Versão 9.0 (Build 2026.09)</div>
+              <div>Desenvolvido com foco em velocidade, estabilidade e liberdade de uso.</div>
             </div>
           </div>
         </div>
@@ -8276,6 +8437,61 @@
       }
     }
 
+    function onRecResSelectChange() {
+      const resVal = document.getElementById('recResSelect')?.value || '1080p60';
+      const panel = document.getElementById('recCustomPanel');
+      if (panel) {
+        panel.style.display = resVal === 'custom' ? 'block' : 'none';
+      }
+      updateRecorderSettingsFromUI();
+    }
+
+    function onRecCustomPresetChange() {
+      const preset = document.getElementById('recCustomResPreset')?.value;
+      const wrap = document.getElementById('recCustomManualResWrap');
+      const wInput = document.getElementById('recCustomWidth');
+      const hInput = document.getElementById('recCustomHeight');
+      if (preset === 'manual') {
+        if (wrap) wrap.style.display = 'flex';
+      } else {
+        if (wrap) wrap.style.display = 'none';
+        if (preset) {
+          const parts = preset.split('x');
+          if (parts.length === 2) {
+            if (wInput) wInput.value = parts[0];
+            if (hInput) hInput.value = parts[1];
+          }
+        }
+      }
+      updateRecorderSettingsFromUI();
+    }
+
+    function onCustomResolutionInputChange() {
+      const wInput = document.getElementById('recCustomWidth');
+      const hInput = document.getElementById('recCustomHeight');
+      if (wInput) {
+        let w = parseInt(wInput.value, 10) || 1920;
+        if (w < 320) w = 320;
+        if (w > 3840) w = 3840;
+        w = Math.round(w / 2) * 2;
+        wInput.value = w;
+      }
+      if (hInput) {
+        let h = parseInt(hInput.value, 10) || 1080;
+        if (h < 240) h = 240;
+        if (h > 2160) h = 2160;
+        h = Math.round(h / 2) * 2;
+        hInput.value = h;
+      }
+      updateRecorderSettingsFromUI();
+    }
+
+    function onRecCustomBitrateInput(val) {
+      const mbps = Math.max(2, Math.min(150, parseInt(val, 10) || 35));
+      const lbl = document.getElementById('recCustomBitrateLabel');
+      if (lbl) lbl.textContent = mbps + ' Mbps';
+    }
+
     function updateRecorderSettingsFromUI() {
       const selVal = document.getElementById('recTargetSelect')?.value || 'monitor:0';
       let captureTarget = 'monitor';
@@ -8317,6 +8533,16 @@
         targetWidth = 1920; targetHeight = 1080; bitrate = 20000000;
       } else if (resVal === '720p60') {
         targetWidth = 1280; targetHeight = 720; bitrate = 8000000;
+      } else if (resVal === 'custom') {
+        const wVal = parseInt(document.getElementById('recCustomWidth')?.value || '1920', 10);
+        const hVal = parseInt(document.getElementById('recCustomHeight')?.value || '1080', 10);
+        targetWidth = Math.max(320, Math.min(3840, Math.round(wVal / 2) * 2));
+        targetHeight = Math.max(240, Math.min(2160, Math.round(hVal / 2) * 2));
+        const fpsVal = parseInt(document.getElementById('recCustomFpsSelect')?.value || '60', 10);
+        fps = Math.max(15, Math.min(120, fpsVal));
+        const mbpsVal = parseInt(document.getElementById('recCustomBitrateInput')?.value || '35', 10);
+        const clampedMbps = Math.max(2, Math.min(150, mbpsVal));
+        bitrate = clampedMbps * 1000000;
       }
 
       sendToCpp('recorder_save_settings', {
@@ -8397,6 +8623,43 @@
       }
       if (document.getElementById('recResSelect') && msg.resolutionMode) {
         document.getElementById('recResSelect').value = msg.resolutionMode;
+        const panel = document.getElementById('recCustomPanel');
+        if (panel) {
+          panel.style.display = msg.resolutionMode === 'custom' ? 'block' : 'none';
+        }
+        if (msg.resolutionMode === 'custom') {
+          const w = msg.resolutionWidth || 1920;
+          const h = msg.resolutionHeight || 1080;
+          const wInput = document.getElementById('recCustomWidth');
+          const hInput = document.getElementById('recCustomHeight');
+          if (wInput) wInput.value = w;
+          if (hInput) hInput.value = h;
+
+          const presetSelect = document.getElementById('recCustomResPreset');
+          const wrap = document.getElementById('recCustomManualResWrap');
+          const dimStr = w + 'x' + h;
+          if (presetSelect) {
+            if (Array.from(presetSelect.options).some(o => o.value === dimStr)) {
+              presetSelect.value = dimStr;
+              if (wrap) wrap.style.display = 'none';
+            } else {
+              presetSelect.value = 'manual';
+              if (wrap) wrap.style.display = 'flex';
+            }
+          }
+
+          if (msg.fps && document.getElementById('recCustomFpsSelect')) {
+            document.getElementById('recCustomFpsSelect').value = String(Math.min(120, Math.max(15, msg.fps)));
+          }
+
+          if (msg.bitrate) {
+            const mbps = Math.max(2, Math.min(150, Math.round(msg.bitrate / 1000000)));
+            const bInput = document.getElementById('recCustomBitrateInput');
+            const bLabel = document.getElementById('recCustomBitrateLabel');
+            if (bInput) bInput.value = mbps;
+            if (bLabel) bLabel.textContent = mbps + ' Mbps';
+          }
+        }
       }
       if (document.getElementById('recAudioSelect')) {
         document.getElementById('recAudioSelect').value = msg.audioMode || 'pc';
