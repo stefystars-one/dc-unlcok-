@@ -3685,6 +3685,9 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
         <button class="nav-btn" onclick="playSound('tab'); switchTab('tab-plugins')">
           <span class="icon">🧩</span> Loja de Plugins
         </button>
+        <button class="nav-btn" id="navBtnProfileBanner" onclick="playSound('tab'); switchTab('tab-profile-banner')">
+          <span class="icon">🎨</span> Banner do Perfil
+        </button>
       </div>
 
       <div class="nav-group">
@@ -5617,6 +5620,126 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
           </section>
         </div>
       </div>
+
+      <!-- TAB: MEU BANNER DU -->
+      <div id="tab-profile-banner" class="tab-pane">
+
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, rgba(168,85,247,0.18) 0%, rgba(88,101,242,0.18) 100%); border: 1px solid rgba(168,85,247,0.35); border-radius: 14px; padding: 20px; margin-bottom: 18px; text-align: center;">
+          <div style="font-size: 28px; margin-bottom: 8px;">✨</div>
+          <div style="font-size: 17px; font-weight: 800; color: #fff; margin-bottom: 6px;">Banner do Perfil</div>
+          <div style="font-size: 11.5px; color: #cbd5e1; max-width: 540px; margin: 0 auto; line-height: 1.65; text-align:left;">
+            <div style="display:flex; flex-direction:column; gap:7px;">
+              <div style="background:rgba(168,85,247,0.1); border:1px solid rgba(168,85,247,0.25); border-radius:8px; padding:8px 12px;">
+                <span style="color:#c4b5fd; font-weight:700;">🎨 Modo DU Exclusivo</span> — Cole o link do GIF/imagem, gere sua tag e cole no <em>Sobre Mim</em> do Discord. O banner aparece para qualquer usuário com DU instalado. <span style="color:#a78bfa; font-weight:600;">Não requer Nitro.</span>
+              </div>
+              <div style="background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); border-radius:8px; padding:8px 12px;">
+                <span style="color:#818cf8; font-weight:700;">🌐 Modo USRBG</span> — Cadastre seu banner no site do USRBG com login Discord. Fica visível também para usuários de BetterDiscord — sem precisar instalar nada extra. Requer aprovação manual no servidor deles.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PASSO 1: URL -->
+        <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 16px; margin-bottom: 14px;">
+          <div style="font-size: 12px; font-weight: 700; color: #a78bfa; margin-bottom: 10px; display:flex; align-items:center; gap:6px;">
+            <span style="background:rgba(168,85,247,0.25);border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;">1</span>
+            Cole o link do seu GIF ou imagem
+          </div>
+          <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+            <input type="url" id="bannerUrlInput" placeholder="https://i.imgur.com/xxx.gif   ou   https://media.giphy.com/..." oninput="previewBannerUrl()" style="flex:1; height:38px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff; padding:0 12px; font-size:12px; outline:none; font-family:var(--font-main);">
+            <button onclick="clearBannerConfig()" title="Remover banner" style="padding:0 12px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.35); color:#f87171; border-radius:8px; font-size:16px; cursor:pointer;">🗑️</button>
+          </div>
+          <div style="font-size:10.5px; color:var(--text-muted); margin-bottom:10px; line-height:1.5;">
+            ⚠️ O link precisa ser <strong style="color:#e2e8f0;">direto para o arquivo</strong> (termina em .gif, .png, .jpg, .mp4...).<br>
+            Links de páginas como <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px;">klipy.com/gifs/xxx</code> <strong style="color:#f87171;">não funcionam</strong> — clique com botão direito no GIF e copie o link da imagem.
+          </div>
+
+          <!-- Preview box — proporção real do banner do Discord (480×200 = 5:2) -->
+          <div id="bannerPreviewBox" style="display:none; margin-bottom:12px; border-radius:10px; overflow:hidden; position:relative; background:rgba(0,0,0,0.3); border:1px solid rgba(168,85,247,0.25);">
+            <div id="bannerPreviewInner" style="width:100%; aspect-ratio:5/2; overflow:hidden; position:relative;">
+              <img id="bannerPreviewImg" src="" alt="" style="width:100%; height:100%; object-fit:cover; object-position:center 50%; display:none; opacity:0.85;">
+              <video id="bannerPreviewVid" src="" autoplay loop muted playsinline style="width:100%; height:100%; object-fit:cover; object-position:center 50%; display:none; opacity:0.85;"></video>
+            </div>
+            <div id="bannerPreviewErr" style="display:none; padding:28px; align-items:center; justify-content:center; color:#f87171; font-size:12px; font-weight:600; flex-direction:column; gap:4px;">
+              <span style="font-size:20px;">⚠️</span> Link inválido — use um link direto para o arquivo
+            </div>
+            <div style="position:absolute; bottom:6px; right:8px; background:rgba(0,0,0,0.6); color:#a78bfa; font-size:10px; font-weight:700; padding:2px 8px; border-radius:6px;">PREVIEW · 480×200</div>
+          </div>
+
+          <!-- Controls: Opacity, Position Y -->
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <label style="font-size:11px; color:var(--text-muted); font-weight:600; width:72px; flex-shrink:0;">Opacidade</label>
+              <input type="range" id="bannerOpacitySlider" min="10" max="100" value="85" oninput="applyBannerPreviewStyles()" style="flex:1; accent-color:#a855f7; cursor:pointer;">
+              <span id="bannerOpacityVal" style="font-size:11px; color:#a78bfa; width:34px; text-align:right;">85%</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <label style="font-size:11px; color:var(--text-muted); font-weight:600; width:72px; flex-shrink:0;">Posição Y</label>
+              <input type="range" id="bannerPosSlider" min="0" max="100" value="50" oninput="applyBannerPreviewStyles()" style="flex:1; accent-color:#a855f7; cursor:pointer;">
+              <span id="bannerPosVal" style="font-size:11px; color:#a78bfa; width:34px; text-align:right;">50%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- PASSO 2: Gerar tag -->
+        <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 16px; margin-bottom: 14px;">
+          <div style="font-size: 12px; font-weight: 700; color: #a78bfa; margin-bottom: 10px; display:flex; align-items:center; gap:6px;">
+            <span style="background:rgba(168,85,247,0.25);border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;">2</span>
+            Gere sua tag e cole no Sobre Mim do Discord
+          </div>
+          <div style="font-size:11px; color:var(--text-muted); margin-bottom:10px; line-height:1.55;">
+            A tag fica <strong style="color:#fff;">invisível</strong> para quem tem DU — seu banner aparece automaticamente. Para quem não tem DU, aparece como texto normal no About Me.
+          </div>
+          <button onclick="generateDuTag()" style="width:100%; padding:11px; background:linear-gradient(135deg,#a855f7,#6366f1); border:none; border-radius:8px; color:#fff; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px;">
+            🏷️ Gerar Tag para o About Me
+          </button>
+
+          <!-- Generated tag -->
+          <div id="generatedTagBox" style="display:none; margin-top:12px; background:rgba(0,0,0,0.3); border:1px solid rgba(168,85,247,0.3); border-radius:8px; padding:10px 12px;">
+            <div style="font-size:10px; color:var(--text-muted); font-weight:600; margin-bottom:6px;">📋 Cole isso no campo "Sobre Mim" no Discord:</div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <code id="generatedTagText" style="flex:1; font-size:11.5px; color:#c4b5fd; word-break:break-all; background:rgba(0,0,0,0.2); padding:6px 8px; border-radius:5px;"></code>
+              <button onclick="copyDuTag()" style="padding:6px 12px; background:rgba(168,85,247,0.2); border:1px solid rgba(168,85,247,0.4); border-radius:6px; color:#e9d5ff; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap;">📋 Copiar</button>
+            </div>
+            <div style="margin-top:8px; font-size:10px; color:var(--text-muted);">Depois de colar, clique em <strong style="color:#fff;">Salvar</strong> no Discord.</div>
+          </div>
+        </div>
+
+        <!-- PASSO 3: Salvar config local -->
+        <div style="margin-bottom:14px;">
+          <button onclick="saveBannerConfig()" style="width:100%; padding:10px; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.4); border-radius:8px; color:#34d399; font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px;">
+            💾 Salvar configuração (aplica ao abrir o Discord)
+          </button>
+        </div>
+
+        <!-- USRBG SECTION -->
+        <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <div>
+              <div style="font-size:13px; font-weight:700; color:#fff; display:flex; align-items:center; gap:8px;">
+                🌐 USRBG — Banner visível para TODOS
+              </div>
+              <div style="font-size:11px; color:var(--text-muted); margin-top:3px;">Banners públicos de usuários do USRBG (BD/DU veem)</div>
+            </div>
+            <label class="toggle-switch" style="flex-shrink:0; margin-left:12px;">
+              <input type="checkbox" id="usrbgToggle" checked onchange="saveUsrbgToggle(this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div style="font-size:11px; color:var(--text-muted); margin-bottom:12px; line-height:1.6;">
+            Com o USRBG, seu banner fica visível para <strong style="color:#fff;">todos</strong> que usam BetterDiscord ou DU — sem precisar instalar nada. Cadastre seu banner no site com login pelo Discord.
+          </div>
+          <button onclick="sendToCpp('open_external_url', {url:'https://usrbg.is-hardly.online'})" style="width:100%; padding:11px; background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.45); border-radius:8px; color:#818cf8; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;">
+            🔗 Abrir site do USRBG no navegador
+          </button>
+          <div style="font-size:10px; color:var(--text-muted); margin-top:7px; text-align:center; line-height:1.5;">Abre no seu navegador padrão. Faz login com Discord → sobe o GIF → pronto.<br><span style="color:#f59e0b;">⚠️ Se o site não abrir, pode estar temporariamente offline.</span></div>
+        </div>
+
+        <!-- STATUS -->
+        <div id="bannerStatusMsg" style="display: none; margin-top: 4px; padding: 10px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;"></div>
+
+      </div><!-- /tab-profile-banner -->
 
       <!-- TAB 6: ABOUT & GUIDE (MODERNO, COMPLETO E ANIMADO) -->
       <div id="tab-about" class="tab-pane">
@@ -9093,6 +9216,13 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
         sendToCpp('recorder_get_clips');
         sendToCpp('get_storage_policy');
         startRecorderAutoRefresh();
+      } else if (tabId === 'tab-plugins') {
+        // plugins already handled externally
+      } else if (tabId === 'tab-profile-banner') {
+        initBannerTab();
+        stopPingAutoRefresh();
+        stopCloudAutoRefresh();
+        stopRecorderAutoRefresh();
       } else {
         stopPingAutoRefresh();
         stopCloudAutoRefresh();
@@ -13491,6 +13621,175 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       fetchLiveBetterDiscordPlugins();
     }
 
+    // ── Banner de Perfil DU ─────────────────────────────────────────────────
+    function previewBannerUrl() {
+      const url = (document.getElementById('bannerUrlInput') || {}).value || '';
+      const box = document.getElementById('bannerPreviewBox');
+      const img = document.getElementById('bannerPreviewImg');
+      const vid = document.getElementById('bannerPreviewVid');
+      const err = document.getElementById('bannerPreviewErr');
+      if (!box) return;
+      // Se URL vazia, esconde preview
+      if (!url.trim()) {
+        box.style.display = 'none';
+        if (img) { img.style.display = 'none'; img.src = ''; }
+        if (vid) { vid.style.display = 'none'; vid.src = ''; }
+        if (err) err.style.display = 'none';
+        return;
+      }
+      box.style.display = 'block';
+      const isVideo = /\.(mp4|webm|ogg)(\?|$)/i.test(url);
+      if (isVideo) {
+        if (img) img.style.display = 'none';
+        if (err) err.style.display = 'none';
+        if (vid) {
+          vid.style.display = 'block';
+          vid.src = url;
+          vid.load();
+          vid.onerror = () => {
+            vid.style.display = 'none';
+            if (err) err.style.display = 'flex';
+          };
+        }
+      } else {
+        if (vid) { vid.style.display = 'none'; vid.src = ''; }
+        if (err) err.style.display = 'none';
+        if (img) {
+          img.style.display = 'block';
+          img.src = url;
+          img.onerror = () => {
+            img.style.display = 'none';
+            if (err) err.style.display = 'flex';
+          };
+          img.onload = () => {
+            if (err) err.style.display = 'none';
+          };
+        }
+      }
+    }
+
+    function clearBannerConfig() {
+      playSound('click');
+      const inp = document.getElementById('bannerUrlInput');
+      if (inp) inp.value = '';
+      previewBannerUrl(); // isso já vai esconder o preview
+      const tagBox = document.getElementById('generatedTagBox');
+      if (tagBox) tagBox.style.display = 'none';
+      // Remove do localStorage e salva config vazia no C++
+      try { localStorage.removeItem('du_profile_banner'); } catch(e) {}
+      const cfg = { enabled: false, url: '', opacity: 85 };
+      sendToCpp(JSON.stringify({ action: 'set_profile_banner', data: JSON.stringify(cfg) }));
+      showBannerStatus('🗑️ Banner removido com sucesso.', true);
+    }
+
+    function applyBannerPreviewStyles() {
+      const opacity = parseInt((document.getElementById('bannerOpacitySlider') || {}).value || 85);
+      const posY    = parseInt((document.getElementById('bannerPosSlider')     || {}).value || 50);
+      const opVal = document.getElementById('bannerOpacityVal');
+      const pyVal = document.getElementById('bannerPosVal');
+      if (opVal) opVal.textContent = opacity + '%';
+      if (pyVal) pyVal.textContent = posY + '%';
+      // inner height is set automatically by aspect-ratio:5/2 in CSS
+      const img = document.getElementById('bannerPreviewImg');
+      const vid = document.getElementById('bannerPreviewVid');
+      const op = (opacity / 100).toFixed(2);
+      const pos = 'center ' + posY + '%';
+      if (img) { img.style.opacity = op; img.style.objectPosition = pos; }
+      if (vid) { vid.style.opacity = op; vid.style.objectPosition = pos; }
+    }
+
+    function generateDuTag() {
+      playSound('click');
+      const url = (document.getElementById('bannerUrlInput') || {}).value || '';
+      if (!url || !url.startsWith('http')) {
+        showBannerStatus('⚠️ Cole uma URL válida antes de gerar a tag!', false);
+        return;
+      }
+      const tag = '[DU:' + url + ']';
+      const tagBox = document.getElementById('generatedTagBox');
+      const tagText = document.getElementById('generatedTagText');
+      if (tagText) tagText.textContent = tag;
+      if (tagBox) tagBox.style.display = 'block';
+      previewBannerUrl();
+      showBannerStatus('✅ Tag gerada! Copie e cole no Sobre Mim do Discord.', true);
+    }
+
+    function copyDuTag() {
+      playSound('click');
+      const text = (document.getElementById('generatedTagText') || {}).textContent || '';
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        showBannerStatus('📋 Tag copiada para a área de transferência!', true);
+      }).catch(() => {
+        // fallback
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showBannerStatus('📋 Tag copiada!', true);
+      });
+    }
+
+    function saveBannerConfig() {
+      playSound('click');
+      const url = (document.getElementById('bannerUrlInput') || {}).value || '';
+      const opacity = (document.getElementById('bannerOpacitySlider') || {}).value || 85;
+      const cfg = { enabled: true, url: url, opacity: parseInt(opacity) };
+      const payload = JSON.stringify({ action: 'set_profile_banner', data: JSON.stringify(cfg) });
+      sendToCpp(payload);
+      // Also store in localStorage for immediate use in this session
+      try { localStorage.setItem('du_profile_banner', JSON.stringify(cfg)); } catch(e) {}
+      showBannerStatus('💾 Config salva! Reinicie o Discord para aplicar.', true);
+    }
+
+    function saveUsrbgToggle(enabled) {
+      playSound('click');
+      sendToCpp(JSON.stringify({ action: 'set_profile_banner', data: JSON.stringify({ usrbg_enabled: enabled }) }));
+      showToast(enabled ? '✅ USRBG ativado' : '❌ USRBG desativado');
+      // Toggle the USRBG style in any open Discord windows via the hook
+      try { localStorage.setItem('du_usrbg_enabled', enabled ? '1' : '0'); } catch(e) {}
+    }
+
+    function showBannerStatus(msg, success) {
+      const el = document.getElementById('bannerStatusMsg');
+      if (!el) return;
+      el.textContent = msg;
+      el.style.display = 'block';
+      el.style.background = success ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)';
+      el.style.border = '1px solid ' + (success ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.35)');
+      el.style.color = success ? '#34d399' : '#f87171';
+      clearTimeout(el._hideTimer);
+      el._hideTimer = setTimeout(() => { el.style.display = 'none'; }, 4000);
+    }
+
+    function initBannerTab() {
+      // Load saved config
+      try {
+        const raw = localStorage.getItem('du_profile_banner');
+        if (raw) {
+          const cfg = JSON.parse(raw);
+          if (cfg.url) {
+            const inp = document.getElementById('bannerUrlInput');
+            if (inp) inp.value = cfg.url;
+          }
+          if (cfg.opacity) {
+            const sl = document.getElementById('bannerOpacitySlider');
+            const vl = document.getElementById('bannerOpacityVal');
+            if (sl) sl.value = cfg.opacity;
+            if (vl) vl.textContent = cfg.opacity + '%';
+          }
+        }
+        const usrbg = localStorage.getItem('du_usrbg_enabled');
+        if (usrbg === '0') {
+          const tog = document.getElementById('usrbgToggle');
+          if (tog) tog.checked = false;
+        }
+      } catch(e) {}
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     function updateServerSubtitle(server) {
       const sub = document.getElementById('serverRoutingSubtitle');
       const title = document.getElementById('serverRoutingTitle');
@@ -17574,7 +17873,7 @@ const char EMBEDDED_OVERLAY_HTML[] = R"raw_overlay_html(
 using namespace Microsoft::WRL;
 namespace fs = std::filesystem;
 
-const std::string CURRENT_VERSION = "8.6";
+const std::string CURRENT_VERSION = "8.9";
 const std::wstring CLOUD_API_HOST = L"discord-unlock-api.st4rs.workers.dev";
 const std::wstring THEMES_CATALOG_HOST = L"script.google.com";
 const std::wstring THEMES_CATALOG_PATH = L"/macros/s/AKfycbxJeT0t6WzljXxQH5FoyBhQkNad8oQWm7Wzf0aa40oh2fAO3XriJJWHmps3bLAtbpJgdA/exec";
@@ -22713,6 +23012,27 @@ try {
         res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
         return res.end(JSON.stringify({ ok: true, version: '3.6' }));
       }
+      if (reqUrl.pathname === '/read_file') {
+        const fileName = reqUrl.searchParams.get('file') || '';
+        if (!fileName || fileName.includes('..') || fileName.includes('/') || fileName.includes('\\')) {
+          res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+          return res.end(JSON.stringify({ error: 'invalid filename' }));
+        }
+        const filePath = path.join(appDataDir, 'DiscordUnlock', fileName);
+        if (fs.existsSync(filePath)) {
+          try {
+            const content = fs.readFileSync(filePath, 'utf8');
+            res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-cache' });
+            return res.end(content);
+          } catch(e) {
+            res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+            return res.end(JSON.stringify({ error: 'read error' }));
+          }
+        } else {
+          res.writeHead(404, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+          return res.end(JSON.stringify({ error: 'not found' }));
+        }
+      }
       // WebGL Engine renderer for Wallpaper Engine shader scenes
       if (reqUrl.pathname === '/engine') {
         // Serve the renderer HTML page
@@ -22932,6 +23252,216 @@ const bdWatermarkNukerJs = `
   })();
 `;
 
+// ── DU Profile Banner System ─────────────────────────────────────────────────
+// Injected into Discord renderer. Two layers:
+// 1. USRBG: imports the public USRBG CSS database (visible to any BD/DU user)
+// 2. DU Tag: reads [DU:url] from About Me and injects custom banner (DU-only)
+const duProfileBannerJs = `
+(() => {
+  const STYLE_ID    = 'du-profile-banner-style';
+  const USRBG_ID    = 'du-usrbg-import';
+  const CONFIG_KEY  = 'du_profile_banner';
+  const TAG_REGEX   = /\[DU:([^\]]+)\]/i;
+
+  // ── 1. USRBG CSS Import ─────────────────────────────────────────────────
+  function injectUsrbg() {
+    if (document.getElementById(USRBG_ID)) return;
+    const link = document.createElement('style');
+    link.id = USRBG_ID;
+    link.textContent = '@import url("https://discord-custom-covers.github.io/usrbg/dist/usrbg.css");';
+    (document.head || document.documentElement).appendChild(link);
+  }
+
+  // ── 2. Base CSS for DU banners ──────────────────────────────────────────
+  function injectBaseStyle() {
+    if (document.getElementById(STYLE_ID)) return;
+    const s = document.createElement('style');
+    s.id = STYLE_ID;
+    s.textContent = [
+      // Banner container behind the avatar
+      '.du-profile-banner {',
+      '  position: absolute !important;',
+      '  top: 0 !important; left: 0 !important;',
+      '  width: 100% !important;',
+      '  height: 100% !important;',
+      '  z-index: 0 !important;',
+      '  background-size: cover !important;',
+      '  background-position: center !important;',
+      '  background-repeat: no-repeat !important;',
+      '  border-radius: inherit !important;',
+      '}',
+      // GIF / video banner
+      '.du-profile-banner img, .du-profile-banner video {',
+      '  width: 100% !important; height: 100% !important;',
+      '  object-fit: cover !important; border-radius: inherit !important;',
+      '}',
+      // Hide the [DU:...] tag text in About Me
+      '.du-tag-hidden { display: none !important; }',
+      // Make banner area visible when DU injects
+      '[class*="userProfileOuter_"] [class*="banner_"] { position: relative !important; overflow: hidden !important; }',
+      '[class*="userPopout_"] [class*="bannerPremiumOverlay_"] { position: relative !important; overflow: hidden !important; }',
+    ].join('\\n');
+    (document.head || document.documentElement).appendChild(s);
+  }
+
+  // ── 3. Read own profile config from DU asset server ────────────────────
+  let ownConfig = null;
+  function loadOwnConfig() {
+    try {
+      const raw = localStorage.getItem(CONFIG_KEY);
+      if (raw) ownConfig = JSON.parse(raw);
+    } catch(e) {}
+    // Also poll DU asset server for config
+    try {
+      fetch('http://127.0.0.1:45123/read_file?file=profile_banner.json', { cache: 'no-store' })
+        .then(r => r.ok ? r.json() : null)
+        .then(cfg => { if (cfg) { ownConfig = cfg; localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg)); } })
+        .catch(() => {});
+    } catch(e) {}
+  }
+
+  // ── 4. Extract DU tag from About Me text ───────────────────────────────
+  function extractDuTag(text) {
+    const m = TAG_REGEX.exec(text || '');
+    return m ? m[1].trim() : null;
+  }
+
+  // ── 5. Create banner element ────────────────────────────────────────────
+  function createBannerEl(url) {
+    const wrap = document.createElement('div');
+    wrap.className = 'du-profile-banner';
+    wrap.dataset.duBanner = '1';
+    const isVideo = /\.(mp4|webm|gif)(\?|$)/i.test(url);
+    if (isVideo && !url.endsWith('.gif')) {
+      const v = document.createElement('video');
+      v.src = url; v.autoplay = true; v.loop = true;
+      v.muted = true; v.playsInline = true;
+      wrap.appendChild(v);
+    } else {
+      wrap.style.backgroundImage = 'url("' + url + '")';
+    }
+    return wrap;
+  }
+
+  // ── 6. Inject banner into a profile container ───────────────────────────
+  function injectBannerInto(bannerArea, url) {
+    if (!bannerArea || !url) return;
+    if (bannerArea.querySelector('[data-du-banner]')) return; // already injected
+    const el = createBannerEl(url);
+    bannerArea.style.position = 'relative';
+    bannerArea.style.overflow = 'hidden';
+    bannerArea.insertBefore(el, bannerArea.firstChild);
+  }
+
+  // ── 7. Find About Me text for a profile modal ───────────────────────────
+  function getAboutMeText(container) {
+    const sel = [
+      '[class*="userProfileOuter_"] [class*="section_"][class*="about"]',
+      '[class*="userProfileOuter_"] [class*="customStatus_"]',
+      '[class*="userProfileOuter_"] [class*="markup_"]',
+      '[class*="userPopout_"] [class*="markup_"]',
+      '[class*="aboutMeSection_"]',
+      '[class*="aboutMe_"]',
+    ];
+    for (const s of sel) {
+      const el = container.querySelector(s);
+      if (el && el.textContent) return el.textContent;
+    }
+    // Fallback: search all text nodes
+    return container.textContent || '';
+  }
+
+  // ── 8. Process a single opened profile ─────────────────────────────────
+  function processProfile(container) {
+    if (container.dataset.duBannerChecked) return;
+    container.dataset.duBannerChecked = '1';
+
+    const bannerArea =
+      container.querySelector('[class*="banner_"]') ||
+      container.querySelector('[class*="bannerPremiumOverlay_"]') ||
+      container.querySelector('[class*="avatarPositionPanel_"]');
+    if (!bannerArea) return;
+
+    // Try DU tag from About Me
+    const aboutText = getAboutMeText(container);
+    const tagUrl = extractDuTag(aboutText);
+
+    // Hide tag text in About Me
+    if (tagUrl) {
+      container.querySelectorAll('[class*="markup_"], [class*="section_"]').forEach(el => {
+        if (el.textContent.includes('[DU:')) {
+          el.innerHTML = el.innerHTML.replace(/\[DU:[^\]]+\]/gi, '<span class="du-tag-hidden">[DU:...]</span>');
+        }
+      });
+      injectBannerInto(bannerArea, tagUrl);
+      return;
+    }
+
+    // Try own config (self-preview)
+    if (ownConfig && ownConfig.enabled && ownConfig.url) {
+      // Only inject on own profile: check if the username matches
+      // (we inject on all profiles if USRBG is off for simplicity)
+    }
+  }
+
+  // ── 9. MutationObserver: watch for profile modals opening ──────────────
+  function observeProfiles() {
+    const selectors = [
+      '[class*="userProfileOuter_"]',
+      '[class*="userProfileModal_"]',
+      '[class*="userPopout_"]',
+    ];
+
+    const checkNew = (nodes) => {
+      nodes.forEach(node => {
+        if (!(node instanceof HTMLElement)) return;
+        selectors.forEach(sel => {
+          if (node.matches && node.matches(sel)) processProfile(node);
+          node.querySelectorAll(sel).forEach(el => processProfile(el));
+        });
+      });
+    };
+
+    const mo = new MutationObserver(muts => {
+      muts.forEach(m => checkNew(Array.from(m.addedNodes)));
+    });
+    mo.observe(document.body || document.documentElement, { childList: true, subtree: true });
+
+    // Also scan existing
+    selectors.forEach(sel => document.querySelectorAll(sel).forEach(el => processProfile(el)));
+  }
+
+  // ── 10. Self-banner: inject on own profile popout via config ───────────
+  function applySelfBanner() {
+    if (!ownConfig || !ownConfig.enabled || !ownConfig.url) return;
+    // Find own avatar in profile areas and inject
+    document.querySelectorAll('[class*="userProfileOuter_"], [class*="userPopout_"]').forEach(c => {
+      if (c.dataset.duBannerChecked) return; // let tag system handle
+      const bannerArea = c.querySelector('[class*="banner_"]');
+      if (bannerArea && !bannerArea.querySelector('[data-du-banner]')) {
+        injectBannerInto(bannerArea, ownConfig.url);
+      }
+    });
+  }
+
+  // ── Init ────────────────────────────────────────────────────────────────
+  function init() {
+    injectUsrbg();
+    injectBaseStyle();
+    loadOwnConfig();
+    observeProfiles();
+    setInterval(applySelfBanner, 2000);
+    setInterval(loadOwnConfig, 30000); // refresh config every 30s
+  }
+
+  if (document.body) {
+    init();
+  } else {
+    document.addEventListener('DOMContentLoaded', init);
+  }
+})();
+`;
+
 function getThemePaths() {
   const userData = electron.app.getPath('userData');
   const appData = electron.app.getPath('appData');
@@ -22965,6 +23495,7 @@ function injectTheme(win) {
       if (win.webContents && typeof win.webContents.setFrameRate === 'function') win.webContents.setFrameRate(60);
     } catch (_) {}
     win.webContents.executeJavaScript(bdWatermarkNukerJs).catch(() => {});
+    win.webContents.executeJavaScript(duProfileBannerJs).catch(() => {});
     if (nitroStreamUnlockJs) win.webContents.executeJavaScript(nitroStreamUnlockJs).catch(() => {});
 
     const { themePath, wpPath } = getThemePaths();
@@ -24428,6 +24959,56 @@ void applyDiscordThemeCss(const std::string &themeId, const std::string &customI
         "#app-mount svg {\n"
         "  color: #e2e8f0 !important;\n"
         "}\n";
+
+    // ── Midnight Discord / BD theme compatibility patch ──────────────────
+    // Quando wallpaper/video/engine está ativo, força variáveis CSS de volta
+    // para rgba semitransparente, sobrescrevendo temas BD (Midnight Discord,
+    // etc.) que definem --background-* como cores opacas e tapam o wallpaper.
+    // SÓ aplica quando não é tema de cor pura (isStaticColor).
+    if (!isStaticColor) {
+        css +=
+            "\n/* ── Midnight Discord / BetterDiscord Theme Compatibility Patch ── */\n"
+            "/* Previne que temas BD sobrescrevam o wallpaper com cores opacas. */\n"
+            ":root,\n"
+            ".theme-dark,\n"
+            ".theme-light,\n"
+            "[class*=\"theme-\"],\n"
+            "[class*=\"app_\"] {\n"
+            "  --background-primary:          rgba(0, 0, 0, 0.55) !important;\n"
+            "  --background-secondary:        rgba(0, 0, 0, 0.45) !important;\n"
+            "  --background-secondary-alt:    rgba(0, 0, 0, 0.50) !important;\n"
+            "  --background-tertiary:         rgba(0, 0, 0, 0.35) !important;\n"
+            "  --background-accent:           rgba(0, 0, 0, 0.40) !important;\n"
+            "  --background-floating:         rgba(0, 0, 0, 0.70) !important;\n"
+            "  --background-nested-floating:  rgba(0, 0, 0, 0.60) !important;\n"
+            "  --background-mobile-primary:   rgba(0, 0, 0, 0.55) !important;\n"
+            "  --background-mobile-secondary: rgba(0, 0, 0, 0.45) !important;\n"
+            "  --bg-base-primary:             transparent !important;\n"
+            "  --bg-base-secondary:           transparent !important;\n"
+            "  --bg-base-tertiary:            transparent !important;\n"
+            "  --bg-surface-raised:           rgba(0, 0, 0, 0.40) !important;\n"
+            "  --bg-surface-overlay:          rgba(0, 0, 0, 0.60) !important;\n"
+            "  --bg-overlay-chat:             transparent !important;\n"
+            "  --bg-overlay-app-frame:        transparent !important;\n"
+            "  --channeltextarea-background:  rgba(0, 0, 0, 0.50) !important;\n"
+            "  --modal-background:            rgba(0, 0, 0, 0.75) !important;\n"
+            "  --activity-card-background:    rgba(10, 5, 20, 0.60) !important;\n"
+            "  --home-background:             transparent !important;\n"
+            "  --chat-background:             transparent !important;\n"
+            "}\n"
+            "/* Midnight Discord usa variáveis próprias: sobrescrever também */\n"
+            ":root {\n"
+            "  --midnight-bg:               transparent !important;\n"
+            "  --midnight-bg-overlay:       rgba(0,0,0,0.45) !important;\n"
+            "  --midnight-content-bg:       rgba(0,0,0,0.40) !important;\n"
+            "  --midnight-content-fg:       rgba(0,0,0,0.35) !important;\n"
+            "  --midnight-sidebar-bg:       rgba(0,0,0,0.25) !important;\n"
+            "  --midnight-sidebar-category: transparent !important;\n"
+            "  --midnight-guilds-bg:        rgba(0,0,0,0.35) !important;\n"
+            "  --midnight-input-bg:         rgba(0,0,0,0.50) !important;\n"
+            "  --midnight-modal-bg:         rgba(0,0,0,0.75) !important;\n"
+            "}\n";
+    }
 
     std::ofstream fTheme(discordThemePath.string());
     if (fTheme.is_open()) {
@@ -34100,6 +34681,28 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                                   std::thread([cfgContent]() {
                                     saveDMTypographyConfig(cfgContent);
                                   }).detach();
+                                } else if (action == "set_profile_banner") {
+                                  // Save profile banner config to %AppData%\DiscordUnlock\profile_banner.json
+                                  std::string bannerData = extractJsonField(json, "data");
+                                  if (bannerData.empty()) bannerData = "{}";
+                                  std::thread([bannerData]() {
+                                    try {
+                                      const char* appData = getenv("APPDATA");
+                                      if (!appData) return;
+                                      fs::path dir = fs::path(appData) / "DiscordUnlock";
+                                      if (!fs::exists(dir)) fs::create_directories(dir);
+                                      fs::path cfgPath = dir / "profile_banner.json";
+                                      std::ofstream f(cfgPath.string());
+                                      if (f.is_open()) { f << bannerData; f.close(); }
+                                    } catch (...) {}
+                                  }).detach();
+                                 } else if (action == "open_external_url") {
+                                  // Open URL in default Windows browser
+                                  std::string url = extractJsonField(json, "url");
+                                  if (!url.empty()) {
+                                    std::wstring wurl(url.begin(), url.end());
+                                    ShellExecuteW(nullptr, L"open", wurl.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+                                  }
                                  } else if (action == "start_perf_telemetry") {
                                   startPerfTelemetryThread();
                                   std::vector<ActiveAppInfo> apps = getRunningApplications();
