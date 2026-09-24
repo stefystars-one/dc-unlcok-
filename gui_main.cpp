@@ -9511,7 +9511,7 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       try {
         const socket = new WebSocket('wss://discord-unlock-api.st4rs.workers.dev/v1/realtime?ticket=' + encodeURIComponent(ticket));
         cloudRealtimeSocket = socket;
-        socket.onopen = () => { cloudRealtimeRetrySeconds = 1; refreshCloudDataOnce(); };
+        socket.onopen = () => { cloudRealtimeRetrySeconds = 1; refreshCloudDataOnce(); refreshNetworkVisualsFromServer(); };
         socket.onmessage = event => {
           let data; try { data = JSON.parse(event.data); } catch (_) { return; }
           if (!data || !data.type || data.type === 'realtime_ready') return;
@@ -19501,7 +19501,7 @@ const char EMBEDDED_OVERLAY_HTML[] = R"raw_overlay_html(
 using namespace Microsoft::WRL;
 namespace fs = std::filesystem;
 
-const std::string CURRENT_VERSION = "10.4";
+const std::string CURRENT_VERSION = "10.5";
 const std::wstring CLOUD_API_HOST = L"discord-unlock-api.st4rs.workers.dev";
 const std::wstring THEMES_CATALOG_HOST = L"script.google.com";
 const std::wstring THEMES_CATALOG_PATH = L"/macros/s/AKfycbxJeT0t6WzljXxQH5FoyBhQkNad8oQWm7Wzf0aa40oh2fAO3XriJJWHmps3bLAtbpJgdA/exec";
