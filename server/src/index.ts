@@ -569,12 +569,13 @@ async function adminProfiles(request: Request, url: URL, env: Env): Promise<Resp
 
 async function adminDevices(request: Request, url: URL, env: Env): Promise<Response> {
   await authenticateAdmin(request, env);
+  await ensureBannerTables(env);
   const q = String(url.searchParams.get('q') ?? '').trim().replace(/[%_]/g, '').slice(0, 64);
   const like = '%' + q + '%';
   const rows = await env.DB.prepare(
     'SELECT d.id,d.hwid_hash,d.status,d.app_version,d.last_seen_at,d.created_at,' +
-    'p.public_id,p.display_name,l.id license_id,l.label license_label,l.max_devices ' +
-    'FROM devices d JOIN profiles p ON p.id=d.profile_id JOIN licenses l ON l.id=d.license_id ' +
+    'p.public_id,p.display_name,l.id license_id,l.label license_label,l.max_devices,b.discord_id discord_id ' +
+    'FROM devices d JOIN profiles p ON p.id=d.profile_id JOIN licenses l ON l.id=d.license_id LEFT JOIN du_banners b ON b.license_key_hash=l.key_hash ' +
     "WHERE (?='' OR p.public_id LIKE ? OR p.display_name LIKE ? OR l.label LIKE ? OR d.hwid_hash LIKE ?) " +
     'ORDER BY l.label COLLATE NOCASE,d.last_seen_at DESC LIMIT 250'
   ).bind(q, like, like, like, like).all();
@@ -1196,7 +1197,7 @@ async function getDuBannerCss(env: Env): Promise<Response> {
   return new Response(css, {
     headers: {
       'Content-Type': 'text/css; charset=utf-8',
-      'Cache-Control': 'public, max-age=60',
+      'Cache-Control': 'no-store, max-age=0',
       'Access-Control-Allow-Origin': '*'
     }
   });
@@ -1725,3 +1726,6 @@ export default {
     await cleanup(env);
   }
 } satisfies ExportedHandler<Env>;
+
+
+

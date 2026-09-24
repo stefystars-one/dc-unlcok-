@@ -138,49 +138,64 @@ function shortHwid(value) {
   const hwid = String(value || '');
   return hwid.length > 22 ? hwid.slice(0, 12) + '…' + hwid.slice(-8) : (hwid || '—');
 }
+function deviceActionButton(device) {
+  const button = document.createElement('button');
+  const active = device.status === 'active';
+  button.textContent = active ? 'Banir HWID' : 'Desbanir HWID';
+  button.className = active ? 'danger' : 'secondary';
+  button.addEventListener('click', async () => {
+    const prompt = active
+      ? 'Banir este HWID? O PC perderá acesso imediatamente, inclusive se a chave for usada novamente.'
+      : 'Desbanir este HWID? Ele voltará a ocupar uma vaga da chave.';
+    if (!confirm(prompt)) return;
+    try {
+      await api('/admin-api/devices/' + device.id + (active ? '/ban' : '/unban'), { method: 'POST' });
+      show(active ? 'HWID banido e sessões encerradas.' : 'HWID reativado.');
+      await refreshAll();
+    } catch (error) { show(error.message, true); }
+  });
+  return button;
+}
 function renderDevicesAdmin() {
-  const limit = 10, visible = showAllDevices ? deviceRows : deviceRows.slice(0, limit);
-  const tbody = $('devices'); tbody.replaceChildren();
-  for (const device of visible) {
-    const row = document.createElement('tr');
-    const key = cell(String(device.license_label || 'Sem identificação'));
-    const keySub = document.createElement('small'); keySub.className = 'license-owner';
-    keySub.textContent = String(device.license_id || '').slice(0, 8) + ' · limite ' + String(device.max_devices || '—');
-    key.append(document.createElement('br'), keySub);
-    const user = cell(device.display_name + ' (' + device.public_id + ')');
-    const pcSub = document.createElement('small'); pcSub.className = 'license-owner';
-    pcSub.textContent = 'Vinculado em ' + fmtDate(device.created_at);
-    user.append(document.createElement('br'), pcSub);
-    const hwid = cell(shortHwid(device.hwid_hash));
-    hwid.title = String(device.hwid_hash || '');
-    hwid.className = 'hwid-fingerprint';
-    if (device.hwid_hash) {
-      const copy = document.createElement('button'); copy.textContent = 'Copiar'; copy.className = 'secondary'; copy.style.marginLeft = '7px';
-      copy.addEventListener('click', async () => { try { await navigator.clipboard.writeText(String(device.hwid_hash)); show('HWID protegido copiado.'); } catch (_) { show('Não foi possível copiar o HWID.', true); } });
-      hwid.append(document.createElement('br'), copy);
-    }
-    const status = cell(device.status === 'active' ? 'Ativo' : 'Banido');
-    status.className = device.status === 'active' ? 'status-active' : 'status-revoked';
-    const actions = document.createElement('td');
-    if (device.status === 'active') {
-      const ban = document.createElement('button'); ban.textContent = 'Banir HWID'; ban.className = 'danger';
-      ban.addEventListener('click', async () => {
-        if (!confirm('Banir este HWID? O PC perderá acesso imediatamente, inclusive se a chave for usada novamente.')) return;
-        try { await api('/admin-api/devices/' + device.id + '/ban', { method: 'POST' }); show('HWID banido e sessões encerradas.'); await refreshAll(); } catch (error) { show(error.message, true); }
-      });
-      actions.append(ban);
-    } else {
-      const unban = document.createElement('button'); unban.textContent = 'Reativar HWID'; unban.className = 'secondary';
-      unban.addEventListener('click', async () => {
-        if (!confirm('Reativar este HWID? Ele voltará a ocupar uma vaga da chave.')) return;
-        try { await api('/admin-api/devices/' + device.id + '/unban', { method: 'POST' }); show('HWID reativado.'); await refreshAll(); } catch (error) { show(error.message, true); }
-      });
-      actions.append(unban);
-    }
-    row.append(key, user, hwid, cell(fmtDate(device.last_seen_at)), cell(device.app_version || '—'), status, actions); tbody.append(row);
+  const host = $('devices'); host.replaceChildren();
+  const groups = new Map();
+  for (const device of deviceRows) {
+    const key = String(device.license_id || 'sem-chave');
+    if (!groups.has(key)) groups.set(key, { label: device.license_label || 'Sem identificação', max: device.max_devices || '—', discordId: device.discord_id || '', devices: [] });
+    groups.get(key).devices.push(device);
   }
-  if (!visible.length) { const row = document.createElement('tr'); const td = cell('Nenhum computador vinculado a chaves compartilhadas.'); td.colSpan = 7; row.append(td); tbody.append(row); }
-  const toggle = $('toggle-devices'); toggle.hidden = deviceRows.length <= limit; toggle.textContent = showAllDevices ? 'Mostrar menos' : 'Mostrar mais (' + (deviceRows.length - limit) + ')';
+  const sorted = [...groups.entries()].sort((a, b) => String(a[1].label).localeCompare(String(b[1].label), 'pt-BR'));
+  for (const [licenseId, group] of sorted) {
+    const details = document.createElement('details'); details.className = 'license-device-group';
+    const summary = document.createElement('summary');
+    const identity = document.createElement('div'); identity.className = 'license-device-title';
+    const title = document.createElement('strong'); title.textContent = group.label;
+    const meta = document.createElement('small'); meta.textContent = group.devices.length + '/' + group.max + ' computador(es)' + (group.discordId ? ' · Discord ID: ' + group.discordId : '');
+    identity.append(title, meta);
+    const hint = document.createElement('span'); hint.className = 'license-device-hint'; hint.textContent = 'Abrir usuários e PCs';
+    summary.append(identity, hint); details.append(summary);
+    const body = document.createElement('div'); body.className = 'license-device-list';
+    for (const device of group.devices) {
+      const item = document.createElement('article'); item.className = 'device-record';
+      const main = document.createElement('div'); main.className = 'device-record-main';
+      const user = document.createElement('strong'); user.textContent = device.display_name || 'Usuário';
+      const ids = document.createElement('small'); ids.textContent = 'DC ID: ' + (device.discord_id || 'não vinculado') + ' · Perfil DU: ' + (device.public_id || '—');
+      const activity = document.createElement('small'); activity.textContent = 'Vinculado: ' + fmtDate(device.created_at) + ' · Última atividade: ' + fmtDate(device.last_seen_at) + ' · Versão: ' + (device.app_version || '—');
+      main.append(user, ids, activity);
+      const hwid = document.createElement('div'); hwid.className = 'device-hwid';
+      const hwidLabel = document.createElement('small'); hwidLabel.textContent = 'HWID protegido';
+      const hwidValue = document.createElement('code'); hwidValue.textContent = shortHwid(device.hwid_hash); hwidValue.title = String(device.hwid_hash || '');
+      const copy = document.createElement('button'); copy.textContent = 'Copiar'; copy.className = 'secondary';
+      copy.addEventListener('click', async () => { try { await navigator.clipboard.writeText(String(device.hwid_hash)); show('HWID protegido copiado.'); } catch (_) { show('Não foi possível copiar o HWID.', true); } });
+      hwid.append(hwidLabel, hwidValue, copy);
+      const control = document.createElement('div'); control.className = 'device-control';
+      const status = document.createElement('span'); status.textContent = device.status === 'active' ? 'Ativo' : 'Banido'; status.className = device.status === 'active' ? 'status-active' : 'status-revoked';
+      control.append(status, deviceActionButton(device));
+      item.append(main, hwid, control); body.append(item);
+    }
+    details.append(body); host.append(details);
+  }
+  if (!sorted.length) { const empty = document.createElement('div'); empty.className = 'device-empty'; empty.textContent = 'Nenhum computador vinculado a chaves compartilhadas.'; host.append(empty); }
 }
 async function loadDevicesAdmin() {
   const data = await api('/admin-api/devices'); deviceRows = Array.isArray(data.devices) ? data.devices : []; renderDevicesAdmin();
@@ -343,7 +358,7 @@ $('create-license').addEventListener('click', async () => {
   try { await api('/admin-api/licenses', { method: 'POST', body: JSON.stringify({ licenseKey, label: $('license-label').value.trim(), maxDevices: Number($('max-devices').value), expiresAt: expiryFromInput($('license-expires-at').value) }) }); $('license-value').textContent = licenseKey; $('new-license').hidden = false; show('Licença criada. Copie a chave agora.'); await loadLicensesAdmin(); } catch (error) { show(error.message, true); }
 });
 $('copy-license').addEventListener('click', async () => { await navigator.clipboard.writeText($('license-value').textContent); show('Chave copiada.'); });
-$('toggle-devices').addEventListener('click', () => { showAllDevices = !showAllDevices; renderDevicesAdmin(); });$('ban-manual-hwid').addEventListener('click', async () => {
+$('ban-manual-hwid').addEventListener('click', async () => {
   const hwid = String($('manual-hwid').value || '').trim();
   const reason = String($('manual-hwid-reason').value || '').trim();
   if (!hwid) { show('Informe o HWID que deseja banir.', true); return; }
@@ -905,3 +920,5 @@ if (pasteBtn) {
 }
 
 refreshAll();
+
+

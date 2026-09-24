@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="referrer" content="no-referrer">
   <title>Painel ADM — Discord Unlock</title>
-  <link rel="stylesheet" href="/styles.css?v=9.2.0">
+  <link rel="stylesheet" href="/styles.css?v=10.3.0">
 </head>
 <body>
   <header>
@@ -232,15 +232,10 @@
       </div>
     </section>
     <div class="columns">
-      <section class="panel">
-        <div class="section-head"><div><h2>Computadores por chave</h2><p>Controle cada PC vinculado a uma chave compartilhada. O HWID aparece como impressão protegida: é único, copiável e não expõe o identificador bruto do computador.</p></div><button id="toggle-devices" class="secondary compact-toggle" type="button" hidden>Mostrar mais</button></div>
-        <div class="row compact-search" style="margin-bottom:12px"><input id="manual-hwid" maxlength="512" placeholder="HWID bruto para banir preventivamente"><input id="manual-hwid-reason" maxlength="160" placeholder="Motivo (opcional)"><button id="ban-manual-hwid" class="danger" type="button">Banir HWID</button><button id="unban-manual-hwid" class="secondary" type="button">Desbanir HWID</button></div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Chave compartilhada</th><th>Usuário / PC</th><th>HWID protegido</th><th>Última atividade</th><th>Versão</th><th>Status</th><th>Ação</th></tr></thead>
-            <tbody id="devices"><tr><td colspan="7">Carregando…</td></tr></tbody>
-          </table>
-        </div>
+      <section class="panel license-moderation" id="license-moderation">
+        <div class="section-head"><div><span class="eyebrow">MODERAÇÃO POR CHAVE</span><h2>Chaves e computadores vinculados</h2><p>Abra uma chave para ver somente os usuários e PCs dela. Cada item mostra nome, DC ID, HWID protegido, atividade e ações de acesso.</p></div></div>
+        <details class="advanced-hwid-tools"><summary>Moderação avançada por HWID bruto</summary><p>Use somente para bloquear preventivamente um computador que ainda não apareceu em uma chave.</p><div class="row compact-search"><input id="manual-hwid" maxlength="512" placeholder="HWID bruto"><input id="manual-hwid-reason" maxlength="160" placeholder="Motivo (opcional)"><button id="ban-manual-hwid" class="danger" type="button">Banir HWID</button><button id="unban-manual-hwid" class="secondary" type="button">Desbanir HWID</button></div></details>
+        <div id="devices" class="license-device-groups"><div class="device-empty">Carregando chaves…</div></div>
       </section>
       <section class="panel">
         <div class="section-head"><h2>Licenças cadastradas</h2><button id="toggle-licenses" class="secondary compact-toggle" type="button" hidden>Mostrar mais</button></div>
@@ -322,6 +317,8 @@
       </div>
     </form>
   </dialog></main>
-  <script src="/admin.js?v=9.7.0" defer></script>
+  <script src="/admin.js?v=10.3.0" defer></script>
 </body>
 </html>
+
+
