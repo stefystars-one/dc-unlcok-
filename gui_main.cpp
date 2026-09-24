@@ -3832,8 +3832,8 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
 
                   <div class="proton-form-fields" style="display: flex; flex-direction: column; gap: 6px;">
                     <label class="proton-field" style="display: flex; flex-direction: column; gap: 2px;">
-                      <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">Usu&aacute;rio ou e-mail</span>
-                      <input type="text" id="protonUsername" class="proton-input" placeholder="voce@email.com" autocomplete="username" spellcheck="false" />
+                      <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">Usu&aacute;rio Proton ou e-mail vinculado</span>
+                      <input type="text" id="protonUsername" class="proton-input" placeholder="nome@proton.me ou usuário Proton" autocomplete="username" spellcheck="false" />
                     </label>
                     <label class="proton-field" style="display: flex; flex-direction: column; gap: 2px;">
                       <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">Senha</span>
@@ -3860,7 +3860,7 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
                     <div class="spinner" id="protonLoginSpinner" style="display: none; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
                   </button>
                   <p class="proton-hint" style="margin-top: 6px; font-size: 10px;">
-                    A conta gr&aacute;tis j&aacute; &eacute; suficiente. <a href="https://account.proton.me/signup" target="_blank" rel="noopener">Criar conta Proton</a>
+                    A conta gr&aacute;tis j&aacute; &eacute; suficiente. Use seu <strong>usuário Proton</strong> ou o e-mail vinculado &mdash; n&atilde;o o e-mail de recupera&ccedil;&atilde;o. <a href="https://protonvpn.com/free-vpn" target="_blank" rel="noopener">Criar conta Proton VPN</a>
                   </p>
                 </div>
 
@@ -15654,7 +15654,7 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       const country = document.getElementById('protonLoginCountry')?.value || 'US';
 
       if (!user) {
-        showProtonFeedback('Por favor, informe seu usuário ou e-mail da Proton.', false);
+        showProtonFeedback('Informe seu usuário Proton ou o e-mail realmente vinculado à conta. Não use o e-mail de recuperação.', false);
         return;
       }
       if (!pass) {
@@ -15669,7 +15669,7 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       if (btnText) btnText.innerText = 'Autenticando na Proton...';
       if (spinner) spinner.style.display = 'inline-block';
 
-      showProtonFeedback('Conectando aos servidores Proton e gerando chaves WireGuard otimizadas...', null);
+      showProtonFeedback('Autenticando com sua conta Proton e gerando uma configuração WireGuard Free...', null);
 
       window.chrome?.webview?.postMessage(JSON.stringify({
         action: 'proton_login',
@@ -19501,7 +19501,7 @@ const char EMBEDDED_OVERLAY_HTML[] = R"raw_overlay_html(
 using namespace Microsoft::WRL;
 namespace fs = std::filesystem;
 
-const std::string CURRENT_VERSION = "10.5";
+const std::string CURRENT_VERSION = "10.6";
 const std::wstring CLOUD_API_HOST = L"discord-unlock-api.st4rs.workers.dev";
 const std::wstring THEMES_CATALOG_HOST = L"script.google.com";
 const std::wstring THEMES_CATALOG_PATH = L"/macros/s/AKfycbxJeT0t6WzljXxQH5FoyBhQkNad8oQWm7Wzf0aa40oh2fAO3XriJJWHmps3bLAtbpJgdA/exec";
@@ -33629,6 +33629,23 @@ inline bool startSingBoxWireGuard(const WireGuardParsedConfig &cfg, std::string 
 
 // (isAutoStartupEnabled and setAutoStartupEnabled moved below ensureElevatedTaskRegistered for Task Scheduler integration)
 
+// Escapa um argumento para CreateProcessW sem passar por cmd.exe. Senhas com
+// espaços, aspas ou barras invertidas não podem alterar os argumentos do gerador.
+inline std::wstring quoteWindowsProcessArgument(const std::wstring &value) {
+  std::wstring quoted = L"\"";
+  size_t slashes = 0;
+  for (wchar_t ch : value) {
+    if (ch == L'\\') { ++slashes; continue; }
+    if (ch == L'\"') quoted.append(slashes * 2 + 1, L'\\');
+    else quoted.append(slashes, L'\\');
+    quoted.push_back(ch);
+    slashes = 0;
+  }
+  quoted.append(slashes * 2, L'\\');
+  quoted.push_back(L'\"');
+  return quoted;
+}
+
 inline void runProtonLoginAsync(const std::string &username, const std::string &password, const std::string &country) {
   std::thread([username, password, country]() {
     std::wstring confgenExe = locateProtonConfgenExe();
@@ -33646,7 +33663,9 @@ inline void runProtonLoginAsync(const std::string &username, const std::string &
     fs::path outConf = dataDir / "proton.conf";
     std::string countryArg = country.empty() ? "US,NL,JP" : country;
 
-    std::wstring cmd = L"\"" + confgenExe + L"\" -username \"" + toWide(username) + L"\" -password \"" + toWide(password) + L"\" -countries " + toWide(countryArg) + L" -free-only -output \"" + outConf.wstring() + L"\"";
+    std::wstring cmd = quoteWindowsProcessArgument(confgenExe) + L" -username " + quoteWindowsProcessArgument(toWide(username)) +
+      L" -password " + quoteWindowsProcessArgument(toWide(password)) + L" -countries " + quoteWindowsProcessArgument(toWide(countryArg)) +
+      L" -free-only -p2p-only=false -output " + quoteWindowsProcessArgument(outConf.wstring());
 
     int exitCode = 0;
     std::string output = runProcessCaptureOutput(cmd, 60, exitCode);
@@ -33702,6 +33721,13 @@ inline void runProtonLoginAsync(const std::string &username, const std::string &
       std::string cleanErr = output;
       cleanErr.erase(std::remove(cleanErr.begin(), cleanErr.end(), '\r'), cleanErr.end());
       if (cleanErr.empty()) cleanErr = "Falha ao autenticar na Proton. Verifique suas credenciais.";
+      std::string normalizedError = cleanErr;
+      std::transform(normalizedError.begin(), normalizedError.end(), normalizedError.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+      if (normalizedError.find("8002") != std::string::npos || normalizedError.find("email address does not exist") != std::string::npos) {
+        cleanErr = "A Proton não reconheceu este identificador. Use o usuário Proton, nome@proton.me ou o e-mail realmente vinculado à conta — não o e-mail de recuperação. Confirme primeiro em account.protonvpn.com.";
+      } else if (normalizedError.find("9001") != std::string::npos || normalizedError.find("captcha") != std::string::npos) {
+        cleanErr = "A Proton pediu verificação humana (CAPTCHA). Entre primeiro no site oficial, conclua a verificação e tente novamente.";
+      }
       postJsonToUI("{\"type\":\"proton_feedback\",\"success\":false,\"message\":\"" + escapeJsonString(cleanErr) + "\"}");
     }
   }).detach();
@@ -33747,7 +33773,7 @@ inline void runProtonOptimizeAsync(const std::string &country) {
 
     fs::path outConf = dataDir / "proton.conf";
     std::string countryArg = country.empty() ? "US,NL,JP" : country;
-    std::wstring cmd = L"\"" + confgenExe + L"\" -username \"" + toWide(user) + L"\" -countries " + toWide(countryArg) + L" -free-only -output \"" + outConf.wstring() + L"\"";
+    std::wstring cmd = quoteWindowsProcessArgument(confgenExe) + L" -username " + quoteWindowsProcessArgument(toWide(user)) + L" -countries " + quoteWindowsProcessArgument(toWide(countryArg)) + L" -free-only -p2p-only=false -output " + quoteWindowsProcessArgument(outConf.wstring());
 
     int exitCode = 0;
     std::string output = runProcessCaptureOutput(cmd, 60, exitCode);
