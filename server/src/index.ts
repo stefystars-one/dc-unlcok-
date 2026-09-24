@@ -1296,6 +1296,7 @@ async function registerDuBanner(request: Request, env: Env): Promise<Response> {
     if (!existing) return json({ ok: true, message: 'Nenhum visual remoto para limpar.' });
     if (existing.license_key_hash !== keyHash) throw new HttpError(403, 'forbidden', 'Sem permissão para alterar este visual.');
     await env.DB.prepare('UPDATE du_banners SET customization_json=?, updated_at=? WHERE discord_id=?').bind('{}', now, body.discordId).run();
+    await publishRealtime(env, null, { type: 'du_profile_changed', discordId: body.discordId });
     return json({ ok: true, message: 'Visual personalizado removido da rede DU.' });
   }
   await env.DB.prepare(
@@ -1339,6 +1340,7 @@ async function registerDuBanner(request: Request, env: Env): Promise<Response> {
       }
     }
   } catch(e) {}
+  await publishRealtime(env, null, { type: 'du_profile_changed', discordId: body.discordId });
   const galleryMessage = visibility === 'community'
     ? 'O GIF também foi compartilhado com a comunidade.'
     : 'O GIF ficou privado e só aparece para você.';
@@ -1364,6 +1366,7 @@ async function deleteDuBanner(request: Request, env: Env): Promise<Response> {
     env.DB.prepare("DELETE FROM du_banner_gallery WHERE owner_discord_id IS NULL AND name IN ('Banner da Comunidade DU','Avatar da Comunidade DU') AND url IN (?,?) AND NOT EXISTS (SELECT 1 FROM du_banners b WHERE b.discord_id <> ? AND (b.banner_url = du_banner_gallery.url OR b.avatar_url = du_banner_gallery.url))")
       .bind(row.banner_url, row.avatar_url || '', body.discordId)
   ]);
+  await publishRealtime(env, null, { type: 'du_profile_changed', discordId: body.discordId, removed: true });
   return json({ ok: true, message: 'Banner e avatar removidos do perfil e da galeria da comunidade.' });
 }
 

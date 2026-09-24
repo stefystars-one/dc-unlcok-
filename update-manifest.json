@@ -1,30 +1,30 @@
 {
   "schema": 1,
-  "version": "10.3",
+  "version": "10.4",
   "artifacts": {
     "DiscordUnlock_Special.exe": {
       "url": "https://discord-unlock-api.st4rs.workers.dev/updates/DiscordUnlock_Special.exe",
-      "sha256": "2d1f33752afe59c88701a3e11010c422a90b253b69707b698313529bfd563733"
+      "sha256": "104d218ef59b022328798491c60d3da39b1971f15055d835ad6d53c59f5e806a"
     },
     "DiscordUnlock_Web_Special.exe": {
       "url": "https://discord-unlock-api.st4rs.workers.dev/updates/DiscordUnlock_Web_Special.exe",
-      "sha256": "2d1f33752afe59c88701a3e11010c422a90b253b69707b698313529bfd563733"
+      "sha256": "104d218ef59b022328798491c60d3da39b1971f15055d835ad6d53c59f5e806a"
     },
     "DiscordUnlock_Chrome_Special.exe": {
       "url": "https://discord-unlock-api.st4rs.workers.dev/updates/DiscordUnlock_Chrome_Special.exe",
-      "sha256": "2d1f33752afe59c88701a3e11010c422a90b253b69707b698313529bfd563733"
+      "sha256": "104d218ef59b022328798491c60d3da39b1971f15055d835ad6d53c59f5e806a"
     },
     "DiscordUnlock.exe": {
       "url": "https://discord-unlock-api.st4rs.workers.dev/updates/DiscordUnlock.exe",
-      "sha256": "1301191a82d1604bc9ab47f59d1d60d3b55fb1ab887024704d191a9a0f3dc7ea"
+      "sha256": "02df1c2397ea3129b90246d1446de4f709c21aa9660acbecb2aca888b4d11b73"
     },
     "DiscordUnlock_Web.exe": {
       "url": "https://discord-unlock-api.st4rs.workers.dev/updates/DiscordUnlock_Web.exe",
-      "sha256": "1301191a82d1604bc9ab47f59d1d60d3b55fb1ab887024704d191a9a0f3dc7ea"
+      "sha256": "02df1c2397ea3129b90246d1446de4f709c21aa9660acbecb2aca888b4d11b73"
     },
     "DiscordUnlock_Chrome.exe": {
       "url": "https://discord-unlock-api.st4rs.workers.dev/updates/DiscordUnlock_Chrome.exe",
-      "sha256": "1301191a82d1604bc9ab47f59d1d60d3b55fb1ab887024704d191a9a0f3dc7ea"
+      "sha256": "02df1c2397ea3129b90246d1446de4f709c21aa9660acbecb2aca888b4d11b73"
     }
   }
 }
