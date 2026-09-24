@@ -1,31 +1,30 @@
 {
   "schema": 1,
-  "version": "9.0",
-  "channel": "stable",
-  "date": "2026-09-23",
-  "notes": "v9.0 - Gravador DXGI 4K 120 FPS 150 Mbps, Replay Instantaneo (Ctrl+F10), Editor Lossless de Clipes, Galeria DU com Banners e Avatares Animados.",
+  "version": "10.2",
   "artifacts": {
     "DiscordUnlock.exe": {
-      "url": "https://github.com/stefystars-one/dc-unlcok-/releases/latest/download/DiscordUnlock.exe",
-      "sha256": "e57e29e80f5945df01b601cdd4b6ce41ce9e9440befbf49004c7601a74fda8c8",
-      "size": 13851648
+      "url": "https://discord-unlock-api.st4rs.workers.dev/updates/DiscordUnlock.exe",
+      "sha256": "eafd15c3cafe4ef8cab6a4da396ddd69c28f19a3ee20a591013f6886a175e160"
     },
     "DiscordUnlock_Special.exe": {
-      "url": "https://github.com/stefystars-one/dc-unlcok-/releases/latest/download/DiscordUnlock_Special.exe",
-      "sha256": "fd706abdf6de08e1cc159a3ea7761df18c4007bd16604ac92eec1f63e27566e3",
-      "size": 13658112
-    }
-  },
-  "files": {
-    "DiscordUnlock.exe": {
-      "url": "https://github.com/stefystars-one/dc-unlcok-/releases/latest/download/DiscordUnlock.exe",
-      "sha256": "e57e29e80f5945df01b601cdd4b6ce41ce9e9440befbf49004c7601a74fda8c8",
-      "size": 13851648
+      "url": "https://discord-unlock-api.st4rs.workers.dev/updates/DiscordUnlock_Special.exe",
+      "sha256": "ad657bb141a78f0137934f30ddaac55fed828af289fb47c07b75dc0ad3056b61"
     },
-    "DiscordUnlock_Special.exe": {
-      "url": "https://github.com/stefystars-one/dc-unlcok-/releases/latest/download/DiscordUnlock_Special.exe",
-      "sha256": "fd706abdf6de08e1cc159a3ea7761df18c4007bd16604ac92eec1f63e27566e3",
-      "size": 13658112
+    "DiscordUnlock_Web.exe": {
+      "url": "https://discord-unlock-api.st4rs.workers.dev/updates/DiscordUnlock_Web.exe",
+      "sha256": "eafd15c3cafe4ef8cab6a4da396ddd69c28f19a3ee20a591013f6886a175e160"
+    },
+    "DiscordUnlock_Web_Special.exe": {
+      "url": "https://discord-unlock-api.st4rs.workers.dev/updates/DiscordUnlock_Web_Special.exe",
+      "sha256": "ad657bb141a78f0137934f30ddaac55fed828af289fb47c07b75dc0ad3056b61"
+    },
+    "DiscordUnlock_Chrome.exe": {
+      "url": "https://discord-unlock-api.st4rs.workers.dev/updates/DiscordUnlock_Chrome.exe",
+      "sha256": "eafd15c3cafe4ef8cab6a4da396ddd69c28f19a3ee20a591013f6886a175e160"
+    },
+    "DiscordUnlock_Chrome_Special.exe": {
+      "url": "https://discord-unlock-api.st4rs.workers.dev/updates/DiscordUnlock_Chrome_Special.exe",
+      "sha256": "ad657bb141a78f0137934f30ddaac55fed828af289fb47c07b75dc0ad3056b61"
     }
   }
 }

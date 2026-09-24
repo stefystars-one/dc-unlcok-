@@ -1,0 +1,38 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "discord-unlock-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-10",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "vars": {
+    "ENVIRONMENT": "production",
+    "ACCESS_TEAM_DOMAIN": "winter-paper-4ed1.cloudflareaccess.com",
+    "ACCESS_AUD": "COLE-O-AUD-DO-CLOUDFLARE-ACCESS",
+    "ADMIN_EMAIL": "stefyst4rs@gmail.com",
+    "GOFILE_UPLOAD_URL": "https://upload.gofile.io/uploadfile"
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "REALTIME_HUB", "class_name": "RealtimeHub" }
+    ]
+  },
+  "exports": {
+    "RealtimeHub": { "type": "durable-object", "storage": "sqlite" }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "discord-unlock-db",
+      "database_id": "78cb8e8e-82e0-4551-a4ef-a11e9aea9d37"
+    }
+  ],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/health", "/v1/*", "/admin-api/*", "/du-banner/*"]
+  },
+  "triggers": {
+    "crons": ["17 4 * * *"]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "discord-unlock-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:local": "wrangler d1 execute discord-unlock-db --local --file=./schema.sql",
+    "db:remote": "wrangler d1 execute discord-unlock-db --remote --file=./schema.sql",
+    "cf-typegen": "wrangler types",
+    "deploy:admin": "wrangler deploy -c wrangler.admin.jsonc"
+  },
+  "dependencies": {
+    "jose": "^6.1.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "latest",
+    "typescript": "^5.7.0",
+    "vitest": "^5.0.0",
+    "wrangler": "^4.0.0"
+  }
+}

@@ -44,6 +44,9 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
 
     /* Streamer Mode */
     body.streamer-mode .server-ip,
+    body.streamer-mode .server-host,
+    body.streamer-mode .server-port,
+    body.streamer-mode #customServerEndpoint,
     body.streamer-mode #hwidVal,
     body.streamer-mode #currentCountry,
     body.streamer-mode .hwid-code,
@@ -3782,7 +3785,7 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
                   <span class="slider"></span>
                 </label>
               </div>
-              <p id="autoRouteOptimizeHint" style="font-size: 10px; color: var(--text-muted); margin: -1px 0 0; line-height: 1.35;">Desligado por padrão. Troca só após 3 leituras ruins e se encontrar uma rota ao menos 120 ms mais rápida.</p>
+              <p id="autoRouteOptimizeHint" style="font-size: 10px; color: var(--text-muted); margin: -1px 0 0; line-height: 1.35;">Desligado por padrão. Troca só após 3 leituras ruins e se encontrar uma rota ao menos 90 ms mais rápida.</p>
               <p class="bypass-note" style="margin-top: 1px;"><span style="color: #22c55e;">●</span> Jogos e navegador continuam na sua rota normal.</p>
             </div>          </section>
 
@@ -4025,6 +4028,34 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
             </div>
             <label class="switch">
               <input type="checkbox" id="modNitroUnlock" checked onchange="playSound('toggle'); toggleNitroUnlock(this.checked)">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="mod-item">
+            <div class="mod-details">
+              <div class="mod-icon-box">🛍️</div>
+              <div>
+                <div class="mod-name">Desbloquear Loja (Banners, Efeitos &amp; Decora&ccedil;&otilde;es)</div>
+                <div class="mod-desc">Libera a aplica&ccedil;&atilde;o direta de banners animados, efeitos de perfil e decora&ccedil;&otilde;es de avatar da Loja do Discord no seu perfil. Mant&eacute;m o bot&atilde;o de compra original ativo para compras reais.</div>
+              </div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="modShopUnlock" checked onchange="playSound('toggle'); toggleShopUnlock(this.checked)">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="mod-item">
+            <div class="mod-details">
+              <div class="mod-icon-box">🎨</div>
+              <div>
+                <div class="mod-name">Desbloquear &Iacute;cones do App &amp; Temas Nitro</div>
+                <div class="mod-desc">Desbloqueia a sele&ccedil;&atilde;o de &iacute;cones personalizados do Discord e temas de degrad&ecirc; Nitro diretamente em Configura&ccedil;&otilde;es &gt; Apar&ecirc;ncia no Discord.</div>
+              </div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="modAppIconsUnlock" checked onchange="playSound('toggle'); toggleAppIconsUnlock(this.checked)">
               <span class="slider"></span>
             </label>
           </div>
@@ -5665,11 +5696,13 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button type="button" onclick="runReliabilityDiagnostics()" style="padding:8px 12px;border:1px solid rgba(56,189,248,.52);border-radius:8px;background:rgba(14,165,233,.13);color:#bae6fd;font-size:11px;font-weight:800;cursor:pointer;">↻ Verificar agora</button>
+            <button id="reliabilityRepairAll" type="button" onclick="repairAllDiagnosedItems()" disabled style="padding:8px 12px;border:1px solid rgba(16,185,129,.50);border-radius:8px;background:rgba(16,185,129,.12);color:#a7f3d0;font-size:11px;font-weight:800;cursor:pointer;opacity:.55;">🛠 Auto-reparar itens detectados</button>
             <button type="button" onclick="sendToCpp('open_crash_log')" style="padding:8px 12px;border:1px solid var(--card-border);border-radius:8px;background:rgba(255,255,255,.05);color:#cbd5e1;font-size:11px;font-weight:800;cursor:pointer;">📄 Abrir log</button>
           </div>
         </div>
 
         <div id="reliabilitySummary" style="padding:12px 14px;border:1px solid rgba(56,189,248,.28);border-radius:10px;background:linear-gradient(135deg,rgba(14,165,233,.11),rgba(88,101,242,.08));color:#dbeafe;font-size:11.5px;margin-bottom:13px;">Aguardando a verificação deste computador…</div>
+        <div id="reliabilityRepairStatus" style="display:none;padding:10px 12px;border:1px solid rgba(16,185,129,.28);border-radius:8px;background:rgba(16,185,129,.07);color:#bbf7d0;font-size:10.5px;margin:-4px 0 13px;"></div>
         <div id="reliabilityGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;"></div>
 
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:13px;margin-top:15px;">
@@ -5748,8 +5781,11 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
             </div>
             <div style="display:flex; gap:8px;">
               <input type="text" id="duBannerDiscordId" placeholder="Ex: 123456789012345678" maxlength="21" oninput="this.value=this.value.replace(/[^0-9]/g,'')" style="flex:1; height:38px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff; padding:0 12px; font-size:12px; font-family:var(--font-mono); outline:none;">
-              <button onclick="duBannerLoadStatus()" style="padding:0 14px; height:38px; background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.35); color:#7dd3fc; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:6px;">
-                🔍 Verificar Status
+              <button type="button" onclick="autoDetectDiscordId(true)" style="padding:0 13px; height:38px; background:rgba(168,85,247,0.18); border:1px solid rgba(168,85,247,0.4); color:#c4b5fd; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:6px;" title="Tenta detectar automaticamente seu ID do Discord aberto">
+                ⚡ Detectar ID
+              </button>
+              <button type="button" onclick="duBannerLoadStatus()" style="padding:0 13px; height:38px; background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.35); color:#7dd3fc; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:6px;">
+                🔍 Status
               </button>
             </div>
           </div>
@@ -5765,14 +5801,14 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
               <!-- Sincronizador oculto para compatibilidade com rotinas do DU Banner -->
               <input type="hidden" id="duBannerUrlInput" oninput="var u=document.getElementById('bannerUrlInput'); if(u){u.value=this.value; previewBannerUrl();}">
               <button onclick="openDuBannerGallery()" style="padding:0 14px; height:38px; background:rgba(168,85,247,0.18); border:1px solid rgba(168,85,247,0.4); color:#c4b5fd; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:6px;">
-                🖼️ Galeria de GIFs
+                🖼️ Loja de GIFs
               </button>
               <button onclick="clearBannerConfig()" title="Limpar campo do banner" style="padding:0 12px; height:38px; background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.3); color:#f87171; border-radius:8px; font-size:15px; cursor:pointer;">
                 🗑️
               </button>
             </div>
             <div style="font-size:10.5px; color:var(--text-muted); line-height:1.5;">
-              ⚠️ Use link direto para o arquivo (.gif, .png, .jpg, .mp4). Imgur, Giphy, Tenor, Catbox e Discord CDN.
+              ⚠️ Use link HTTPS direto para o arquivo (.gif, .png, .jpg, .mp4 ou .webm). Vídeos reproduzem em loop, sem som.
             </div>
           </div>
 
@@ -5785,22 +5821,23 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
             <div style="display: flex; gap: 8px; margin-bottom: 6px;">
               <input type="url" id="avatarUrlInput" placeholder="https://i.imgur.com/avatar.gif   ou   https://media.giphy.com/..." oninput="previewBannerUrl();" style="flex:1; height:38px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff; padding:0 12px; font-size:12px; outline:none; font-family:var(--font-main);">
               <button onclick="openDuBannerGallery()" style="padding:0 14px; height:38px; background:rgba(56,189,248,0.18); border:1px solid rgba(56,189,248,0.4); color:#7dd3fc; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:6px;">
-                👤 Galeria de GIFs
+                👤 Loja de GIFs
               </button>
               <button onclick="clearAvatarConfig()" title="Limpar campo do avatar" style="padding:0 12px; height:38px; background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.3); color:#f87171; border-radius:8px; font-size:15px; cursor:pointer;">
                 🗑️
               </button>
             </div>
             <div style="font-size:10.5px; color:var(--text-muted); line-height:1.5;">
-              ⚠️ O avatar pode ser imagem (.png, .jpg) ou GIF animado (.gif). Ficará visível para quem usa DiscordUnlock!
+              ⚠️ O avatar aceita os mesmos links do banner: imagem, GIF animado e vídeo HTTPS. Vídeos são reproduzidos em loop e sem som.
             </div>
           </div>
 
           <!-- Preview box integrado estilo Discord (Banner 5:2 + Avatar Sobreposto) -->
           <div id="bannerPreviewBox" style="display:none; margin-bottom:28px; border-radius:12px; overflow:visible; position:relative; background:rgba(0,0,0,0.4); border:1px solid rgba(168,85,247,0.35);">
             <div id="bannerPreviewInner" style="width:100%; aspect-ratio:5/2; overflow:hidden; position:relative; border-radius:12px 12px 0 0;">
-              <img id="bannerPreviewImg" src="" alt="Preview do Banner" style="width:100%; height:100%; object-fit:cover; object-position:center 50%; display:none; opacity:0.85;">
-              <video id="bannerPreviewVid" src="" autoplay loop muted playsinline style="width:100%; height:100%; object-fit:cover; object-position:center 50%; display:none; opacity:0.85;"></video>
+              <img id="bannerPreviewImg" referrerpolicy="no-referrer" src="" alt="Preview do Banner" style="width:100%; height:100%; object-fit:cover; object-position:center 50%; display:none; opacity:0.85;">
+              <video id="bannerPreviewVid" referrerpolicy="no-referrer" src="" autoplay loop muted playsinline style="width:100%; height:100%; object-fit:cover; object-position:center 50%; display:none; opacity:0.85;"></video>
+              <iframe id="bannerPreviewYoutube" title="Prévia de vídeo do YouTube" allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" style="width:100%; height:100%; border:0; display:none; pointer-events:none;"></iframe>
               <div id="bannerPlaceholderText" style="display:flex; width:100%; height:100%; align-items:center; justify-content:center; color:rgba(255,255,255,0.25); font-size:12px; font-weight:600;">(Sem Banner Definido)</div>
             </div>
             <div id="bannerPreviewErr" style="display:none; padding:20px; align-items:center; justify-content:center; color:#f87171; font-size:12px; font-weight:600; flex-direction:column; gap:4px;">
@@ -5809,8 +5846,9 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
 
             <!-- Avatar Sobreposto estilo Perfil Real do Discord -->
             <div id="avatarPreviewContainer" style="position:absolute; bottom:-22px; left:18px; width:72px; height:72px; border-radius:50%; border:4px solid #111522; background:#1e1f22; box-shadow:0 6px 18px rgba(0,0,0,0.7); overflow:hidden; display:flex; align-items:center; justify-content:center; z-index:10;">
-              <img id="avatarPreviewImg" src="" alt="Avatar" style="width:100%; height:100%; object-fit:cover; display:none;">
-              <video id="avatarPreviewVid" src="" autoplay loop muted playsinline style="width:100%; height:100%; object-fit:cover; display:none;"></video>
+              <img id="avatarPreviewImg" referrerpolicy="no-referrer" src="" alt="Avatar" style="width:100%; height:100%; object-fit:cover; display:none;">
+              <video id="avatarPreviewVid" referrerpolicy="no-referrer" src="" autoplay loop muted playsinline style="width:100%; height:100%; object-fit:cover; display:none;"></video>
+              <iframe id="avatarPreviewYoutube" title="Prévia de vídeo do YouTube no avatar" allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" style="width:100%; height:100%; border:0; display:none; pointer-events:none;"></iframe>
               <span id="avatarPreviewFallback" style="font-size:28px; color:#94a3b8; user-select:none;">👤</span>
             </div>
 
@@ -5819,24 +5857,88 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
             </div>
           </div>
 
-          <!-- Sliders de Ajuste Visual (Banner) -->
-          <div style="display:flex; flex-direction:column; gap:10px; padding:12px 14px; background:rgba(0,0,0,0.18); border:1px solid rgba(255,255,255,0.06); border-radius:9px; margin-bottom:16px;">
-            <div style="font-size:11px; font-weight:700; color:#cbd5e1; margin-bottom:2px;">⚙️ Ajustes de Exibição do Banner</div>
-            <div style="display:flex; align-items:center; gap:10px;">
-              <label style="font-size:11px; color:var(--text-muted); font-weight:600; width:74px; flex-shrink:0;">Opacidade</label>
-              <input type="range" id="bannerOpacitySlider" min="10" max="100" value="85" oninput="applyBannerPreviewStyles()" style="flex:1; accent-color:#a855f7; cursor:pointer;">
-              <span id="bannerOpacityVal" style="font-size:11px; color:#a78bfa; width:36px; text-align:right;">85%</span>
+          <!-- Ajustes Visuais com Chave Seletora (Banner / Avatar) -->
+          <div style="display:flex; flex-direction:column; gap:12px; padding:13px 15px; background:rgba(0,0,0,0.18); border:1px solid rgba(255,255,255,0.08); border-radius:10px; margin-bottom:16px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:11.5px; font-weight:700; color:#cbd5e1; display:flex; align-items:center; gap:6px;">
+                <span>⚙️</span> Ajustes de Exibição
+              </div>
+              <!-- Chave Seletora Banner / Avatar -->
+              <div style="display:inline-flex; background:rgba(0,0,0,0.35); padding:2px; border-radius:8px; border:1px solid rgba(255,255,255,0.08);">
+                <button type="button" id="duAdjustTabBanner" onclick="switchAdjustTab('banner')" style="padding:4px 12px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; border:none; background:rgba(168,85,247,0.35); color:#e9d5ff; transition:all 0.15s; display:flex; align-items:center; gap:4px;">
+                  🖼️ Banner
+                </button>
+                <button type="button" id="duAdjustTabAvatar" onclick="switchAdjustTab('avatar')" style="padding:4px 12px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; border:none; background:transparent; color:#94a3b8; transition:all 0.15s; display:flex; align-items:center; gap:4px;">
+                  👤 Avatar
+                </button>
+              </div>
             </div>
-            <div style="display:flex; align-items:center; gap:10px;">
-              <label style="font-size:11px; color:var(--text-muted); font-weight:600; width:74px; flex-shrink:0;">Altura</label>
-              <input type="range" id="bannerHeightSlider" min="80" max="400" value="200" oninput="applyBannerPreviewStyles()" style="flex:1; accent-color:#a855f7; cursor:pointer;">
-              <span id="bannerHeightVal" style="font-size:11px; color:#a78bfa; width:42px; text-align:right;">200px</span>
+
+            <!-- Controles do Banner -->
+            <div id="duAdjustPanelBanner" style="display:flex; flex-direction:column; gap:9px;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <label style="font-size:11px; color:var(--text-muted); font-weight:600; width:74px; flex-shrink:0;">Opacidade</label>
+                <input type="range" id="bannerOpacitySlider" min="10" max="100" value="85" oninput="applyBannerPreviewStyles()" style="flex:1; accent-color:#a855f7; cursor:pointer;">
+                <span id="bannerOpacityVal" style="font-size:11px; color:#a78bfa; width:36px; text-align:right;">85%</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <label style="font-size:11px; color:var(--text-muted); font-weight:600; width:74px; flex-shrink:0;">Altura</label>
+                <input type="range" id="bannerHeightSlider" min="80" max="400" value="200" oninput="applyBannerPreviewStyles()" style="flex:1; accent-color:#a855f7; cursor:pointer;">
+                <span id="bannerHeightVal" style="font-size:11px; color:#a78bfa; width:42px; text-align:right;">200px</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <label style="font-size:11px; color:var(--text-muted); font-weight:600; width:74px; flex-shrink:0;">Posição Y</label>
+                <input type="range" id="bannerPosSlider" min="0" max="100" value="50" oninput="applyBannerPreviewStyles()" style="flex:1; accent-color:#a855f7; cursor:pointer;">
+                <span id="bannerPosVal" style="font-size:11px; color:#a78bfa; width:36px; text-align:right;">50%</span>
+              </div>
             </div>
-            <div style="display:flex; align-items:center; gap:10px;">
-              <label style="font-size:11px; color:var(--text-muted); font-weight:600; width:74px; flex-shrink:0;">Posição Y</label>
-              <input type="range" id="bannerPosSlider" min="0" max="100" value="50" oninput="applyBannerPreviewStyles()" style="flex:1; accent-color:#a855f7; cursor:pointer;">
-              <span id="bannerPosVal" style="font-size:11px; color:#a78bfa; width:36px; text-align:right;">50%</span>
+
+            <!-- Controles do Avatar -->
+            <div id="duAdjustPanelAvatar" style="display:none; flex-direction:column; gap:9px;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <label style="font-size:11px; color:var(--text-muted); font-weight:600; width:74px; flex-shrink:0;">Opacidade</label>
+                <input type="range" id="avatarOpacitySlider" min="10" max="100" value="100" oninput="applyBannerPreviewStyles()" style="flex:1; accent-color:#38bdf8; cursor:pointer;">
+                <span id="avatarOpacityVal" style="font-size:11px; color:#7dd3fc; width:36px; text-align:right;">100%</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <label style="font-size:11px; color:var(--text-muted); font-weight:600; width:74px; flex-shrink:0;">Tamanho</label>
+                <input type="range" id="avatarSizeSlider" min="40" max="110" value="72" oninput="applyBannerPreviewStyles()" style="flex:1; accent-color:#38bdf8; cursor:pointer;">
+                <span id="avatarSizeVal" style="font-size:11px; color:#7dd3fc; width:42px; text-align:right;">72px</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <label style="font-size:11px; color:var(--text-muted); font-weight:600; width:74px; flex-shrink:0;">Posição X</label>
+                <input type="range" id="avatarPosXSlider" min="0" max="100" value="50" oninput="applyBannerPreviewStyles()" style="flex:1; accent-color:#38bdf8; cursor:pointer;">
+                <span id="avatarPosXVal" style="font-size:11px; color:#7dd3fc; width:36px; text-align:right;">50%</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <label style="font-size:11px; color:var(--text-muted); font-weight:600; width:74px; flex-shrink:0;">Posição Y</label>
+                <input type="range" id="avatarPosYSlider" min="0" max="100" value="50" oninput="applyBannerPreviewStyles()" style="flex:1; accent-color:#38bdf8; cursor:pointer;">
+                <span id="avatarPosYVal" style="font-size:11px; color:#7dd3fc; width:36px; text-align:right;">50%</span>
+              </div>
             </div>
+          </div>
+
+          <div style="font-size:11px; color:#94a3b8; background:rgba(56,189,248,0.06); border:1px solid rgba(56,189,248,0.2); border-radius:8px; padding:10px 12px; margin-bottom:12px; line-height:1.5;">
+            🌐 <strong>Autoria protegida:</strong> seu DCID identifica você como dono. Só a mesma conta licenciada poderá alterar o nome do GIF depois.
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <label style="font-size:10.5px;color:#94a3b8;font-weight:700;">Nome do GIF <span style="font-weight:400;color:#64748b;">(opcional)</span>
+              <input id="duGalleryGifName" maxlength="80" placeholder="GIF da Comunidade" style="display:block;width:100%;height:36px;margin-top:5px;box-sizing:border-box;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;padding:0 11px;outline:none;">
+            </label>
+            <label style="font-size:10.5px;color:#94a3b8;font-weight:700;">Seu nome <span style="font-weight:400;color:#64748b;">(opcional)</span>
+              <input id="duGalleryAuthorName" maxlength="60" placeholder="Anônimo" style="display:block;width:100%;height:36px;margin-top:5px;box-sizing:border-box;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;padding:0 11px;outline:none;">
+            </label>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+            <label style="flex:1;min-width:210px;display:flex;gap:8px;align-items:flex-start;padding:9px 11px;border:1px solid rgba(16,185,129,.38);background:rgba(16,185,129,.09);border-radius:8px;color:#a7f3d0;font-size:11px;cursor:pointer;">
+              <input type="radio" name="duGalleryVisibility" value="community" checked style="margin-top:2px;accent-color:#10b981;">
+              <span><strong>Compartilhar com a comunidade</strong> <span style="color:#6ee7b7;">(recomendado)</span><br><span style="color:#94a3b8;">Todos podem ver e usar; só você pode renomear.</span></span>
+            </label>
+            <label style="flex:1;min-width:180px;display:flex;gap:8px;align-items:flex-start;padding:9px 11px;border:1px solid rgba(148,163,184,.25);background:rgba(148,163,184,.06);border-radius:8px;color:#cbd5e1;font-size:11px;cursor:pointer;">
+              <input type="radio" name="duGalleryVisibility" value="private" style="margin-top:2px;accent-color:#8b5cf6;">
+              <span><strong>Somente para mim</strong><br><span style="color:#94a3b8;">Não aparece na loja de outros usuários.</span></span>
+            </label>
           </div>
 
           <!-- Botões de Ação Principais -->
@@ -5845,7 +5947,7 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
               🌐 Cadastrar Banner &amp; Avatar na Rede
             </button>
             <button id="duBannerRemoveBtn" onclick="duBannerRemove()" style="flex:1; min-width:140px; padding:12px 14px; background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35); border-radius:9px; color:#f87171; font-size:12.5px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
-              🗑️ Remover Perfil
+              🗑️ Remover Banner e Avatar
             </button>
             <button onclick="saveBannerConfig()" style="padding:12px 14px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.35); border-radius:9px; color:#34d399; font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;" title="Salva preferências locais no cliente">
               💾 Salvar Local
@@ -5862,33 +5964,35 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:12px;">
               <div>
                 <div style="font-size:16px; font-weight:800; color:#fff; display:flex; align-items:center; gap:8px;">
-                  <span>🛍️</span> Loja de Temas &amp; Galeria DU
+                  <span>🛍️</span> Loja de GIFs
                   <span style="font-size:10px; background:linear-gradient(135deg,rgba(56,189,248,0.25),rgba(168,85,247,0.25)); color:#a5b4fc; border:1px solid rgba(168,85,247,0.4); padding:2px 8px; border-radius:12px; font-weight:700;">NUVEM</span>
                 </div>
                 <div style="font-size:11.5px; color:#94a3b8; margin-top:3px;">
-                  Explore GIFs e temas animados cadastrados pela ADM. Escolha aplicar como Banner, Avatar ou Ambos com 1 clique!
+                  Explore GIFs da comunidade e da ADM. Escolha aplicar como Banner, Avatar ou Ambos com 1 clique!
                 </div>
               </div>
               <button onclick="closeDuBannerGallery()" style="border:0; background:rgba(255,255,255,0.06); color:#cbd5e1; cursor:pointer; font-size:18px; line-height:1; width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; transition:background 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.2)';this.style.color='#f87171'" onmouseout="this.style.background='rgba(255,255,255,0.06)';this.style.color='#cbd5e1'">✕</button>
+            </div>
+
+            <div style="display:flex;gap:8px;margin:0 0 10px;align-items:center">
+              <button id="duGallerySourceStore" onclick="setDuGallerySource('store')" style="padding:6px 12px;border-radius:18px;border:1px solid #38bdf8;background:rgba(56,189,248,.2);color:#bae6fd;font-weight:700;cursor:pointer">Loja DU</button>
+              <button id="duGallerySourceKlipy" onclick="setDuGallerySource('klipy')" style="padding:6px 12px;border-radius:18px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#cbd5e1;font-weight:700;cursor:pointer">Buscar no KLIPY</button>
+              <span id="duGalleryKlipyAttribution" style="display:none;margin-left:auto;color:#94a3b8;font-size:11px">Powered by KLIPY</span>
             </div>
 
             <!-- Barra de Busca e Ações -->
             <div style="display:flex; gap:8px; margin-bottom:12px;">
               <div style="flex:1; position:relative; display:flex; align-items:center;">
                 <span style="position:absolute; left:12px; font-size:13px; color:#64748b; pointer-events:none;">🔍</span>
-                <input type="text" id="duBannerGallerySearch" placeholder="Pesquisar por nome ou tag (ex: anime, fofo, peraq, cyberpunk, games, meme)..." oninput="onDuBannerGallerySearch(this.value)" style="width:100%; height:38px; background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff; padding:0 34px 0 34px; font-size:12px; outline:none; font-family:var(--font-main); transition:border 0.2s;" onfocus="this.style.borderColor='rgba(56,189,248,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'">
+                <input type="text" id="duBannerGallerySearch" placeholder="Search KLIPY" oninput="onDuBannerGallerySearch(this.value)" onkeydown="if(event.key==='Enter')searchDuKlipy(this.value,true)" style="width:100%; height:38px; background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:#fff; padding:0 34px 0 34px; font-size:12px; outline:none; font-family:var(--font-main); transition:border 0.2s;" onfocus="this.style.borderColor='rgba(56,189,248,0.6)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'">
                 <button id="duBannerGalleryClearSearch" onclick="clearDuBannerGallerySearch()" style="position:absolute; right:8px; border:0; background:transparent; color:#64748b; cursor:pointer; font-size:13px; display:none; padding:4px;">✕</button>
               </div>
-              <button onclick="loadDuBannerGallery(true)" style="padding:0 14px; height:38px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#cbd5e1; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px; white-space:nowrap; transition:background 0.2s;" title="Atualizar galeria da nuvem">
+              <button onclick="duGallerySource==='klipy'?searchDuKlipy((document.getElementById('duBannerGallerySearch').value||''),true):loadDuBannerGallery(true)" style="padding:0 14px; height:38px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#cbd5e1; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px; white-space:nowrap; transition:background 0.2s;" title="Atualizar galeria da nuvem">
                 🔄 Atualizar
               </button>
             </div>
-
-            <!-- Categorias / Tags Filter Chips -->
-            <div id="duBannerGalleryCategories" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; max-height:68px; overflow-y:auto;"></div>
-
-            <!-- Grid de Temas com Scrollbar -->
-            <div id="duBannerGalleryGrid" style="flex:1; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; padding-right:4px;">
+<!-- Grid de Temas com Scrollbar -->
+            <div id="duBannerGalleryGrid" style="flex:1; min-height:0; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); grid-auto-rows:max-content; align-content:start; gap:12px; padding-right:4px;">
               <div style="color:#64748b; font-size:12px; text-align:center; padding:30px; grid-column:1/-1;">Carregando temas da galeria...</div>
             </div>
 
@@ -7903,7 +8007,18 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) {
-            soundboardList = parsed.map(sound => ({ ...sound, dataUrl: sound.filename ? '' : (sound.dataUrl || '') }));
+            let modified = false;
+            soundboardList = parsed.map(sound => {
+              let kb = (sound.keybind || '').trim();
+              if (kb.toUpperCase() === 'P' || kb.length === 1) {
+                kb = '';
+                modified = true;
+              }
+              return { ...sound, keybind: kb, dataUrl: sound.filename ? '' : (sound.dataUrl || '') };
+            });
+            if (modified) {
+              safeSetStorage('discord_unlock_soundboard', JSON.stringify(soundboardList));
+            }
           }
         }
       } catch(e) {}
@@ -9408,14 +9523,24 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
     function renderReliabilityDiagnostics(msg) {
       const summary = document.getElementById('reliabilitySummary');
       const grid = document.getElementById('reliabilityGrid');
+      const repairAll = document.getElementById('reliabilityRepairAll');
       if (!summary || !grid) return;
       const items = Array.isArray(msg.items) ? msg.items : [];
       const healthy = items.filter(item => item.ok).length;
+      const repairable = items.filter(item => !item.ok && item.repairAction);
+      if (repairAll) {
+        repairAll.disabled = !repairable.length;
+        repairAll.style.opacity = repairable.length ? '1' : '.55';
+        repairAll.title = repairable.length ? 'Executa somente os reparos locais indicados abaixo.' : 'Nenhum reparo local necessário.';
+      }
       summary.innerHTML = `<strong>${healthy}/${items.length || 0} verificações concluídas.</strong> ${msg.summary || 'Estado local atualizado agora.'}`;
       grid.innerHTML = items.map(item => {
         const color = item.ok ? '#34d399' : '#fbbf24';
         const icon = item.ok ? '●' : '!';
-        return `<div style="min-height:92px;padding:12px;border-radius:9px;border:1px solid ${item.ok ? 'rgba(16,185,129,.26)' : 'rgba(245,158,11,.30)'};background:${item.ok ? 'rgba(16,185,129,.06)' : 'rgba(245,158,11,.07)'};"><div style="display:flex;gap:8px;align-items:center;font-weight:800;font-size:11.5px;color:#fff;"><span style="color:${color};font-size:14px;">${icon}</span>${item.label || 'Recurso'}</div><div style="margin-top:7px;font-size:10.5px;line-height:1.45;color:var(--text-muted);">${item.detail || ''}</div></div>`;
+        const repair = !item.ok && item.repairAction
+          ? `<button type="button" onclick="repairDiagnosedItem('${item.repairAction}')" style="margin-top:9px;padding:5px 8px;border:1px solid rgba(16,185,129,.40);border-radius:6px;background:rgba(16,185,129,.12);color:#a7f3d0;font-size:10px;font-weight:800;cursor:pointer;">🛠 ${item.repairLabel || 'Reparar'}</button>`
+          : '';
+        return `<div style="min-height:92px;padding:12px;border-radius:9px;border:1px solid ${item.ok ? 'rgba(16,185,129,.26)' : 'rgba(245,158,11,.30)'};background:${item.ok ? 'rgba(16,185,129,.06)' : 'rgba(245,158,11,.07)'};"><div style="display:flex;gap:8px;align-items:center;font-weight:800;font-size:11.5px;color:#fff;"><span style="color:${color};font-size:14px;">${icon}</span>${item.label || 'Recurso'}</div><div style="margin-top:7px;font-size:10.5px;line-height:1.45;color:var(--text-muted);">${item.detail || ''}</div>${repair}</div>`;
       }).join('');
     }
 
@@ -9424,6 +9549,14 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       if (summary) summary.innerText = 'Verificando recursos locais e fontes de atualização…';
       sendToCpp('run_system_diagnostics');
       sendToCpp('get_hotkeys');
+    }
+    function repairDiagnosedItem(action) {
+      const status = document.getElementById('reliabilityRepairStatus');
+      if (status) { status.style.display = 'block'; status.style.color = '#bfdbfe'; status.innerText = 'Aplicando reparo local seguro…'; }
+      sendToCpp('repair_system_diagnostics', { repair: action });
+    }
+    function repairAllDiagnosedItems() {
+      repairDiagnosedItem('all');
     }
 
     function renderHotkeyConflictStatus() {
@@ -10734,18 +10867,32 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       }
     }
 
-    function toggleStreamerMode() {
-      playSound('toggle');
+    function setStreamerMode(isActive, persist = true) {
       const b = document.body;
       const btn = document.getElementById('btnStreamer');
-      b.classList.toggle('streamer-mode');
-      const isActive = b.classList.contains('streamer-mode');
+      b.classList.toggle('streamer-mode', !!isActive);
       if (btn) {
-        btn.classList.toggle('active', isActive);
+        btn.classList.toggle('active', !!isActive);
+        btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
         btn.innerText = isActive ? '🛡️ Modo Streamer: ON' : '🛡️ Modo Streamer: OFF';
       }
-      showToast(isActive ? 'Modo Streamer Ativado: IPs e dados ocultos!' : 'Modo Streamer Desativado.');
+      if (persist) {
+        try { localStorage.setItem('du_streamer_mode', isActive ? '1' : '0'); } catch(e) {}
+      }
     }
+
+    function toggleStreamerMode() {
+      playSound('toggle');
+      const isActive = !document.body.classList.contains('streamer-mode');
+      setStreamerMode(isActive);
+      showToast(isActive ? '🛡️ Modo Streamer ativado: HWID, IPs e endpoints foram desfocados.' : 'Modo Streamer desativado.');
+    }
+
+    function restoreStreamerMode() {
+      try { setStreamerMode(localStorage.getItem('du_streamer_mode') === '1', false); } catch(e) {}
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', restoreStreamerMode, { once: true });
+    else restoreStreamerMode();
 
     function refreshPingsNow() {
       playSound('click');
@@ -10816,6 +10963,24 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
         safeSetStorage('discord_unlock_real_status', enabled ? 'true' : 'false');
       } catch(e) {}
       showToast(enabled ? '👁️ Detector de Status Real ATIVADO no Discord!' : 'Detector de Status Real DESATIVADO.');
+    }
+
+    function toggleShopUnlock(enabled) {
+      playSound('toggle');
+      sendToCpp('set_shop_unlock', { enabled: enabled ? 'true' : 'false' });
+      try {
+        safeSetStorage('discord_unlock_shop_unlock', enabled ? 'true' : 'false');
+      } catch(e) {}
+      showToast(enabled ? '🛍️ Desbloqueio da Loja ATIVADO. Aplique banners e decorações direto no Discord!' : 'Desbloqueio da Loja DESATIVADO.');
+    }
+
+    function toggleAppIconsUnlock(enabled) {
+      playSound('toggle');
+      sendToCpp('set_app_icons_unlock', { enabled: enabled ? 'true' : 'false' });
+      try {
+        safeSetStorage('discord_unlock_app_icons_unlock', enabled ? 'true' : 'false');
+      } catch(e) {}
+      showToast(enabled ? '🎨 Ícones do App & Temas Nitro ATIVADOS em Aparência no Discord!' : 'Ícones do App & Temas Nitro DESATIVADOS.');
     }
 
     function setRealStatusScope(scope) {
@@ -14122,28 +14287,95 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
     }
 
     // ── Banner & Avatar de Perfil DU ───────────────────────────────────────
+    function persistProfileBannerConfig(rawJson) {
+      try {
+        const bytes = new TextEncoder().encode(rawJson);
+        let binary = '';
+        bytes.forEach(byte => { binary += String.fromCharCode(byte); });
+        return sendToCpp('set_profile_banner', { b64: btoa(binary) });
+      } catch (e) {
+        console.error('Falha ao codificar configuração do perfil:', e);
+        showBannerStatus('❌ Não foi possível salvar a configuração do perfil.', false);
+        return false;
+      }
+    }
+
+    function isDirectVideoUrl(value) {
+      try {
+        const url = new URL(String(value || ''));
+        if (/\.(mp4|webm|m4v|mov)$/i.test(url.pathname)) return true;
+        const mime = decodeURIComponent(url.searchParams.get('mime') || '').toLowerCase();
+        return /^video\/(mp4|webm|quicktime)$/i.test(mime)
+          || (/(^|\.)googlevideo\.com$/i.test(url.hostname)
+            && /\/videoplayback$/i.test(url.pathname)
+            && (url.searchParams.has('itag') || url.searchParams.has('mime')));
+      } catch (_) { return false; }
+    }
+    function getYouTubeEmbedUrl(value) {
+      try {
+        const url = new URL(String(value || ''));
+        const host = url.hostname.toLowerCase();
+        let id = '';
+        if ((host === 'youtube.com' || host === 'www.youtube.com') && url.pathname === '/watch') id = url.searchParams.get('v') || '';
+        else if (host === 'youtu.be') id = url.pathname.split('/').filter(Boolean)[0] || '';
+        if (!/^[A-Za-z0-9_-]{11}$/.test(id)) return '';
+        return 'https://www.youtube-nocookie.com/embed/' + id + '?autoplay=1&mute=1&loop=1&playlist=' + id + '&controls=0&playsinline=1&rel=0';
+      } catch (_) { return ''; }
+    }
+
     function previewBannerUrl() {
       const bannerUrl = ((document.getElementById('bannerUrlInput') || {}).value || '').trim();
       const avatarUrl = ((document.getElementById('avatarUrlInput') || {}).value || '').trim();
       const box = document.getElementById('bannerPreviewBox');
       const bannerImg = document.getElementById('bannerPreviewImg');
       const bannerVid = document.getElementById('bannerPreviewVid');
+      const bannerYoutube = document.getElementById('bannerPreviewYoutube');
       const bannerPlaceholder = document.getElementById('bannerPlaceholderText');
       const bannerErr = document.getElementById('bannerPreviewErr');
       const avatarImg = document.getElementById('avatarPreviewImg');
       const avatarVid = document.getElementById('avatarPreviewVid');
+      const avatarYoutube = document.getElementById('avatarPreviewYoutube');
       const avatarFallback = document.getElementById('avatarPreviewFallback');
+      const showBannerError = message => {
+        if (!bannerErr) return;
+        bannerErr.textContent = '⚠️ ' + message;
+        bannerErr.style.display = 'flex';
+      };
+      const clearBannerVideo = () => {
+        if (!bannerVid) return;
+        bannerVid.onerror = null;
+        bannerVid.style.display = 'none';
+        bannerVid.pause();
+        bannerVid.removeAttribute('src');
+        bannerVid.load();
+      };
+      const clearBannerYoutube = () => {
+        if (!bannerYoutube) return;
+        bannerYoutube.style.display = 'none';
+        bannerYoutube.removeAttribute('src');
+      };
+      const clearAvatarYoutube = () => {
+        if (!avatarYoutube) return;
+        avatarYoutube.style.display = 'none';
+        avatarYoutube.removeAttribute('src');
+      };
 
-      if (!box) return;
+      if (!box) {
+        applyBannerPreviewStyles();
+        return;
+      }
 
       // Se ambos vazios, esconde o box
       if (!bannerUrl && !avatarUrl) {
         box.style.display = 'none';
         if (bannerImg) { bannerImg.style.display = 'none'; bannerImg.src = ''; }
-        if (bannerVid) { bannerVid.style.display = 'none'; bannerVid.src = ''; }
+        clearBannerVideo();
+        clearBannerYoutube();
         if (avatarImg) { avatarImg.style.display = 'none'; avatarImg.src = ''; }
         if (avatarVid) { avatarVid.style.display = 'none'; avatarVid.src = ''; }
+        clearAvatarYoutube();
         if (bannerErr) bannerErr.style.display = 'none';
+        applyBannerPreviewStyles();
         return;
       }
 
@@ -14152,40 +14384,64 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       // 1. Processa Banner
       if (!bannerUrl) {
         if (bannerImg) bannerImg.style.display = 'none';
-        if (bannerVid) bannerVid.style.display = 'none';
+        clearBannerVideo();
+        clearBannerYoutube();
         if (bannerPlaceholder) bannerPlaceholder.style.display = 'flex';
         if (bannerErr) bannerErr.style.display = 'none';
       } else {
+        if (bannerErr) bannerErr.style.display = 'none';
         if (bannerPlaceholder) bannerPlaceholder.style.display = 'none';
-        const isVid = /\.(mp4|webm|ogg)(\?|$)/i.test(bannerUrl);
-        if (isVid) {
+        const youtubeEmbed = getYouTubeEmbedUrl(bannerUrl);
+        const isVid = isDirectVideoUrl(bannerUrl);
+        if (youtubeEmbed) {
+          if (bannerImg) { bannerImg.style.display = 'none'; bannerImg.src = ''; }
+          clearBannerVideo();
+          if (bannerYoutube) { bannerYoutube.src = youtubeEmbed; bannerYoutube.style.display = 'block'; }
+          if (bannerErr) bannerErr.style.display = 'none';
+        } else if (isVid) {
           if (bannerImg) bannerImg.style.display = 'none';
+          clearBannerYoutube();
           if (bannerVid) {
+            const requestedUrl = bannerUrl;
             bannerVid.style.display = 'block';
             bannerVid.src = bannerUrl;
             bannerVid.load();
-            bannerVid.onerror = () => { bannerVid.style.display = 'none'; if (bannerErr) bannerErr.style.display = 'flex'; };
+            bannerVid.onerror = () => {
+              if (((document.getElementById('bannerUrlInput') || {}).value || '').trim() !== requestedUrl) return;
+              bannerVid.style.display = 'none';
+              showBannerError('O servidor recusou este vídeo. Links temporários do YouTube/Google podem expirar ou estar vinculados ao IP.');
+            };
           }
         } else {
-          if (bannerVid) { bannerVid.style.display = 'none'; bannerVid.src = ''; }
+          clearBannerVideo();
+          clearBannerYoutube();
           if (bannerImg) {
+            const requestedUrl = bannerUrl;
             bannerImg.style.display = 'block';
             bannerImg.src = bannerUrl;
-            bannerImg.onerror = () => { bannerImg.style.display = 'none'; if (bannerErr) bannerErr.style.display = 'flex'; };
+            bannerImg.onerror = () => { if (((document.getElementById('bannerUrlInput') || {}).value || '').trim() === requestedUrl) { bannerImg.style.display = 'none'; showBannerError('Link inválido ou inacessível — use um arquivo direto de imagem ou vídeo.'); } };
             bannerImg.onload = () => { if (bannerErr) bannerErr.style.display = 'none'; };
           }
         }
       }
 
-      // 2. Processa Avatar
+      // 2. Processa Avatar — aceita exatamente os mesmos formatos do banner.
       if (!avatarUrl) {
         if (avatarImg) { avatarImg.style.display = 'none'; avatarImg.src = ''; }
         if (avatarVid) { avatarVid.style.display = 'none'; avatarVid.src = ''; }
+        clearAvatarYoutube();
         if (avatarFallback) avatarFallback.style.display = 'block';
       } else {
-        const isAvatarVid = /\.(mp4|webm|ogg)(\?|$)/i.test(avatarUrl);
-        if (isAvatarVid) {
+        const avatarYoutubeEmbed = getYouTubeEmbedUrl(avatarUrl);
+        const isAvatarVid = isDirectVideoUrl(avatarUrl);
+        if (avatarYoutubeEmbed) {
           if (avatarImg) { avatarImg.style.display = 'none'; avatarImg.src = ''; }
+          if (avatarVid) { avatarVid.style.display = 'none'; avatarVid.removeAttribute('src'); }
+          if (avatarYoutube) { avatarYoutube.src = avatarYoutubeEmbed; avatarYoutube.style.display = 'block'; }
+          if (avatarFallback) avatarFallback.style.display = 'none';
+        } else if (isAvatarVid) {
+          if (avatarImg) { avatarImg.style.display = 'none'; avatarImg.src = ''; }
+          clearAvatarYoutube();
           if (avatarFallback) avatarFallback.style.display = 'none';
           if (avatarVid) {
             avatarVid.style.display = 'block';
@@ -14195,6 +14451,7 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
           }
         } else {
           if (avatarVid) { avatarVid.style.display = 'none'; avatarVid.src = ''; }
+          clearAvatarYoutube();
           if (avatarImg) {
             avatarImg.style.display = 'block';
             avatarImg.src = avatarUrl;
@@ -14203,36 +14460,78 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
           }
         }
       }
+      // URL também atualiza e persiste no perfil do Discord, sem exigir que
+      // o usuário mova um slider ou pressione Salvar.
+      applyBannerPreviewStyles();
     }
 
     function clearBannerConfig() {
       playSound('click');
+      clearTimeout(window._duSliderSaveTimer);
       const bInp = document.getElementById('bannerUrlInput');
       const duInp = document.getElementById('duBannerUrlInput');
       if (bInp) bInp.value = '';
       if (duInp) duInp.value = '';
       previewBannerUrl();
+      saveBannerConfig();
       showToast('🗑️ Campo do banner limpo.');
     }
 
     function clearAvatarConfig() {
       playSound('click');
+      clearTimeout(window._duSliderSaveTimer);
       const aInp = document.getElementById('avatarUrlInput');
       if (aInp) aInp.value = '';
       previewBannerUrl();
+      saveBannerConfig();
       showToast('🗑️ Campo do avatar limpo.');
+    }
+
+    function switchAdjustTab(tab) {
+      playSound('click');
+      const btnB = document.getElementById('duAdjustTabBanner');
+      const btnA = document.getElementById('duAdjustTabAvatar');
+      const pB = document.getElementById('duAdjustPanelBanner');
+      const pA = document.getElementById('duAdjustPanelAvatar');
+      if (tab === 'avatar') {
+        if (btnB) { btnB.style.background = 'transparent'; btnB.style.color = '#94a3b8'; }
+        if (btnA) { btnA.style.background = 'rgba(56,189,248,0.35)'; btnA.style.color = '#e0f2fe'; }
+        if (pB) pB.style.display = 'none';
+        if (pA) pA.style.display = 'flex';
+      } else {
+        if (btnB) { btnB.style.background = 'rgba(168,85,247,0.35)'; btnB.style.color = '#e9d5ff'; }
+        if (btnA) { btnA.style.background = 'transparent'; btnA.style.color = '#94a3b8'; }
+        if (pB) pB.style.display = 'flex';
+        if (pA) pA.style.display = 'none';
+      }
     }
 
     function applyBannerPreviewStyles() {
       const opacity = parseInt((document.getElementById('bannerOpacitySlider') || {}).value || 85);
       const height  = parseInt((document.getElementById('bannerHeightSlider')  || {}).value || 200);
       const posY    = parseInt((document.getElementById('bannerPosSlider')     || {}).value || 50);
+
+      const avOpacity = parseInt((document.getElementById('avatarOpacitySlider') || {}).value || 100);
+      const avSize    = parseInt((document.getElementById('avatarSizeSlider')    || {}).value || 72);
+      const avPosX    = parseInt((document.getElementById('avatarPosXSlider')    || {}).value || 50);
+      const avPosY    = parseInt((document.getElementById('avatarPosYSlider')    || {}).value || 50);
+
       const opVal = document.getElementById('bannerOpacityVal');
       const htVal = document.getElementById('bannerHeightVal');
       const pyVal = document.getElementById('bannerPosVal');
       if (opVal) opVal.textContent = opacity + '%';
       if (htVal) htVal.textContent = height + 'px';
       if (pyVal) pyVal.textContent = posY + '%';
+
+      const avOpVal = document.getElementById('avatarOpacityVal');
+      const avSzVal = document.getElementById('avatarSizeVal');
+      const avPxVal = document.getElementById('avatarPosXVal');
+      const avPyVal = document.getElementById('avatarPosYVal');
+      if (avOpVal) avOpVal.textContent = avOpacity + '%';
+      if (avSzVal) avSzVal.textContent = avSize + 'px';
+      if (avPxVal) avPxVal.textContent = avPosX + '%';
+      if (avPyVal) avPyVal.textContent = avPosY + '%';
+
       const inner = document.getElementById('bannerPreviewInner');
       if (inner) inner.style.height = height + 'px';
       const img = document.getElementById('bannerPreviewImg');
@@ -14241,19 +14540,95 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       const pos = 'center ' + posY + '%';
       if (img) { img.style.opacity = op; img.style.objectPosition = pos; }
       if (vid) { vid.style.opacity = op; vid.style.objectPosition = pos; }
+
+      const avContainer = document.getElementById('avatarPreviewContainer');
+      const avImg = document.getElementById('avatarPreviewImg');
+      const avVid = document.getElementById('avatarPreviewVid');
+      const avYoutube = document.getElementById('avatarPreviewYoutube');
+      const avOpStr = (avOpacity / 100).toFixed(2);
+      const avPosition = Number(avPosX) + '% ' + Number(avPosY) + '%';
+      const avScale = Math.max(avSize / 72, 1).toFixed(2);
+      const avTransform = 'scale(' + avScale + ')';
+
+      // Janela de preview fixa no layout padrao de perfil
+      if (avContainer) {
+        avContainer.style.width = '72px';
+        avContainer.style.height = '72px';
+        avContainer.style.bottom = '-22px';
+        avContainer.style.left = '18px';
+        avContainer.style.borderRadius = '50%';
+        avContainer.style.overflow = 'hidden';
+        avContainer.style.opacity = '1';
+      }
+      // Ajustes atuam no GIF em si (zoom/escala, opacidade, raio de borda)
+      [avImg, avVid, avYoutube].filter(Boolean).forEach(media => {
+        media.style.position = 'absolute';
+        media.style.inset = '0';
+        media.style.width = '100%';
+        media.style.height = '100%';
+        media.style.maxWidth = 'none';
+        media.style.maxHeight = 'none';
+        media.style.objectFit = 'cover';
+        media.style.opacity = avOpStr;
+        media.style.objectPosition = avPosition;
+        media.style.transform = avTransform;
+        media.style.transformOrigin = 'center center';
+      });
+
+      // ── Auto-save para Discord em tempo real (debounced 250ms) ────────────
+      clearTimeout(window._duSliderSaveTimer);
+      window._duSliderSaveTimer = setTimeout(function() {
+        const bannerUrl = ((document.getElementById('bannerUrlInput') || document.getElementById('duBannerUrlInput') || {}).value || '').trim();
+        const avatarUrl = ((document.getElementById('avatarUrlInput') || {}).value || '').trim();
+        const cfg = {
+          enabled: !!(bannerUrl || avatarUrl),
+          url: bannerUrl,
+          bannerUrl: bannerUrl,
+          avatarUrl: avatarUrl,
+          opacity: opacity,
+          height: height,
+          posY: posY,
+          avatarOpacity: avOpacity,
+          avatarSize: avSize,
+          avatarPosX: avPosX,
+          avatarPosY: avPosY
+        };
+        const rawJson = JSON.stringify(cfg);
+        try { localStorage.setItem('du_profile_banner', rawJson); } catch(e) {}
+        persistProfileBannerConfig(rawJson);
+      }, 250);
     }
 
     function saveBannerConfig() {
+      clearTimeout(window._duSliderSaveTimer);
       playSound('click');
       const bannerUrl = ((document.getElementById('bannerUrlInput') || document.getElementById('duBannerUrlInput') || {}).value || '').trim();
       const avatarUrl = ((document.getElementById('avatarUrlInput') || {}).value || '').trim();
       const opacity   = parseInt((document.getElementById('bannerOpacitySlider') || {}).value || 85);
       const height    = parseInt((document.getElementById('bannerHeightSlider')  || {}).value || 200);
       const posY      = parseInt((document.getElementById('bannerPosSlider')     || {}).value || 50);
-      const cfg = { enabled: true, url: bannerUrl, bannerUrl: bannerUrl, avatarUrl: avatarUrl, opacity: opacity, height: height, posY: posY };
-      const payload = JSON.stringify({ action: 'set_profile_banner', data: JSON.stringify(cfg) });
-      sendToCpp(payload);
-      try { localStorage.setItem('du_profile_banner', JSON.stringify(cfg)); } catch(e) {}
+
+      const avatarOpacity = parseInt((document.getElementById('avatarOpacitySlider') || {}).value || 100);
+      const avatarSize    = parseInt((document.getElementById('avatarSizeSlider')    || {}).value || 72);
+      const avatarPosX    = parseInt((document.getElementById('avatarPosXSlider')    || {}).value || 50);
+      const avatarPosY    = parseInt((document.getElementById('avatarPosYSlider')    || {}).value || 50);
+
+      const cfg = {
+        enabled: !!(bannerUrl || avatarUrl),
+        url: bannerUrl,
+        bannerUrl: bannerUrl,
+        avatarUrl: avatarUrl,
+        opacity: opacity,
+        height: height,
+        posY: posY,
+        avatarOpacity: avatarOpacity,
+        avatarSize: avatarSize,
+        avatarPosX: avatarPosX,
+        avatarPosY: avatarPosY
+      };
+      const rawJson = JSON.stringify(cfg);
+      try { localStorage.setItem('du_profile_banner', rawJson); } catch(e) {}
+      persistProfileBannerConfig(rawJson);
       showBannerStatus('💾 Preferências locais salvas com sucesso!', true);
     }
 
@@ -14272,8 +14647,21 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
     // ─── DU BANNER & AVATAR SYSTEM ──────────────────────────────────────────
     const DU_BANNER_API = 'https://discord-unlock-api.st4rs.workers.dev';
     let duBannerGalleryItems = [];
-    let duBannerActiveCategory = 'Todos';
     let duBannerSearchQuery = '';
+    let duGallerySource = 'store';
+    let duGallerySettings = null;
+    let duKlipyTimer = null;
+    let duKlipyAbort = null;
+    let duKlipyRequestId = 0;
+    let duGalleryAbort = null;
+    let duGalleryRequestId = 0;
+
+    function getDuLicenseKey() {
+      return (typeof window.g_savedKey === 'string' && window.g_savedKey) ? window.g_savedKey :
+        ((typeof g_savedKey === 'string' && g_savedKey) ? g_savedKey :
+        (localStorage.getItem('du_license_key') ||
+        (document.getElementById('loginKeyInput') ? document.getElementById('loginKeyInput').value.trim() : '')));
+    }
 
     function saveDuBannerToggle(enabled) {
       playSound('click');
@@ -14316,6 +14704,15 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       }
     }
 
+    async function getLocalShopCustomizations() {
+      return await new Promise(resolve => {
+        let settled = false;
+        const finish = value => { if (!settled) { settled = true; clearTimeout(timer); window.__duShopCustomizationsReply = null; resolve(value && typeof value === 'object' ? value : {}); } };
+        const timer = setTimeout(() => finish({}), 900);
+        window.__duShopCustomizationsReply = finish;
+        if (!sendToCpp('get_shop_collectibles')) finish({});
+      });
+    }
     async function duBannerRegister() {
       const idEl = document.getElementById('duBannerDiscordId');
       const urlEl = document.getElementById('bannerUrlInput') || document.getElementById('duBannerUrlInput');
@@ -14325,11 +14722,16 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       const discordId = (idEl.value || '').trim();
       const bannerUrl = (urlEl ? urlEl.value : '').trim();
       const avatarUrl = (avEl ? avEl.value : '').trim();
+      const gifName = ((document.getElementById('duGalleryGifName') || {}).value || '').trim() || 'GIF da Comunidade';
+      const authorName = ((document.getElementById('duGalleryAuthorName') || {}).value || '').trim() || 'Anônimo';
+      const visibilityEl = document.querySelector('input[name="duGalleryVisibility"]:checked');
+      const shareWithCommunity = !visibilityEl || visibilityEl.value !== 'private';
       if (!/^\d{17,21}$/.test(discordId)) { showToast('Informe seu ID do Discord (17 a 21 dígitos).', false); return; }
-      if (!bannerUrl && !avatarUrl) { showToast('Preencha ao menos uma URL para o Banner ou para o Avatar.', false); return; }
+      const customizations = await getLocalShopCustomizations();
+      if (!bannerUrl && !avatarUrl && !Object.keys(customizations).length) { showToast('Preencha uma URL ou aplique um visual da Loja para sincronizar.', false); return; }
       if (bannerUrl && !bannerUrl.startsWith('https://')) { showToast('Informe uma URL de banner segura (HTTPS direto para o arquivo).', false); return; }
       if (avatarUrl && !avatarUrl.startsWith('https://')) { showToast('Informe uma URL de avatar segura (HTTPS direto para o arquivo).', false); return; }
-      const licenseKey = typeof g_savedKey !== 'undefined' ? g_savedKey : (localStorage.getItem('du_license_key') || '');
+      const licenseKey = getDuLicenseKey();
       if (!licenseKey) { showToast('Chave de licença não encontrada. Ative o aplicativo primeiro.', false); return; }
       playSound('click');
       if (btn) { btn.disabled = true; btn.textContent = '⏳ Gravando na rede DU...'; }
@@ -14337,12 +14739,13 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
         const r = await fetch(DU_BANNER_API + '/du-banner', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ discordId, bannerUrl, avatarUrl, licenseKey })
+          body: JSON.stringify({ discordId, bannerUrl, avatarUrl, licenseKey, gifName, authorName, shareWithCommunity, customizations, clearCustomizations: Object.keys(customizations).length === 0 })
         });
         const d = await r.json();
         if (r.ok && d.ok) {
           showToast('✅ ' + (d.message || 'Perfil atualizado na rede DU com sucesso!'));
           try { localStorage.setItem('du_banner_discord_id', discordId); } catch(e) {}
+          try { localStorage.setItem('du_gallery_author_name', authorName === 'Anônimo' ? '' : authorName); } catch(e) {}
           saveBannerConfig();
           duBannerLoadStatus();
         } else {
@@ -14356,46 +14759,196 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
 
     async function duBannerRemove() {
       const idEl = document.getElementById('duBannerDiscordId');
-      if (!idEl) return;
-      const discordId = (idEl.value || '').trim();
-      const licenseKey = typeof g_savedKey !== 'undefined' ? g_savedKey : (localStorage.getItem('du_license_key') || '');
-      if (!discordId) { showToast('Preencha ou detecte seu ID do Discord primeiro.', false); return; }
-      if (!licenseKey) { showToast('Chave de licença não encontrada. Ative o aplicativo primeiro.', false); return; }
+      const discordId = (idEl && idEl.value || '').trim();
+      const licenseKey = (typeof window.g_savedKey === 'string' && window.g_savedKey) ? window.g_savedKey :
+                         ((typeof g_savedKey === 'string' && g_savedKey) ? g_savedKey :
+                         (localStorage.getItem('du_license_key') ||
+                         (document.getElementById('loginKeyInput') ? document.getElementById('loginKeyInput').value.trim() : '')));
       playSound('click');
       const btn = document.getElementById('duBannerRemoveBtn');
       if (btn) { btn.disabled = true; btn.textContent = '⏳ Removendo...'; }
-      try {
-        const r = await fetch(DU_BANNER_API + '/du-banner', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ discordId, licenseKey })
-        });
-        const d = await r.json();
-        if (r.ok && d.ok) {
-          showToast('🗑️ ' + (d.message || 'Perfil removido da rede DU!'));
-          const bInp = document.getElementById('bannerUrlInput');
-          if (bInp) bInp.value = '';
-          const duInp = document.getElementById('duBannerUrlInput');
-          if (duInp) duInp.value = '';
-          const aInp = document.getElementById('avatarUrlInput');
-          if (aInp) aInp.value = '';
-          previewBannerUrl();
-          clearBannerConfig();
-          duBannerLoadStatus();
-        } else {
-          showToast('❌ ' + (d.message || d.error || 'Erro ao remover perfil.'), false);
-        }
-      } catch(e) {
-        showToast('❌ Sem conexão com o servidor.', false);
+
+      // Primeiro limpa no PC; a restauração local não depende da rede responder.
+      clearTimeout(window._duSliderSaveTimer);
+      const emptyConfig = JSON.stringify({ enabled: false, url: '', bannerUrl: '', avatarUrl: '' });
+      persistProfileBannerConfig(emptyConfig);
+      try { localStorage.removeItem('du_profile_banner'); } catch(e) {}
+      try { localStorage.removeItem('du_profile_banner_config'); } catch(e) {}
+      ['bannerUrlInput', 'duBannerUrlInput', 'avatarUrlInput'].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) input.value = '';
+      });
+      try { previewBannerUrl(); } catch(e) {}
+
+      let remoteRemoved = false;
+      let remoteError = '';
+      if (!discordId || !licenseKey) {
+        remoteError = 'O visual foi removido deste PC. Para removê-lo também da galeria online, detecte o ID e entre na conta licenciada.';
+      } else {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        try {
+          const r = await fetch(DU_BANNER_API + '/du-banner', {
+            method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ discordId, licenseKey }), signal: controller.signal
+          });
+          const d = await r.json().catch(() => ({}));
+          remoteRemoved = r.ok && d.ok;
+          if (r.status === 404) remoteRemoved = true;
+          else if (!remoteRemoved) remoteError = d.message || d.error || 'Não foi possível limpar a galeria online.';
+        } catch(e) {
+          remoteError = 'O visual foi removido deste PC, mas o servidor não respondeu para limpar a galeria online.';
+        } finally { clearTimeout(timeout); }
       }
-      if (btn) { btn.disabled = false; btn.textContent = '🗑️ Remover Perfil'; }
+      try { duBannerLoadStatus(); } catch(e) {}
+      if (remoteRemoved) {
+        // Um novo nonce força o watcher do Discord a remover também qualquer CSS público ainda em memória.
+        persistProfileBannerConfig(JSON.stringify({ enabled:false, url:'', bannerUrl:'', avatarUrl:'', syncNonce:Date.now() }));
+        showToast('✅ Banner e avatar removidos do Discord e da galeria da comunidade.');
+      }
+      else showToast('⚠️ Personalização removida deste PC. ' + remoteError, false);
+      if (btn) { btn.disabled = false; btn.textContent = '🗑️ Remover Banner e Avatar'; }
+    }
+
+    async function getDuGallerySettings() {
+      try {
+        const r = await fetch(DU_BANNER_API + '/du-banner/settings', { cache: 'no-store' });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        duGallerySettings = await r.json();
+      } catch (e) {
+        duGallerySettings = { storeEnabled: true, klipyEnabled: false, klipyAppKey: '' };
+      }
+      return duGallerySettings;
+    }
+
+    function setDuGallerySourceStyles() {
+      const storeBtn = document.getElementById('duGallerySourceStore');
+      const klipyBtn = document.getElementById('duGallerySourceKlipy');
+      const attribution = document.getElementById('duGalleryKlipyAttribution');
+      const search = document.getElementById('duBannerGallerySearch');
+      const klipy = duGallerySource === 'klipy';
+      if (storeBtn) {
+        storeBtn.style.background = klipy ? 'rgba(255,255,255,.05)' : 'rgba(56,189,248,.2)';
+        storeBtn.style.borderColor = klipy ? 'rgba(255,255,255,.15)' : '#38bdf8';
+        storeBtn.style.color = klipy ? '#cbd5e1' : '#bae6fd';
+      }
+      if (klipyBtn) {
+        klipyBtn.style.background = klipy ? 'rgba(56,189,248,.2)' : 'rgba(255,255,255,.05)';
+        klipyBtn.style.borderColor = klipy ? '#38bdf8' : 'rgba(255,255,255,.15)';
+        klipyBtn.style.color = klipy ? '#bae6fd' : '#cbd5e1';
+      }
+      if (attribution) attribution.style.display = klipy ? 'inline' : 'none';
+      if (search) search.placeholder = klipy ? 'Buscar GIFs no KLIPY…' : 'Buscar temas e GIFs da Loja DU';
+    }
+
+    async function setDuGallerySource(source) {
+      duGallerySource = source === 'klipy' ? 'klipy' : 'store';
+      duBannerSearchQuery = '';
+      const search = document.getElementById('duBannerGallerySearch');
+      const clear = document.getElementById('duBannerGalleryClearSearch');
+      if (search) search.value = '';
+      if (clear) clear.style.display = 'none';
+      setDuGallerySourceStyles();
+      await getDuGallerySettings();
+
+      if (duGallerySource === 'klipy') {
+        if (!duGallerySettings || !duGallerySettings.klipyEnabled) {
+          const grid = document.getElementById('duBannerGalleryGrid');
+          const count = document.getElementById('duBannerGalleryCount');
+          if (grid) grid.innerHTML = '<div style="grid-column:1/-1;padding:28px;text-align:center;color:#fbbf24">A busca KLIPY está desativada ou sem uma App Key válida. O administrador precisa ativá-la no painel.</div>';
+          if (count) count.textContent = 'Busca KLIPY indisponível';
+          return;
+        }
+        await searchDuKlipy('', true);
+        return;
+      }
+      duBannerGalleryItems = [];
+      if (duGallerySettings && duGallerySettings.storeEnabled === false) {
+        const grid = document.getElementById('duBannerGalleryGrid');
+        const count = document.getElementById('duBannerGalleryCount');
+        if (grid) grid.innerHTML = '<div style="grid-column:1/-1;padding:28px;text-align:center;color:#cbd5e1">A Loja DU está temporariamente oculta pelo administrador.</div>';
+        if (count) count.textContent = 'Loja temporariamente oculta';
+      } else {
+        await loadDuBannerGallery(true);
+      }
+    }
+
+    async function searchDuKlipy(query, force) {
+      if (duGallerySource !== 'klipy') return;
+      const settings = duGallerySettings || await getDuGallerySettings();
+      const grid = document.getElementById('duBannerGalleryGrid');
+      const count = document.getElementById('duBannerGalleryCount');
+
+      if (!settings || !settings.klipyEnabled) {
+        if (grid) grid.innerHTML = '<div style="grid-column:1/-1;padding:28px;text-align:center;color:#fbbf24">A busca KLIPY está desativada ou sem uma App Key válida. O administrador precisa ativá-la no painel.</div>';
+        if (count) count.textContent = 'Busca KLIPY indisponível';
+        return;
+      }
+      const q = String(query || '').trim();
+      if (!q && !force) return;
+      if (duKlipyAbort) { try { duKlipyAbort.abort(); } catch(e) {} }
+      duKlipyAbort = new AbortController();
+      const requestId = ++duKlipyRequestId;
+      if (grid) grid.innerHTML = '<div style="grid-column:1/-1;padding:28px;text-align:center;color:#94a3b8">🔎 Buscando no KLIPY…</div>';
+      if (count) count.textContent = 'Conectando ao KLIPY…';
+      try {
+        // Chamamos a API diretamente do cliente conforme as regras oficiais; media URLs
+        // são exibidas tal como recebidas, sem proxy ou re-hospedagem.
+        const params = new URLSearchParams({ limit: '24' });
+        if (q) params.set('q', q);
+        const response = await fetch(DU_BANNER_API + '/du-banner/klipy?' + params.toString(), {
+          cache: 'no-store', signal: duKlipyAbort.signal
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (requestId !== duKlipyRequestId) return;
+        if (!response.ok) {
+          const msg = payload.message || payload.error || ('HTTP ' + response.status);
+          throw new Error(msg);
+        }
+        const results = Array.isArray(payload.results) ? payload.results :
+          (Array.isArray(payload.data) ? payload.data : (Array.isArray(payload.data?.results) ? payload.data.results : []));
+        duBannerGalleryItems = results.map((item, index) => {
+          const formats = item.media_formats || item.media || {};
+          const main = formats.gif || formats.mediumgif || formats.mp4 || formats.tinygif || formats.tinymp4 || {};
+          const preview = formats.preview || formats.tinygif || formats.mediumgif || main;
+          const url = main.url || item.url || '';
+          return {
+            id: 'klipy-' + String(item.id || item.slug || index),
+            name: item.title || item.content_description || 'GIF KLIPY',
+            url,
+            thumbnail: preview.url || url,
+            category: '',
+            target: 'both',
+            source: 'klipy',
+            itemUrl: item.itemurl || '',
+            type: item.type || ''
+          };
+        }).filter(Boolean);
+        duBannerSearchQuery = '';
+        renderDuBannerGallery();
+        if (count) count.textContent = q ? (duBannerGalleryItems.length + ' resultados KLIPY') : (duBannerGalleryItems.length + ' GIFs em destaque no KLIPY');
+        if (!duBannerGalleryItems.length && grid) {
+          grid.innerHTML = '<div style="grid-column:1/-1;padding:28px;text-align:center;color:#94a3b8">Nenhum GIF encontrado. Tente outro termo.</div>';
+          if (count) count.textContent = 'Nenhum resultado';
+        }
+      } catch (e) {
+        if (e && e.name === 'AbortError') return;
+        if (requestId !== duKlipyRequestId) return;
+        if (grid) grid.innerHTML = '<div style="grid-column:1/-1;padding:28px;text-align:center;color:#f87171">Falha na busca KLIPY: ' + String(e.message || e).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) + '<br><span style="font-size:11px;color:#94a3b8">Confira se a App Key está ativa no painel de administração e tente novamente.</span></div>';
+        if (count) count.textContent = 'Erro na busca KLIPY';
+      }
     }
 
     async function openDuBannerGallery() {
       const modal = document.getElementById('duBannerGalleryModal');
       if (!modal) return;
       modal.style.display = 'flex';
-      if (duBannerGalleryItems.length === 0) await loadDuBannerGallery(false);
+      await getDuGallerySettings();
+      if (duGallerySource === 'klipy') await setDuGallerySource('klipy');
+      else if (duGallerySettings && duGallerySettings.storeEnabled === false) {
+        const grid = document.getElementById('duBannerGalleryGrid');
+        if (grid) grid.innerHTML = '<div style="grid-column:1/-1;padding:28px;text-align:center;color:#cbd5e1">A loja DU está temporariamente oculta pelo administrador.</div>';
+      } else if (duBannerGalleryItems.length === 0) await loadDuBannerGallery(false);
       else renderDuBannerGallery();
     }
 
@@ -14407,54 +14960,56 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
     async function loadDuBannerGallery(force) {
       const grid = document.getElementById('duBannerGalleryGrid');
       const countEl = document.getElementById('duBannerGalleryCount');
-      if (grid && (!duBannerGalleryItems.length || force)) {
-        grid.innerHTML = '<div style="color:#64748b;font-size:12px;text-align:center;padding:30px;grid-column:1/-1;">⏳ Sincronizando temas com o servidor...</div>';
-      }
+      if (duGalleryAbort) { try { duGalleryAbort.abort(); } catch(e) {} }
+      duGalleryAbort = new AbortController();
+      const requestId = ++duGalleryRequestId;
+      if (grid && (!duBannerGalleryItems.length || force)) grid.innerHTML = '<div style="color:#64748b;font-size:12px;text-align:center;padding:30px;grid-column:1/-1;">⏳ Sincronizando GIFs com o servidor...</div>';
       try {
-        const r = await fetch(DU_BANNER_API + '/du-banner/gallery');
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        const d = await r.json();
-        duBannerGalleryItems = d.items || [];
-        renderDuBannerGalleryCategories();
+        // A vitrine comunitária é pública: carregue-a primeiro, para que a Loja DU
+        // nunca dependa de ID/licença local. Em seguida, complemente com os itens
+        // privados do próprio dono, quando houver uma sessão válida.
+        const publicResponse = await fetch(DU_BANNER_API + '/du-banner/gallery?_=' + Date.now(), {
+          cache: 'no-store', signal: duGalleryAbort.signal
+        });
+        if (!publicResponse.ok) throw new Error('HTTP ' + publicResponse.status);
+        let data = await publicResponse.json();
+        const idEl = document.getElementById('duBannerDiscordId');
+        const discordId = String((idEl && idEl.value) || '').trim();
+        const licenseKey = getDuLicenseKey();
+        if (/^\d{17,21}$/.test(discordId) && licenseKey) {
+          try {
+            const ownerResponse = await fetch(DU_BANNER_API + '/du-banner/gallery', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ discordId, licenseKey }), cache: 'no-store', signal: duGalleryAbort.signal
+            });
+            if (ownerResponse.ok) data = await ownerResponse.json();
+          } catch (error) { if (error?.name === 'AbortError') return; }
+        }
+        if (requestId !== duGalleryRequestId) return;
+        if (data.storeEnabled === false) {
+          duBannerGalleryItems = [];
+          if (grid) grid.innerHTML = '<div style="grid-column:1/-1;padding:28px;text-align:center;color:#cbd5e1">A loja de GIFs está temporariamente oculta pelo administrador.</div>';
+          if (countEl) countEl.textContent = 'Loja temporariamente oculta';
+          return;
+        }
+        duBannerGalleryItems = Array.isArray(data.items) ? data.items : [];
         renderDuBannerGallery();
-        if (countEl) countEl.textContent = duBannerGalleryItems.length + ' temas disponíveis na loja';
-        if (force) showToast('🔄 Loja de temas atualizada!');
-      } catch(e) {
+        if (countEl) countEl.textContent = duBannerGalleryItems.length + ' GIFs disponíveis na loja';
+        if (force) showToast('🔄 Loja de GIFs atualizada!');
+      } catch(error) {
+        if (error?.name === 'AbortError' || requestId !== duGalleryRequestId) return;
         if (grid) grid.innerHTML = '<div style="color:#f87171;font-size:12px;text-align:center;padding:24px;grid-column:1/-1;">❌ Falha ao carregar a galeria da nuvem.<br><span style="font-size:10.5px;color:#94a3b8;">Verifique sua conexão ou tente novamente.</span></div>';
         if (countEl) countEl.textContent = 'Erro de sincronização';
       }
     }
-
-    function renderDuBannerGalleryCategories() {
-      const el = document.getElementById('duBannerGalleryCategories');
-      if (!el) return;
-      const tagSet = new Set();
-      duBannerGalleryItems.forEach(item => {
-        if (item.category) {
-          item.category.split(',').forEach(tag => {
-            const trimmed = tag.trim();
-            if (trimmed) tagSet.add(trimmed);
-          });
-        }
-      });
-      const cats = ['Todos', ...Array.from(tagSet).sort()];
-      el.innerHTML = cats.map(c => `
-        <button onclick="filterDuBannerGallery('${c.replace(/'/g, "\\'")}')" 
-          style="padding:4px 11px;border-radius:18px;border:1px solid ${c === duBannerActiveCategory ? 'rgba(56,189,248,0.8)' : 'rgba(255,255,255,0.1)'};background:${c === duBannerActiveCategory ? 'rgba(56,189,248,0.22)' : 'rgba(255,255,255,0.04)'};color:${c === duBannerActiveCategory ? '#7dd3fc' : '#94a3b8'};font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s;" 
-          id="duGalCat_${c}">
-          ${c === 'Todos' ? '🌟 Todos' : '#' + c}
-        </button>
-      `).join('');
-    }
-
-    function filterDuBannerGallery(cat) {
-      playSound('click');
-      duBannerActiveCategory = cat;
-      renderDuBannerGalleryCategories();
-      renderDuBannerGallery();
-    }
-
     function onDuBannerGallerySearch(val) {
+      if (duGallerySource === 'klipy') {
+        const clearBtn = document.getElementById('duBannerGalleryClearSearch');
+        if (clearBtn) clearBtn.style.display = String(val || '').trim() ? 'block' : 'none';
+        clearTimeout(duKlipyTimer);
+        duKlipyTimer = setTimeout(() => { if (!String(val || '').trim() || String(val || '').trim().length >= 2) searchDuKlipy(val || '', true); }, 700);
+        return;
+      }
       duBannerSearchQuery = (val || '').trim().toLowerCase();
       const clearBtn = document.getElementById('duBannerGalleryClearSearch');
       if (clearBtn) clearBtn.style.display = duBannerSearchQuery ? 'block' : 'none';
@@ -14478,7 +15033,7 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
             <div style="font-size:32px;margin-bottom:8px;">🎨</div>
             <div style="font-size:13.5px;font-weight:700;color:#cbd5e1;margin-bottom:4px;">A Loja de Temas está pronta!</div>
             <div style="font-size:11.5px;color:#64748b;max-width:440px;margin:0 auto 14px auto;">
-              Nenhum tema ou GIF foi cadastrado ainda. Pelo <strong>Painel de ADM</strong>, você pode colar links diretos de GIFs (Klipy, Giphy, Tenor, Imgur) e eles aparecerão aqui com tags pesquisáveis para todos os usuários!
+              Nenhum tema ou GIF foi cadastrado ainda. Pelo <strong>Painel de ADM</strong>, você pode colar links diretos de GIFs (Klipy, Giphy, Tenor, Imgur) e eles aparecerão aqui para todos os usuários!
             </div>
             <button onclick="loadDuBannerGallery(true)" style="padding:7px 16px;background:rgba(56,189,248,0.15);border:1px solid rgba(56,189,248,0.35);color:#7dd3fc;border-radius:8px;font-size:11.5px;font-weight:700;cursor:pointer;">
               🔄 Verificar Novamente
@@ -14490,65 +15045,78 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       }
 
       const filtered = duBannerGalleryItems.filter(item => {
-        let matchCat = true;
-        if (duBannerActiveCategory !== 'Todos') {
-          const itemTags = (item.category || '').toLowerCase().split(',').map(s => s.trim());
-          const activeTag = duBannerActiveCategory.toLowerCase();
-          matchCat = itemTags.includes(activeTag) || (item.name || '').toLowerCase().includes(activeTag);
-        }
-        if (!matchCat) return false;
-
-        if (duBannerSearchQuery) {
-          const text = ((item.name || '') + ' ' + (item.category || '')).toLowerCase();
-          return text.includes(duBannerSearchQuery);
-        }
-        return true;
+        if (!duBannerSearchQuery) return true;
+        const text = ((item.name || '') + ' ' + (item.authorName || '') + ' ' +
+          (item.ownerDiscordId || '')).toLowerCase();
+        return text.includes(duBannerSearchQuery);
       });
 
-      if (countEl) countEl.textContent = `Mostrando ${filtered.length} de ${duBannerGalleryItems.length} temas`;
+      if (countEl) countEl.textContent = `Mostrando ${filtered.length} de ${duBannerGalleryItems.length} GIFs`;
 
       if (!filtered.length) {
         grid.innerHTML = `
           <div style="grid-column:1/-1;text-align:center;padding:36px 20px;color:#94a3b8;">
             <div style="font-size:26px;margin-bottom:8px;">🔍</div>
             <div style="font-size:13px;font-weight:700;color:#cbd5e1;margin-bottom:4px;">Nenhum tema encontrado</div>
-            <div style="font-size:11.5px;color:#64748b;">Nenhum item correspondeu à busca "${duBannerSearchQuery}". Tente outra tag ou clique em Todos.</div>
+            <div style="font-size:11.5px;color:#64748b;">Nenhum item correspondeu à busca "${duBannerSearchQuery}". Tente outro termo.</div>
           </div>
         `;
         return;
       }
 
+      const escapeHtml = value => String(value == null ? '' : value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      const encodeInlineArg = value => encodeURIComponent(String(value == null ? '' : value)).replace(/[!'()*]/g, c => '%' + c.charCodeAt(0).toString(16));
       grid.innerHTML = filtered.map(item => {
-        const isVid = /\.(mp4|webm|ogg)(\?|$)/i.test(item.url);
-        const safeUrl = item.url.replace(/'/g, "\\'");
-        const safeName = (item.name || 'Tema DU').replace(/'/g, "\\'");
-        const mediaHtml = isVid
-          ? `<video src="${item.url}" autoplay loop muted playsinline style="width:100%;height:110px;object-fit:cover;display:block;background:#06080e;"></video>`
-          : `<img src="${item.thumbnail || item.url}" alt="${item.name || ''}" loading="lazy" style="width:100%;height:110px;object-fit:cover;display:block;background:#06080e;" onerror="this.onerror=null;this.src='https://placehold.co/300x160/1e293b/94a3b8?text=Tema+DU';">`;
-        
-        const tags = (item.category || 'Geral').split(',').map(t => t.trim()).filter(Boolean);
-        const tagBadges = tags.slice(0, 2).map(t => `<span style="font-size:9px;background:rgba(56,189,248,0.18);border:1px solid rgba(56,189,248,0.3);color:#7dd3fc;padding:1px 6px;border-radius:4px;">${t}</span>`).join(' ');
+        const isVid = isDirectVideoUrl(item.url);
+        const safeUrl = encodeInlineArg(item.url);
+        const safeName = encodeInlineArg(item.name || 'Tema DU');
+        const hasUsableMedia = /^https:\/\//i.test(item.url || '');
+        const previewUrl = item.thumbnail || item.url;
+        const previewFallback = `<div style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;background:#06080e;color:#94a3b8;font-size:11px;">Prévia indisponível</div>`;
+        const mediaHtml = !hasUsableMedia
+          ? `<div style="height:110px;display:flex;align-items:center;justify-content:center;background:#06080e;color:#94a3b8;font-size:11px;">${item.type === 'ad' ? 'Conteúdo patrocinado' : 'Prévia indisponível'}</div>`
+          : isVid
+            ? `<video src="${escapeHtml(item.url)}" referrerpolicy="no-referrer" autoplay loop muted playsinline preload="auto" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:#06080e;" onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='flex'"></video>${previewFallback}`
+            : `<img src="${escapeHtml(previewUrl)}" referrerpolicy="no-referrer" alt="${escapeHtml(item.name || '')}" loading="eager" decoding="async" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:#06080e;" onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='flex'">${previewFallback}`;
+        const targetBadge = item.type === 'ad'
+          ? '<span style="font-size:9px;background:rgba(234,179,8,0.2);border:1px solid rgba(234,179,8,0.35);color:#fde68a;padding:1px 6px;border-radius:4px;">Patrocinado</span>'
+          : item.target === 'avatar' 
+          ? '<span style="font-size:9px;background:rgba(34,197,94,0.2);border:1px solid rgba(34,197,94,0.35);color:#86efac;padding:1px 6px;border-radius:4px;">👤 Avatar</span>'
+          : item.target === 'banner'
+          ? '<span style="font-size:9px;background:rgba(168,85,247,0.2);border:1px solid rgba(168,85,247,0.35);color:#c4b5fd;padding:1px 6px;border-radius:4px;">🖼️ Banner</span>'
+          : '<span style="font-size:9px;background:rgba(56,189,248,0.2);border:1px solid rgba(56,189,248,0.35);color:#7dd3fc;padding:1px 6px;border-radius:4px;">✨ Ambos</span>';
+        const ownerLine = item.ownerDiscordId
+          ? `<div style="font-size:9.5px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="Dono: ${escapeHtml(item.ownerDiscordId)}">por <strong style="color:#cbd5e1">${escapeHtml(item.authorName || 'Anônimo')}</strong> · DCID ${escapeHtml(item.ownerDiscordId)}</div>`
+          : '';
+        const privacyBadge = item.visibility === 'private'
+          ? '<span style="font-size:9px;background:rgba(139,92,246,.2);border:1px solid rgba(139,92,246,.4);color:#ddd6fe;padding:1px 6px;border-radius:4px;">🔒 Só você</span>'
+          : '';
 
         return `
           <div style="background:#0c1017;border:1px solid rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;transition:all 0.2s;box-shadow:0 4px 14px rgba(0,0,0,0.35);" onmouseover="this.style.borderColor='rgba(56,189,248,0.5)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)';this.style.transform='none'">
-            <div style="position:relative;width:100%;overflow:hidden;">
+            <div style="position:relative;width:100%;height:110px;min-height:110px;flex:0 0 110px;overflow:hidden;background:#06080e;">
               ${mediaHtml}
               <div style="position:absolute;top:6px;left:6px;display:flex;gap:4px;flex-wrap:wrap;">
-                ${tagBadges}
+                ${targetBadge}
+                ${privacyBadge}
               </div>
             </div>
             <div style="padding:10px 10px 12px 10px;display:flex;flex-direction:column;gap:8px;flex:1;justify-content:space-between;">
-              <div style="font-size:11.5px;font-weight:700;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${item.name || ''}">
-                ${item.name || 'Tema DU'}
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                <div style="font-size:11.5px;font-weight:700;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;" title="${escapeHtml(item.name || '')}">
+                  ${escapeHtml(item.name || 'Tema DU')}
+                </div>
+                ${item.canEdit ? `<button type="button" onclick="renameDuGalleryItem(decodeURIComponent('${encodeInlineArg(item.id)}'), decodeURIComponent('${safeName}'), event)" style="border:none;background:transparent;cursor:pointer;color:#94a3b8;font-size:12px;padding:2px 4px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s;" onmouseover="this.style.color='#38bdf8';this.style.background='rgba(56,189,248,0.15)'" onmouseout="this.style.color='#94a3b8';this.style.background='transparent'" title="Editar o nome do seu GIF">✏️</button>` : ''}
               </div>
+              ${ownerLine}
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;">
-                <button onclick="applyDuGalleryItem('${safeUrl}', '${safeName}', 'banner', this)" style="padding:5px 0;background:rgba(168,85,247,0.18);border:1px solid rgba(168,85,247,0.38);color:#c4b5fd;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:3px;transition:background 0.15s;" title="Aplicar como capa de fundo / Banner">
+                <button ${hasUsableMedia ? '' : 'disabled'} onclick="applyDuGalleryItem(decodeURIComponent('${safeUrl}'), decodeURIComponent('${safeName}'), 'banner', this)" style="padding:5px 0;background:rgba(168,85,247,0.18);border:1px solid rgba(168,85,247,0.38);color:#c4b5fd;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:3px;transition:background 0.15s;" title="Aplicar como capa de fundo / Banner">
                   🖼️ Banner
                 </button>
-                <button onclick="applyDuGalleryItem('${safeUrl}', '${safeName}', 'avatar', this)" style="padding:5px 0;background:rgba(56,189,248,0.18);border:1px solid rgba(56,189,248,0.38);color:#7dd3fc;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:3px;transition:background 0.15s;" title="Aplicar como foto de perfil / Avatar">
+                <button ${hasUsableMedia ? '' : 'disabled'} onclick="applyDuGalleryItem(decodeURIComponent('${safeUrl}'), decodeURIComponent('${safeName}'), 'avatar', this)" style="padding:5px 0;background:rgba(56,189,248,0.18);border:1px solid rgba(56,189,248,0.38);color:#7dd3fc;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:3px;transition:background 0.15s;" title="Aplicar como foto de perfil / Avatar">
                   👤 Avatar
                 </button>
-                <button onclick="applyDuGalleryItem('${safeUrl}', '${safeName}', 'both', this)" style="grid-column:1/-1;padding:5px 0;background:rgba(16,185,129,0.18);border:1px solid rgba(16,185,129,0.38);color:#6ee7b7;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;transition:background 0.15s;" title="Aplicar no Banner E no Avatar ao mesmo tempo">
+                <button ${hasUsableMedia ? '' : 'disabled'} onclick="applyDuGalleryItem(decodeURIComponent('${safeUrl}'), decodeURIComponent('${safeName}'), 'both', this)" style="grid-column:1/-1;padding:5px 0;background:rgba(16,185,129,0.18);border:1px solid rgba(16,185,129,0.38);color:#6ee7b7;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;transition:background 0.15s;" title="Aplicar no Banner E no Avatar ao mesmo tempo">
                   ✨ Usar no Banner &amp; Avatar
                 </button>
               </div>
@@ -14556,6 +15124,41 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
           </div>
         `;
       }).join('');
+    }
+
+    async function renameDuGalleryItem(id, currentName, ev) {
+      if (ev) ev.stopPropagation();
+      playSound('click');
+      const newName = prompt('Digite o novo nome para este GIF / Tema:', currentName);
+      if (newName === null) return;
+      const trimmed = newName.trim();
+      if (!trimmed || trimmed === currentName) return;
+      const idEl = document.getElementById('duBannerDiscordId');
+      const discordId = String((idEl && idEl.value) || '').trim();
+      const licenseKey = getDuLicenseKey();
+      if (!/^\d{17,21}$/.test(discordId) || !licenseKey) {
+        showToast('❌ Detecte seu DCID e entre com a licença dona deste GIF.', false);
+        return;
+      }
+      try {
+        showToast('⏳ Salvando novo nome...');
+        const r = await fetch(DU_BANNER_API + '/du-banner/gallery/rename', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, name: trimmed, discordId, licenseKey })
+        });
+        const d = await r.json();
+        if (r.ok && d.ok) {
+          showToast('✅ Nome alterado para "' + trimmed + '"');
+          const item = duBannerGalleryItems.find(x => x.id === id);
+          if (item) item.name = trimmed;
+          renderDuBannerGallery();
+        } else {
+          showToast('❌ ' + (d.error || 'Erro ao renomear tema.'), false);
+        }
+      } catch(e) {
+        showToast('❌ Falha na conexão com o servidor.', false);
+      }
     }
 
     function applyDuGalleryItem(url, name, target, btn) {
@@ -14571,6 +15174,7 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
         if (avInp) avInp.value = url;
       }
       previewBannerUrl();
+      saveBannerConfig();
 
       if (btn) {
         const orig = btn.innerHTML;
@@ -14605,7 +15209,46 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       } catch(e) {}
     }
 
+    function applyDetectedDiscordId(uid, source) {
+      const id = String(uid || '').trim();
+      const idEl = document.getElementById('duBannerDiscordId');
+      if (!/^\d{17,21}$/.test(id) || !idEl) return false;
+      idEl.value = id;
+      try { localStorage.setItem('du_banner_discord_id', id); } catch(e) {}
+      duBannerLoadStatus();
+      showToast('⚡ ID detectado' + (source ? ' (' + source + ')' : '') + ': ' + id);
+      return true;
+    }
+
+    async function autoDetectDiscordId(manual) {
+      if (manual) playSound('click');
+      try {
+        const r = await fetch('http://127.0.0.1:45123/current_user_id', { cache: 'no-store' });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const data = await r.json();
+        if (data.active === true && applyDetectedDiscordId(data.userId, 'Discord aberto')) return true;
+      } catch(e) {
+        // O hook do Discord pode estar reiniciando; o fallback nativo abaixo
+        // continua funcionando quando o cache local já existe.
+      }
+      if (manual && sendToCpp('detect_discord_id')) {
+        showToast('🔎 Procurando sua sessão ativa do Discord…');
+        return false;
+      }
+      try {
+        const clipboardId = await navigator.clipboard?.readText();
+        if (applyDetectedDiscordId(clipboardId, 'área de transferência')) return true;
+      } catch(e) {}
+      if (manual) showToast('⚠️ Não encontrei uma sessão ativa. Abra o Discord, aguarde alguns segundos e tente novamente.', false);
+      return false;
+    }
+
     function initBannerTab() {
+      try {
+        const authorInput = document.getElementById('duGalleryAuthorName');
+        const savedAuthor = localStorage.getItem('du_gallery_author_name') || '';
+        if (authorInput && !authorInput.value) authorInput.value = savedAuthor;
+      } catch(e) {}
       // Load saved config
       try {
         const raw = localStorage.getItem('du_profile_banner');
@@ -14640,6 +15283,30 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
             if (sy) sy.value = cfg.posY;
             if (vy) vy.textContent = cfg.posY + '%';
           }
+          if (cfg.avatarOpacity !== undefined) {
+            const so = document.getElementById('avatarOpacitySlider');
+            const vo = document.getElementById('avatarOpacityVal');
+            if (so) so.value = cfg.avatarOpacity;
+            if (vo) vo.textContent = cfg.avatarOpacity + '%';
+          }
+          if (cfg.avatarSize !== undefined) {
+            const ss = document.getElementById('avatarSizeSlider');
+            const vs = document.getElementById('avatarSizeVal');
+            if (ss) ss.value = cfg.avatarSize;
+            if (vs) vs.textContent = cfg.avatarSize + 'px';
+          }
+          if (cfg.avatarPosX !== undefined) {
+            const sx = document.getElementById('avatarPosXSlider');
+            const vx = document.getElementById('avatarPosXVal');
+            if (sx) sx.value = cfg.avatarPosX;
+            if (vx) vx.textContent = cfg.avatarPosX + '%';
+          }
+          if (cfg.avatarPosY !== undefined) {
+            const sy = document.getElementById('avatarPosYSlider');
+            const vy = document.getElementById('avatarPosYVal');
+            if (sy) sy.value = cfg.avatarPosY;
+            if (vy) vy.textContent = cfg.avatarPosY + '%';
+          }
           applyBannerPreviewStyles();
           previewBannerUrl();
         }
@@ -14648,29 +15315,19 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
         if (savedDuId) {
           const idEl = document.getElementById('duBannerDiscordId');
           if (idEl && !idEl.value) { idEl.value = savedDuId; duBannerLoadStatus(); }
+        } else {
+          autoDetectDiscordId(false);
         }
         const duEnabled = localStorage.getItem('du_banner_enabled');
         if (duEnabled === '0') {
           const tog = document.getElementById('duBannerToggle');
           if (tog) tog.checked = false;
         }
-        // Auto-detect Discord user ID from hook
-        (async () => {
-          try {
-            const r = await fetch('http://127.0.0.1:45123/current_user_id', { cache: 'no-store' });
-            if (!r.ok) return;
-            const data = await r.json();
-            const uid = (data.userId || '').trim();
-            if (uid && /^\d{10,22}$/.test(uid)) {
-              const idEl = document.getElementById('duBannerDiscordId');
-              if (idEl && !idEl.value) {
-                idEl.value = uid;
-                try { localStorage.setItem('du_banner_discord_id', uid); } catch(e) {}
-                duBannerLoadStatus();
-              }
-            }
-          } catch(e) {}
-        })();
+        // Auto-detect Discord user ID fallback if not set
+        const curIdEl = document.getElementById('duBannerDiscordId');
+        if (curIdEl && !curIdEl.value) {
+          autoDetectDiscordId(false);
+        }
         // Inject DU Banner CSS on tab open
         injectDuBannerCss();
       } catch(e) {}
@@ -15911,8 +16568,21 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       const msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
       if (!msg) return;
 
-      if (msg.type === 'diagnostics_result') {
+      if (msg.type === 'discord_id_detected') {
+        if (!applyDetectedDiscordId(msg.userId, msg.source || 'sessão do Discord')) {
+          showToast(msg.message || '⚠️ Não encontrei uma sessão ativa. Abra o Discord e tente novamente.', false);
+        }
+      } else if (msg.type === 'shop_collectibles_data') {
+        let customizations = {};
+        try { if (msg.configB64) customizations = JSON.parse(decodeURIComponent(escape(atob(msg.configB64)))); } catch(e) {}
+        try { window.__duShopCustomizationsReply?.(customizations); } catch(e) {}
+      } else if (msg.type === 'diagnostics_result') {
         renderReliabilityDiagnostics(msg);
+      } else if (msg.type === 'diagnostics_repair_result') {
+        const el = document.getElementById('reliabilityRepairStatus');
+        if (el) { el.style.display = 'block'; el.style.color = msg.success ? '#bbf7d0' : '#fecaca'; el.innerText = msg.message || (msg.success ? 'Reparo concluído.' : 'Não foi possível concluir o reparo.'); }
+        if (msg.message) showToast(msg.message, !!msg.success);
+        if (msg.success) setTimeout(runReliabilityDiagnostics, 250);
       } else if (msg.type === 'config_backup_result') {
         const el = document.getElementById('backupStatusText');
         if (el) { el.style.color = msg.success ? '#a7f3d0' : '#fecaca'; el.innerText = msg.message || (msg.success ? 'Backup concluído.' : 'Não foi possível concluir o backup.'); }
@@ -15999,6 +16669,16 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
           if (nitroEl) nitroEl.checked = msg.nitro_enabled;
           try { safeSetStorage('discord_unlock_nitro_features', msg.nitro_enabled ? 'true' : 'false'); } catch(e) {}
         }
+        if (typeof msg.shop_unlock_enabled === 'boolean') {
+          const shopEl = document.getElementById('modShopUnlock');
+          if (shopEl) shopEl.checked = msg.shop_unlock_enabled;
+          try { safeSetStorage('discord_unlock_shop_unlock', msg.shop_unlock_enabled ? 'true' : 'false'); } catch(e) {}
+        }
+        if (typeof msg.app_icons_unlock_enabled === 'boolean') {
+          const appIconsEl = document.getElementById('modAppIconsUnlock');
+          if (appIconsEl) appIconsEl.checked = msg.app_icons_unlock_enabled;
+          try { safeSetStorage('discord_unlock_app_icons_unlock', msg.app_icons_unlock_enabled ? 'true' : 'false'); } catch(e) {}
+        }
         if (msg.version) {
           const vEl = document.getElementById('settingsVersionText');
           if (vEl) vEl.innerText = msg.version + ' (Build 2026)';
@@ -16018,6 +16698,8 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
         }
 
                 if (msg.savedKey) {
+          window.g_savedKey = msg.savedKey;
+          try { localStorage.setItem('du_license_key', msg.savedKey); } catch(e) {}
           const input = document.getElementById('loginKeyInput');
           if (input) input.value = msg.savedKey;
         }
@@ -16102,6 +16784,18 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
         }
         const realStatusScopeEl = document.getElementById('realStatusScope');
         if (realStatusScopeEl && msg.scope) realStatusScopeEl.value = msg.scope === 'friends' ? 'friends' : 'all';
+      } else if (msg.type === 'shop_unlock_state') {
+        const shopEl = document.getElementById('modShopUnlock');
+        if (shopEl) {
+          shopEl.checked = !!msg.enabled;
+          try { safeSetStorage('discord_unlock_shop_unlock', msg.enabled ? 'true' : 'false'); } catch(e) {}
+        }
+      } else if (msg.type === 'app_icons_unlock_state') {
+        const appIconsEl = document.getElementById('modAppIconsUnlock');
+        if (appIconsEl) {
+          appIconsEl.checked = !!msg.enabled;
+          try { safeSetStorage('discord_unlock_app_icons_unlock', msg.enabled ? 'true' : 'false'); } catch(e) {}
+        }
       } else if (msg.type === 'startup_status') {
         const sToggle = document.getElementById('startupToggle');
         if (sToggle) {
@@ -16281,6 +16975,11 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
         resetLoginSubmitButton();
         if (msg.success) {
           playSound('success');
+          const loginInput = document.getElementById('loginKeyInput');
+          if (loginInput && loginInput.value.trim()) {
+            window.g_savedKey = loginInput.value.trim();
+            try { localStorage.setItem('du_license_key', window.g_savedKey); } catch(e) {}
+          }
           document.getElementById('loginScreen').style.display = 'none';
           if (msg.subscription) {
             subscriptionData = msg.subscription;
@@ -16483,7 +17182,7 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
         }
         const btnBug = document.getElementById('btnSubmitBug');
         if (btnBug) {
-          btnBug.innerHTML = '✦ Enviar Relatório de Bug com Logs';
+          btnBug.innerHTML = '🐛 Enviar Relatório com Logs';
           btnBug.disabled = false;
           btnBug.style.opacity = '1';
         }
@@ -16492,9 +17191,9 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
           if (document.getElementById('feedbackText')) document.getElementById('feedbackText').value = '';
           if (document.getElementById('bugText')) document.getElementById('bugText').value = '';
           closeModal('modalBug');
-          showToast('✅ Enviado com sucesso! Arquivo de logs anexado.');
+          showToast(msg.message || '✅ Enviado com sucesso! Arquivo de diagnóstico anexado.');
         } else {
-          showToast('⚠️ Erro ao enviar relatório. Verifique sua conexão.', false);
+          showToast(msg.message || '⚠️ Erro ao enviar relatório. Verifique sua conexão.', false);
         }
       } else if (msg.type === 'cloud_file_selected') {
         if (msg.filePath) {
@@ -16874,6 +17573,18 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       if (realStatusScopeEl) realStatusScopeEl.value = savedRealStatusScope;
       sendToCpp('set_real_status_scope', { scope: savedRealStatusScope });
       sendToCpp('get_real_status_state', {});
+
+      // Desbloqueio da Loja (Banners, Efeitos & Decorações) - Padrão: LIGADO
+      const savedShop = safeGetStorage('discord_unlock_shop_unlock', 'true') === 'true';
+      const shopEl = document.getElementById('modShopUnlock');
+      if (shopEl) shopEl.checked = savedShop;
+      sendToCpp('set_shop_unlock', { enabled: savedShop ? 'true' : 'false' });
+
+      // Desbloqueio de Ícones do App & Temas Nitro - Padrão: LIGADO
+      const savedAppIcons = safeGetStorage('discord_unlock_app_icons_unlock', 'true') === 'true';
+      const appIconsEl = document.getElementById('modAppIconsUnlock');
+      if (appIconsEl) appIconsEl.checked = savedAppIcons;
+      sendToCpp('set_app_icons_unlock', { enabled: savedAppIcons ? 'true' : 'false' });
 
       startPingAutoRefresh();
     } catch(e) {}
@@ -18765,7 +19476,7 @@ const char EMBEDDED_OVERLAY_HTML[] = R"raw_overlay_html(
 using namespace Microsoft::WRL;
 namespace fs = std::filesystem;
 
-const std::string CURRENT_VERSION = "9.0";
+const std::string CURRENT_VERSION = "10.2";
 const std::wstring CLOUD_API_HOST = L"discord-unlock-api.st4rs.workers.dev";
 const std::wstring THEMES_CATALOG_HOST = L"script.google.com";
 const std::wstring THEMES_CATALOG_PATH = L"/macros/s/AKfycbxJeT0t6WzljXxQH5FoyBhQkNad8oQWm7Wzf0aa40oh2fAO3XriJJWHmps3bLAtbpJgdA/exec";
@@ -20388,6 +21099,75 @@ std::string cloudApiRequest(const std::wstring &method, const std::wstring &path
 std::string postJsonToCloudApi(const std::wstring &path, const std::string &payload) {
   return cloudApiRequest(L"POST", path, payload);
 }
+static std::atomic<bool> g_duNetworkVisualSyncStarted{false};
+
+static std::string readDuVisualStateFile(const fs::path &file, size_t maxBytes = 65536) {
+  try {
+    std::error_code ec;
+    if (!fs::exists(file, ec) || fs::file_size(file, ec) > maxBytes) return "";
+    std::ifstream input(file, std::ios::binary);
+    if (!input.is_open()) return "";
+    return std::string((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+  } catch (...) { return ""; }
+}
+
+// Faz uma chamada autenticada apenas quando o estado visual local efetivamente muda.
+static void syncDuNetworkVisualsOnce() {
+  try {
+    wchar_t appData[MAX_PATH];
+    if (GetEnvironmentVariableW(L"APPDATA", appData, MAX_PATH) == 0) return;
+    const fs::path dir = fs::path(appData) / "DiscordUnlock";
+    std::string discordId = readDuVisualStateFile(dir / "current_discord_id.txt", 64);
+    discordId.erase(std::remove_if(discordId.begin(), discordId.end(), [](unsigned char c) { return std::isspace(c); }), discordId.end());
+    if (!std::regex_match(discordId, std::regex("^[0-9]{17,21}$"))) return;
+    const std::string licenseKey = getStoredLicenseKey();
+    if (licenseKey.empty()) return;
+    const fs::path profileFile = dir / "profile_banner.json";
+    const fs::path collectiblesFile = dir / "applied_collectibles.json";
+    std::error_code stateEc;
+    const bool hasProfileState = fs::exists(profileFile, stateEc);
+    stateEc.clear();
+    const bool hasCollectiblesState = fs::exists(collectiblesFile, stateEc);
+    const std::string profile = readDuVisualStateFile(profileFile);
+    std::string collectibles = readDuVisualStateFile(collectiblesFile, 16384);
+    if (collectibles.empty() || collectibles.find('{') == std::string::npos) collectibles = "{}";    std::string bannerUrl, avatarUrl;
+    if (profile.find("\"enabled\":false") == std::string::npos) {
+      bannerUrl = extractJsonField(profile, "bannerUrl");
+      if (bannerUrl.empty()) bannerUrl = extractJsonField(profile, "url");
+      avatarUrl = extractJsonField(profile, "avatarUrl");
+    }
+    const std::string fingerprint = discordId + "\n" + profile + "\n" + collectibles;
+    static std::mutex fingerprintMutex;
+    static std::string syncedFingerprint;
+    { std::lock_guard<std::mutex> lock(fingerprintMutex); if (fingerprint == syncedFingerprint) return; }
+    const bool clearOnly = bannerUrl.empty() && avatarUrl.empty() && collectibles == "{}";
+    // Arquivo ausente é estado desconhecido, nunca um pedido implícito de remoção.
+    if (clearOnly && !hasProfileState && !hasCollectiblesState) return;
+    const std::string payload = "{\"discordId\":\"" + escapeJsonString(discordId) +
+      "\",\"bannerUrl\":\"" + escapeJsonString(bannerUrl) +
+      "\",\"avatarUrl\":\"" + escapeJsonString(avatarUrl) +
+      "\",\"licenseKey\":\"" + escapeJsonString(licenseKey) +
+      "\",\"customizations\":" + collectibles +
+      ",\"clearCustomizations\":" + (clearOnly ? "true" : "false") +
+      ",\"shareWithCommunity\":true}";
+    const std::string reply = postJsonToCloudApi(L"/du-banner", payload);
+    if (reply.find("\"ok\":true") != std::string::npos) {
+      std::lock_guard<std::mutex> lock(fingerprintMutex); syncedFingerprint = fingerprint;
+    }
+  } catch (...) {}
+}
+
+static void startDuNetworkVisualSyncWatch() {
+  bool expected = false;
+  if (!g_duNetworkVisualSyncStarted.compare_exchange_strong(expected, true)) return;
+  std::thread([]() {
+    for (;;) {
+      syncDuNetworkVisualsOnce();
+      // Leitura local leve; sem alteração não há chamada à rede.
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+  }).detach();
+}
 bool validateAndSaveKey(const std::string &inputKey, std::string &errorReason, std::string &planInfo) {
   std::string key = inputKey;
   key.erase(std::remove_if(key.begin(), key.end(), ::isspace), key.end());
@@ -21115,8 +21895,8 @@ void ensureBetterDiscordRuntime() {
         fStream << R"PLUGIN_JS(/**
  * @name NitroStreamUnlock
  * @author DiscordUnlock
- * @description Desbloqueia transmissões em 1440p / 60 FPS, Emojis Globais sem Nitro, Detector de Atividade Real e Envio de Arquivos Grandes (Nuvem Sem Limites).
- * @version 4.1.0
+ * @description Desbloqueia transmissões em 1440p / 60 FPS, Emojis Globais sem Nitro, Loja do Discord (Banners, Efeitos & Decorações diretamente nos Cards e Modais), Ícones do App & Temas Nitro e Detector de Atividade Real.
+ * @version 4.5.0
  */
 
 const PLUGIN_NAME = 'DUNitro';
@@ -21131,19 +21911,28 @@ module.exports = class NitroStreamUnlock {
     this._registeredToken = null;
     this._isSubscribed = false;
     this._lastEnabledState = null;
-    // Leituras de arquivo são feitas fora do caminho quente do seletor de emojis.
     this._nitroEnabledCached = null;
     this._nitroEnabledCachedAt = 0;
     this._realStatusScopeCached = null;
-    this._onFluxDispatch = this._onFluxDispatch.bind(this);
-    this._updateRealStatusBadges = this._updateRealStatusBadges.bind(this);
+    this._shopObserver = null;
+    this._profilePopoutObserver = null;
+    this._shopScanTimer = null;
+    this._shopScanQueued = false;
+    this._collectibleOriginal = { user: null, profile: null };
+    this._networkCollectibles = new Map();
+    this._networkCollectibleOriginal = { users: new Map(), profiles: new Map() };
+    this._networkCollectiblesFetchedAt = 0;
+    this._patchesApplied = false;
+    this._appIconsEventsHooked = false;
+    // removed
+    // removed
     if (typeof window !== 'undefined') {
       window.NitroStreamUnlockInstance = this;
     }
   }
 
   start() {
-    console.log('[DUNitro] v4.1.0 starting (Quad HD Stream + FakeNitro Emojis + RealStatus Radar + Cloud Uploader + Realtime DM Typography)...');
+    console.log('[DUNitro] v4.5.0 starting (Stream Quad HD + FakeNitro Emojis + Shop Cards & Modal Collectibles + App Icons & Gradient Themes + RealStatus Radar)...');
     if (typeof window !== 'undefined') {
       window.NitroStreamUnlockInstance = this;
     }
@@ -21152,22 +21941,26 @@ module.exports = class NitroStreamUnlock {
     this._syncRealStatus();
     this._initCloudUploader();
     this._initDMTypography();
+    this._initShopUnlock();
+    this._refreshNetworkCollectibles(true);
+    this._initAppIconsAndThemes();
 
     this._timer = setInterval(() => {
       this._injectStyles();
-      this._applyAllPatches();
       this._syncRealStatus();
       this._injectCloudUploadButton();
       this._applyDMTypography();
-    }, 6000);
+      this._queueShopRefresh(true);
+      this._refreshNetworkCollectibles();
+    }, 2500);
 
-    console.log('[DUNitro] v4.1.0 initialized successfully!');
+    console.log('[DUNitro] v4.5.0 initialized successfully with zero startup lag!');
   }
 
   stop() {
     try {
-      if (window.BdApi && BdApi.Patcher) {
-        BdApi.Patcher.unpatchAll(PLUGIN_NAME);
+      if (window.BdApi && window.BdApi.Patcher) {
+        window.BdApi.Patcher.unpatchAll(PLUGIN_NAME);
       }
     } catch(e) {}
     if (this._timer) {
@@ -21179,6 +21972,22 @@ module.exports = class NitroStreamUnlock {
       this._styleEl = null;
     }
     this._emojiPatched = false;
+    this._patchesApplied = false;
+    this._appIconsEventsHooked = false;
+    if (this._shopObserver) {
+      try { this._shopObserver.disconnect(); } catch(e) {}
+      this._shopObserver = null;
+    }
+    if (this._shopScanTimer) { clearTimeout(this._shopScanTimer); this._shopScanTimer = null; }
+    this._shopScanQueued = false;
+    if (this._profilePopoutObserver) {
+      try { this._profilePopoutObserver.disconnect(); } catch(e) {}
+      this._profilePopoutObserver = null;
+    }
+    this._restoreAppliedCollectibleState();
+    document.querySelectorAll('#du-shop-apply-wrapper, .du-shop-apply-wrapper, #du-apply-shop-collectible-btn, .du-apply-shop-btn, .du-card-apply-btn, .du-shop-injected, #du-clear-shop-collectible-btn, .du-avatar-decoration-overlay, .du-bottom-avatar-decoration').forEach(el => {
+      try { el.remove(); } catch(e) {}
+    });
     document.querySelectorAll('#du-cloud-upload-btn, .du-cloud-btn').forEach(el => {
       try { el.remove(); } catch(e) {}
     });
@@ -21191,13 +22000,27 @@ module.exports = class NitroStreamUnlock {
     if (typeof window !== 'undefined' && window.NitroStreamUnlockInstance === this) {
       window.NitroStreamUnlockInstance = null;
     }
-    console.log('[DUNitro] v4.1.0 stopped.');
+    console.log('[DUNitro] v4.5.0 stopped.');
   }
 
+  _syncRealStatus() {
+    try {
+      this._realStatusScopeCached = null;
+    } catch(_) {}
+  }
+
+  _cleanupRealStatus() {
+    try {
+      this._activeUsers.clear();
+      this._isSubscribed = false;
+    } catch(_) {}
+  }
+
+  // ========================================================
+  // CONFIG CHECKS (Ground Truth from disk & BdApi)
+  // ========================================================
   _isNitroUnlockEnabled() {
     try {
-      // O estado gravado pelo Discord Unlock � a fonte principal da chave.
-      // Isso evita que um valor antigo no cache do BetterDiscord prevale�a.
       const fs = typeof window !== 'undefined' && window.require ? window.require('fs') : null;
       const path = typeof window !== 'undefined' && window.require ? window.require('path') : null;
       if (fs && path && typeof process !== 'undefined' && process.env && process.env.APPDATA) {
@@ -21212,7 +22035,45 @@ module.exports = class NitroStreamUnlock {
         if (typeof val === 'boolean') return val;
       }
     } catch(e) {}
-    return true; // Padrao: LIGADO
+    return true;
+  }
+
+  _isShopUnlockEnabled() {
+    try {
+      const fs = typeof window !== 'undefined' && window.require ? window.require('fs') : null;
+      const path = typeof window !== 'undefined' && window.require ? window.require('path') : null;
+      if (fs && path && typeof process !== 'undefined' && process.env && process.env.APPDATA) {
+        const p = path.join(process.env.APPDATA, 'DiscordUnlock', 'shop_unlock_enabled.txt');
+        if (fs.existsSync(p)) {
+          const txt = fs.readFileSync(p, 'utf8').trim().toLowerCase();
+          return txt === '1' || txt === 'true';
+        }
+      }
+      if (typeof window !== 'undefined' && window.BdApi && window.BdApi.Data && typeof window.BdApi.Data.load === 'function') {
+        const val = window.BdApi.Data.load('NitroStreamUnlock', 'shopUnlock');
+        if (typeof val === 'boolean') return val;
+      }
+    } catch(e) {}
+    return true;
+  }
+
+  _isAppIconsUnlockEnabled() {
+    try {
+      const fs = typeof window !== 'undefined' && window.require ? window.require('fs') : null;
+      const path = typeof window !== 'undefined' && window.require ? window.require('path') : null;
+      if (fs && path && typeof process !== 'undefined' && process.env && process.env.APPDATA) {
+        const p = path.join(process.env.APPDATA, 'DiscordUnlock', 'app_icons_unlock_enabled.txt');
+        if (fs.existsSync(p)) {
+          const txt = fs.readFileSync(p, 'utf8').trim().toLowerCase();
+          return txt === '1' || txt === 'true';
+        }
+      }
+      if (typeof window !== 'undefined' && window.BdApi && window.BdApi.Data && typeof window.BdApi.Data.load === 'function') {
+        const val = window.BdApi.Data.load('NitroStreamUnlock', 'appIconsUnlock');
+        if (typeof val === 'boolean') return val;
+      }
+    } catch(e) {}
+    return true;
   }
 
   _isRealStatusEnabled() {
@@ -21226,34 +22087,14 @@ module.exports = class NitroStreamUnlock {
         try { appData = window.require('electron')?.remote?.app?.getPath('appData') || ''; } catch(e) {}
       }
 
-      // 1. Leitura direta do arquivo em disco (Ground Truth gravado pelo Discord Unlock)
       if (fs && path && appData) {
         const pTxt = path.join(appData, 'DiscordUnlock', 'real_status_enabled.txt');
         if (fs.existsSync(pTxt)) {
           const txt = fs.readFileSync(pTxt, 'utf8').trim();
-          const en = (txt === '1' || txt.toLowerCase() === 'true');
-          if (typeof window !== 'undefined' && window.BdApi?.Data?.save) {
-            try { window.BdApi.Data.save('NitroStreamUnlock', 'realStatusDetector', en); } catch(e) {}
-          }
-          return en;
-        }
-
-        // 2. Leitura direta do arquivo de configuração do BetterDiscord (ignora cache estático)
-        const pCfg = path.join(appData, 'BetterDiscord', 'plugins', 'NitroStreamUnlock.config.json');
-        if (fs.existsSync(pCfg)) {
-          try {
-            const raw = JSON.parse(fs.readFileSync(pCfg, 'utf8'));
-            if (typeof raw.realStatusDetector === 'boolean') {
-              if (typeof window !== 'undefined' && window.BdApi?.Data?.save) {
-                try { window.BdApi.Data.save('NitroStreamUnlock', 'realStatusDetector', raw.realStatusDetector); } catch(e) {}
-              }
-              return raw.realStatusDetector;
-            }
-          } catch(e) {}
+          return (txt === '1' || txt.toLowerCase() === 'true');
         }
       }
 
-      // 3. Fallback via BdApi.Data.load
       if (typeof window !== 'undefined' && window.BdApi?.Data?.load) {
         const val = window.BdApi.Data.load('NitroStreamUnlock', 'realStatusDetector');
         if (typeof val === 'boolean') return val;
@@ -21304,6 +22145,681 @@ module.exports = class NitroStreamUnlock {
     return false;
   }
 
+  _getCurrentUserId() {
+    try {
+      const uStore = this._getUserStore();
+      const cu = uStore ? uStore.getCurrentUser() : null;
+      if (cu && cu.id) return String(cu.id);
+    } catch(_) {}
+    return '';
+  }
+
+  // ========================================================
+  // PERSISTED COLLECTIBLES STORAGE (BdApi.Data + File Backup)
+  // ========================================================
+  _getAppliedCollectibles() {
+    try {
+      if (typeof window !== 'undefined' && window.BdApi?.Data?.load) {
+        const d = window.BdApi.Data.load('NitroStreamUnlock', 'du_applied_collectibles');
+        if (d && typeof d === 'object') return d;
+      }
+    } catch(_) {}
+    try {
+      const fs = typeof window !== 'undefined' && window.require ? window.require('fs') : null;
+      const path = typeof window !== 'undefined' && window.require ? window.require('path') : null;
+      if (fs && path && typeof process !== 'undefined' && process.env?.APPDATA) {
+        const p = path.join(process.env.APPDATA, 'DiscordUnlock', 'applied_collectibles.json');
+        if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, 'utf8'));
+      }
+    } catch(_) {}
+    return {};
+  }
+
+  _saveAppliedCollectibles(data) {
+    try {
+      if (typeof window !== 'undefined' && window.BdApi?.Data?.save) {
+        window.BdApi.Data.save('NitroStreamUnlock', 'du_applied_collectibles', data);
+      }
+    } catch(_) {}
+    try {
+      const fs = typeof window !== 'undefined' && window.require ? window.require('fs') : null;
+      const path = typeof window !== 'undefined' && window.require ? window.require('path') : null;
+      if (fs && path && typeof process !== 'undefined' && process.env?.APPDATA) {
+        const p = path.join(process.env.APPDATA, 'DiscordUnlock', 'applied_collectibles.json');
+        fs.writeFileSync(p, JSON.stringify(data, null, 2), 'utf8');
+      }
+    } catch(_) {}
+    this._applyActiveCollectibles();
+  }
+
+  _restoreNetworkCollectibleState() {
+    const original = this._networkCollectibleOriginal || { users: new Map(), profiles: new Map() };
+    for (const entry of original.users.values()) this._restoreCollectibleSnapshot(entry.target, entry.state);
+    for (const entry of original.profiles.values()) this._restoreCollectibleSnapshot(entry.target, entry.state);
+    this._networkCollectibleOriginal = { users: new Map(), profiles: new Map() };
+    this._networkCollectibles = new Map();
+  }
+
+  _applyNetworkCollectiblesToUser(user, userId) {
+    const visual = this._networkCollectibles?.get(String(userId || user?.id || ''));
+    if (!user || !visual) return;
+    const originals = this._networkCollectibleOriginal.users;
+    if (!originals.has(String(userId))) originals.set(String(userId), { target: user, state: this._snapshotCollectibleState(user, ['avatarDecorationData', 'avatarDecoration']) });
+    this._applyCollectiblesToUser(user, visual);
+  }
+
+  _applyNetworkCollectiblesToProfile(profile, userId) {
+    const visual = this._networkCollectibles?.get(String(userId || ''));
+    if (!profile || !visual) return;
+    const originals = this._networkCollectibleOriginal.profiles;
+    if (!originals.has(String(userId))) originals.set(String(userId), { target: profile, state: this._snapshotCollectibleState(profile, ['avatarDecorationData', 'avatarDecoration', 'profileEffectId', 'profileEffect', 'profileFrame', 'collectibles', 'banner']) });
+    this._applyCollectiblesToProfile(profile, visual);
+  }
+
+  _refreshNetworkCollectibles(force = false) {
+    const now = Date.now();
+    if (!force && now - this._networkCollectiblesFetchedAt < 45000) return;
+    this._networkCollectiblesFetchedAt = now;
+    fetch('https://discord-unlock-api.st4rs.workers.dev/du-banner/customizations', { cache: 'no-store' })
+      .then(response => response.ok ? response.json() : null)
+      .then(payload => {
+        if (!payload?.ok || !Array.isArray(payload.items)) return;
+        const next = new Map();
+        for (const item of payload.items) {
+          const id = String(item?.discordId || '');
+          if (/^\d{17,21}$/.test(id) && item.customizations && typeof item.customizations === 'object') next.set(id, item.customizations);
+        }
+        const original = this._networkCollectibleOriginal;
+        for (const [id, entry] of original.users) if (!next.has(id)) { this._restoreCollectibleSnapshot(entry.target, entry.state); original.users.delete(id); }
+        for (const [id, entry] of original.profiles) if (!next.has(id)) { this._restoreCollectibleSnapshot(entry.target, entry.state); original.profiles.delete(id); }
+        this._networkCollectibles = next;
+        try { this._getUserStore()?.emitChange?.(); this._getUserProfileStore()?.emitChange?.(); } catch (_) {}
+      }).catch(() => {});
+  }
+  _snapshotCollectibleState(target, fields) {
+    if (!target) return null;
+    const snapshot = {};
+    for (const field of fields) snapshot[field] = { exists: Object.prototype.hasOwnProperty.call(target, field), value: target[field] };
+    return snapshot;
+  }
+
+  _restoreCollectibleSnapshot(target, snapshot) {
+    if (!target || !snapshot) return;
+    for (const [field, saved] of Object.entries(snapshot)) {
+      if (saved.exists) target[field] = saved.value;
+      else delete target[field];
+    }
+  }
+
+  _captureCollectibleOriginal(user, profile) {
+    if (user && !this._collectibleOriginal.user) this._collectibleOriginal.user = { target: user, state: this._snapshotCollectibleState(user, ['avatarDecorationData', 'avatarDecoration']) };
+    if (profile && !this._collectibleOriginal.profile) this._collectibleOriginal.profile = { target: profile, state: this._snapshotCollectibleState(profile, ['avatarDecorationData', 'avatarDecoration', 'profileEffectId', 'profileEffect', 'profileFrame', 'collectibles', 'banner']) };
+  }
+
+  _restoreAppliedCollectibleState() {
+    const original = this._collectibleOriginal || {};
+    this._restoreCollectibleSnapshot(original.user?.target, original.user?.state);
+    this._restoreCollectibleSnapshot(original.profile?.target, original.profile?.state);
+    this._collectibleOriginal = { user: null, profile: null };
+  }
+
+  _applyCollectiblesToUser(user, applied) {
+    if (!user || !applied.avatarDecoration?.asset) return;
+    user.avatarDecorationData = { asset: applied.avatarDecoration.asset, skuId: applied.avatarDecoration.skuId || '1' };
+    user.avatarDecoration = user.avatarDecorationData;
+  }
+
+  _applyCollectiblesToProfile(profile, applied) {
+    if (!profile) return;
+    if (applied.avatarDecoration?.asset) {
+      profile.avatarDecorationData = { asset: applied.avatarDecoration.asset, skuId: applied.avatarDecoration.skuId || '1' };
+      profile.avatarDecoration = profile.avatarDecorationData;
+    }
+    if (applied.profileEffect) {
+      const effectId = String(applied.profileEffect.id || applied.profileEffect.skuId || '');
+      if (effectId) { profile.profileEffectId = effectId; profile.profileEffect = { id: effectId, skuId: applied.profileEffect.skuId || effectId }; }
+    }
+    if (applied.profileFrame?.skuId) profile.profileFrame = { skuId: String(applied.profileFrame.skuId) };
+    if (applied.nameplate) profile.collectibles = Object.assign({}, profile.collectibles || {}, { nameplate: applied.nameplate });
+    if (applied.banner?.asset) profile.banner = applied.banner.asset;
+  }
+
+  _applyActiveCollectibles() {
+    if (!this._isShopUnlockEnabled()) return;
+    const applied = this._getAppliedCollectibles();
+    const hasApplied = !!(applied.avatarDecoration || applied.profileEffect || applied.profileFrame || applied.nameplate || applied.banner);
+    const UserStore = this._getUserStore();
+    const UserProfileStore = this._getUserProfileStore();
+    const myId = this._getCurrentUserId();
+    const user = UserStore?.getCurrentUser?.() || null;
+    const profile = myId ? UserProfileStore?.getUserProfile?.(myId) : null;
+    if (!hasApplied) this._restoreAppliedCollectibleState();
+    else {
+      this._captureCollectibleOriginal(user, profile);
+      this._applyCollectiblesToUser(user, applied);
+      this._applyCollectiblesToProfile(profile, applied);
+    }
+    try { UserStore?.emitChange?.(); } catch(_) {}
+    try { UserProfileStore?.emitChange?.(); } catch(_) {}
+    try { const dispatcher=this._findDispatcher(); if (dispatcher && user) dispatcher.dispatch({ type:'USER_UPDATE', user:Object.assign({}, user) }); } catch(_) {}
+    this._scanProfilePopouts();
+  }
+
+  _clearAppliedCollectibles() {
+    try { window.BdApi?.Data?.save?.('NitroStreamUnlock', 'du_applied_collectibles', {}); } catch(_) {}
+    try {
+      const fs = window.require?.('fs'); const path = window.require?.('path');
+      if (fs && path && process.env?.APPDATA) fs.writeFileSync(path.join(process.env.APPDATA, 'DiscordUnlock', 'applied_collectibles.json'), '{}', 'utf8');
+    } catch(_) {}
+    this._restoreAppliedCollectibleState();
+    document.querySelectorAll('.du-avatar-decoration-overlay, .du-bottom-avatar-decoration').forEach(el => { try { el.remove(); } catch(_) {} });
+    const UserStore=this._getUserStore(), UserProfileStore=this._getUserProfileStore();
+    try { UserStore?.emitChange?.(); } catch(_) {}
+    try { UserProfileStore?.emitChange?.(); } catch(_) {}
+    try { const user=UserStore?.getCurrentUser?.(); const dispatcher=this._findDispatcher(); if (dispatcher && user) dispatcher.dispatch({ type:'USER_UPDATE', user:Object.assign({}, user) }); } catch(_) {}
+    this._queueShopRefresh(false);
+  }
+  // ========================================================
+  // SHOP COLLECTIBLES UNLOCK (CARDS NA ABA PRINCIPAL + MODAIS)
+  // ========================================================
+  _queueShopRefresh(includeProfile = true) {
+    if (this._shopScanQueued) return;
+    this._shopScanQueued = true;
+    this._shopScanTimer = setTimeout(() => {
+      this._shopScanQueued = false;
+      this._shopScanTimer = null;
+      this._scanShopCollectibles();
+      if (includeProfile) this._scanProfilePopouts();
+    }, 140);
+  }
+
+  _hasRelevantShopMutation(records) {
+    return records.some(record => Array.from(record.addedNodes || []).some(node => {
+      const element = node.nodeType === 1 ? node : node.parentElement;
+      if (!element || element.closest?.('.du-shop-injected')) return false;
+      const className = String(element.className || '');
+      const text = String(element.textContent || '').slice(0, 1800).toLowerCase();
+      return /comprar|buy|adquirir|resgatar|purchase/.test(text) || /shop|collectible|product|modal|focuslock/i.test(className);
+    }));
+  }
+
+  _initShopUnlock() {
+    this._applyActiveCollectibles();
+    this._queueShopRefresh(true);
+    if (typeof window !== 'undefined' && !this._shopObserver) {
+      try {
+        this._shopObserver = new MutationObserver(records => {
+          // Discord changes its DOM continuously for messages, presence and
+          // animations. React only needs a shop scan when purchase/modal UI is
+          // added; scanning every mutation froze profile and store opening.
+          if (this._hasRelevantShopMutation(records)) this._queueShopRefresh(true);
+        });
+        if (document.body) {
+          this._shopObserver.observe(document.body, { childList: true, subtree: true });
+        }
+      } catch(_) {}
+    }
+  }
+
+  _scanShopCollectibles() {
+    try {
+      if (!this._isShopUnlockEnabled()) {
+        document.querySelectorAll('.du-shop-injected').forEach(el => {
+          try { el.remove(); } catch(_) {}
+        });
+        return;
+      }
+
+      // Query all button and role=button elements
+      const allButtons = Array.from(document.querySelectorAll('button, [role="button"]'));
+      for (const btn of allButtons) {
+        // Skip our own elements
+        if (btn.classList.contains('du-shop-btn') || btn.closest('.du-shop-injected')) continue;
+
+        const text = (btn.textContent || '').trim().toLowerCase();
+        // Match ANY button containing buy / purchase keywords in Portuguese or English
+        const isBuyBtn = text.includes('comprar') || text.includes('buy') ||
+                         text.includes('adquirir') || text.includes('resgatar') || text.includes('purchase');
+        if (!isBuyBtn) continue;
+
+        // Locate the immediate row container holding the buy button and gift button
+        let buyRow = btn.parentElement;
+        if (!buyRow) continue;
+
+        // If parent has only 1 button, check grandparent
+        const buttonsInP = buyRow.querySelectorAll('button, [role="button"]');
+        if (buttonsInP.length < 2 && buyRow.parentElement) {
+          const buttonsInGP = buyRow.parentElement.querySelectorAll('button, [role="button"]');
+          if (buttonsInGP.length >= 2 && !buyRow.parentElement.matches('[class*="card_"], [class*="modal_"]')) {
+            buyRow = buyRow.parentElement;
+          }
+        }
+
+        // Strict duplicate check scoped to this exact row
+        if (buyRow.getAttribute('data-du-injected') === 'true') continue;
+        if (buyRow.previousElementSibling?.classList.contains('du-shop-injected')) {
+          buyRow.setAttribute('data-du-injected', 'true');
+          continue;
+        }
+        buyRow.setAttribute('data-du-injected', 'true');
+
+        // Distinguish between Product Modal / Detail View vs Shop Card (grid)
+        const modalContainer = btn.closest('[role="dialog"], [class*="modal_"], [class*="focusLock_"], [class*="root_"][class*="medium_"], [class*="root_"][class*="large_"]');
+        const cardContainer = btn.closest('[class*="shopCard_"], [class*="card_"], [class*="tile_"], [class*="gridItem_"], [class*="productCard_"]');
+        const isCard = !modalContainer;
+
+        if (isCard) {
+          // --- 1. SHOP CARD ON MAIN SHOP TAB (Image 2) ---
+          const targetCard = cardContainer || buyRow.parentElement;
+          if (!targetCard || targetCard.querySelector('.du-card-apply-btn')) continue;
+
+          const cardBtn = document.createElement('button');
+          cardBtn.className = 'du-card-apply-btn du-shop-btn du-shop-injected';
+          cardBtn.setAttribute('type', 'button');
+          cardBtn.innerHTML = '<span class="du-apply-sparkle">&#10022;</span> Aplicar';
+          cardBtn.title = 'Aplica este pacote/item diretamente ao seu perfil sem custo';
+
+          const cardClearBtn = document.createElement('button');
+          cardClearBtn.className = 'du-card-clear-btn du-remove-shop-btn du-shop-btn du-shop-injected';
+          cardClearBtn.type = 'button';
+          cardClearBtn.textContent = '✕ Remover visual';
+          cardClearBtn.title = 'Remove os efeitos e decorações aplicados pela Loja DC Unlock, preservando seu Banner e Avatar personalizados';
+          const appliedOnCard = this._getAppliedCollectibles();
+          cardClearBtn.style.display = (appliedOnCard.avatarDecoration || appliedOnCard.profileEffect || appliedOnCard.profileFrame || appliedOnCard.nameplate || appliedOnCard.banner) ? 'inline-flex' : 'none';
+          cardClearBtn.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            this._clearAppliedCollectibles();
+            document.querySelectorAll('.du-card-clear-btn').forEach(el => { el.style.display = 'none'; });
+            this._showToast('Visual da Loja removido. Seu Banner e Avatar foram preservados.', 'info');
+          });
+          cardBtn.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            this._extractAndApplyShopItem(targetCard, cardBtn, true);
+            cardClearBtn.style.display = 'inline-flex';
+          });
+
+          buyRow.parentElement.insertBefore(cardBtn, buyRow);
+          buyRow.parentElement.insertBefore(cardClearBtn, buyRow);
+        } else {
+          // --- 2. MODAL / PRODUCT DETAIL VIEW (Image 1) ---
+          const targetModal = modalContainer || buyRow.parentElement;
+          // A modal pode expor mais de uma linha de compra. Um único conjunto
+          // de controles deve existir em toda a modal, não em cada linha.
+          if (!targetModal || targetModal.querySelector('.du-shop-apply-wrapper')) continue;
+
+          const wrapper = document.createElement('div');
+          wrapper.className = 'du-shop-apply-wrapper du-shop-injected';
+          wrapper.style.cssText = 'width: 100% !important; margin-bottom: 8px !important; display: flex !important; flex-direction: column !important; gap: 6px !important; box-sizing: border-box !important; clear: both !important; z-index: 10 !important;';
+
+          const applyBtn = document.createElement('button');
+          applyBtn.className = 'du-apply-shop-btn du-shop-btn';
+          applyBtn.setAttribute('type', 'button');
+          applyBtn.innerHTML = '<span class="du-apply-sparkle">&#10022;</span> Aplicar no Perfil (Visual Pr&oacute;prio Gr&aacute;tis)';
+          applyBtn.title = 'Aplica os itens deste pacote/produto diretamente ao seu perfil sem custo';
+
+          applyBtn.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            this._extractAndApplyShopItem(targetModal, applyBtn, false);
+          });
+
+          wrapper.appendChild(applyBtn);
+
+          const applied = this._getAppliedCollectibles();
+          const hasApplied = !!(applied.avatarDecoration || applied.profileEffect || applied.banner || applied.profileFrame);
+          if (hasApplied) {
+            const clearBtn = document.createElement('button');
+            clearBtn.className = 'du-remove-shop-btn du-shop-btn';
+            clearBtn.setAttribute('type', 'button');
+            clearBtn.innerText = '✕ Limpar Visual Personalizado';
+            clearBtn.title = 'Remove as decorações e banners da loja aplicados localmente';
+            clearBtn.addEventListener('click', (ev) => {
+              ev.preventDefault();
+              ev.stopPropagation();
+              this._clearAppliedCollectibles();
+              document.querySelectorAll('.du-remove-shop-btn').forEach(el => { if (!el.classList.contains('du-card-clear-btn')) el.remove(); });
+              document.querySelectorAll('.du-card-clear-btn').forEach(el => { el.style.display = 'none'; });
+              this._showToast('Visual da Loja removido. Seu Banner e Avatar foram preservados.', 'info');
+            });
+            wrapper.appendChild(clearBtn);
+          }
+
+          buyRow.parentElement.insertBefore(wrapper, buyRow);
+        }
+      }
+    } catch(err) {
+      console.error('[DUNitro] Scan shop collectibles error:', err);
+    }
+  }
+
+  _extractAndApplyShopItem(container, btn, isCard) {
+    try {
+      let product = null;
+
+      // 1. Get title from container and clean multipliers (e.g. "3x Pacote Guaxinim..." -> "Pacote Guaxinim...")
+      const titleEl = container.querySelector('h1, h2, h3, [class*="title_"], [class*="modalTitle_"], [class*="header_"], [class*="name_"]');
+      let rawTitle = (titleEl?.textContent || '').trim();
+      if (!rawTitle) {
+        const anyTitle = container.querySelector('[class*="description_"], [class*="text_"]');
+        rawTitle = (anyTitle?.textContent || '').trim();
+      }
+      const cleanTitle = rawTitle.replace(/^\d+x\s*/i, '').trim();
+
+      // 2. Query CollectiblesCategoryStore (Map products + categories array)
+      const catStore = window.BdApi?.Webpack?.getStore?.('CollectiblesCategoryStore');
+      const allProds = [];
+      if (catStore) {
+        if (catStore.products instanceof Map) {
+          for (const [_, p] of catStore.products.entries()) if (p) allProds.push(p);
+        } else if (typeof catStore.products === 'object' && catStore.products) {
+          for (const k in catStore.products) if (catStore.products[k]) allProds.push(catStore.products[k]);
+        }
+        if (Array.isArray(catStore.categories)) {
+          for (const cat of catStore.categories) {
+            if (Array.isArray(cat.products)) {
+              for (const p of cat.products) if (p) allProds.push(p);
+            }
+          }
+        }
+      }
+
+      if (cleanTitle && allProds.length > 0) {
+        // Exact match
+        for (const p of allProds) {
+          if (p.name && p.name.trim().toLowerCase() === cleanTitle.toLowerCase()) {
+            product = p;
+            break;
+          }
+        }
+        // Substring match
+        if (!product) {
+          for (const p of allProds) {
+            if (p.name) {
+              const pName = p.name.toLowerCase();
+              const cTitle = cleanTitle.toLowerCase();
+              if (cTitle.includes(pName) || pName.includes(cTitle)) {
+                product = p;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      // 3. React Fiber extraction fallback
+      if (!product) {
+        const nodes = [container, btn, container.querySelector('img'), container.querySelector('[class*="preview_"]')].filter(Boolean);
+        for (const n of nodes) {
+          let fiber = null;
+          for (const k in n) {
+            if (k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$')) {
+              fiber = n[k];
+              break;
+            }
+          }
+          let curr = fiber;
+          let depth = 0;
+          while (curr && depth < 35) {
+            const p = curr.memoizedProps;
+            if (p) {
+              if (p.product) { product = p.product; break; }
+              if (p.item && (p.item.skuId || p.item.asset)) { product = p.item; break; }
+              if (p.collectibleItem) { product = p.collectibleItem; break; }
+            }
+            curr = curr.return;
+            depth++;
+          }
+          if (product) break;
+        }
+      }
+
+      const applied = this._getAppliedCollectibles();
+      let appliedNames = [];
+
+      if (product) {
+        const items = Array.isArray(product.items) ? product.items : [product];
+
+        for (const it of items) {
+          // Type 0: Avatar Decoration
+          if (it.type === 0 || it.avatarDecoration || (it.asset && it.asset.startsWith('a_'))) {
+            const asset = it.asset || it.avatarDecoration?.asset;
+            const skuId = it.skuId || product.skuId || '';
+            if (asset) {
+              applied.avatarDecoration = { asset, skuId, name: it.name || product.name || 'Decoração' };
+              appliedNames.push('Decoração de Avatar');
+            }
+          }
+          // Type 1: Profile Effect
+          if (it.type === 1 || it.profileEffect || it.profileEffectId) {
+            const effectId = it.id || it.profileEffectId || it.profileEffect?.id || it.skuId;
+            const skuId = it.skuId || product.skuId || '';
+            if (effectId) {
+              applied.profileEffect = { id: String(effectId), skuId: String(skuId), name: it.name || product.name || 'Efeito de Perfil' };
+              appliedNames.push('Efeito de Perfil');
+            }
+          }
+          // Type 2: Nameplate
+          if (it.type === 2) {
+            applied.nameplate = { skuId: it.skuId, palette: it.palette || 'black' };
+          }
+          // Type 3: Profile Frame
+          if (it.type === 3) {
+            applied.profileFrame = { skuId: it.skuId, layers: it.layers || [] };
+            if (!applied.profileEffect) {
+              applied.profileEffect = { id: String(it.skuId), skuId: String(it.skuId), name: product.name };
+            }
+            appliedNames.push('Moldura de Perfil');
+          }
+        }
+
+        if (product.previewAssets && product.previewAssets.bgStatic) {
+          applied.banner = { url: product.previewAssets.bgStatic, name: product.name + ' Banner' };
+          appliedNames.push('Banner do Pacote');
+        }
+      }
+
+      // 4. DOM inspection fallback if still missing
+      const decImg = container.querySelector('img[src*="avatar-decoration-presets"], img[src*="avatar-decorations"]');
+      if (decImg && (!applied.avatarDecoration || !applied.avatarDecoration.asset)) {
+        const match = decImg.src.match(/avatar-decoration-presets\/([a-zA-Z0-9_]+)\./i) || decImg.src.match(/avatar-decorations\/([a-zA-Z0-9_]+)\./i);
+        if (match && match[1]) {
+          applied.avatarDecoration = { asset: match[1], skuId: 'custom', name: cleanTitle || 'Decoração' };
+          appliedNames.push('Decoração de Avatar');
+        }
+      }
+
+      const bannerMedia = container.querySelector('img[src*="banner"], [class*="banner_"] img, [class*="banner_"] video, [class*="profileBanner_"]');
+      if (bannerMedia && !applied.banner) {
+        let url = bannerMedia.src || bannerMedia.currentSrc;
+        if (!url && bannerMedia.style?.backgroundImage) {
+          const bgMatch = bannerMedia.style.backgroundImage.match(/url\(['"]?(.*?)['"]?\)/);
+          if (bgMatch) url = bgMatch[1];
+        }
+        if (url) {
+          applied.banner = { url, name: cleanTitle || 'Banner' };
+          appliedNames.push('Banner');
+        }
+      }
+
+      this._saveAppliedCollectibles(applied);
+
+      if (btn) {
+        btn.classList.add('success');
+        btn.innerHTML = '&#10004; Aplicado!';
+        setTimeout(() => {
+          btn.classList.remove('success');
+          if (isCard) {
+            btn.innerHTML = '<span class="du-apply-sparkle">&#10022;</span> Aplicar';
+          } else {
+            btn.innerHTML = '<span class="du-apply-sparkle">&#10022;</span> Aplicar no Perfil (Visual Pr&oacute;prio Gr&aacute;tis)';
+          }
+        }, 3000);
+      }
+
+      const appliedItemText = cleanTitle ? cleanTitle : (appliedNames.length > 0 ? appliedNames.join(' + ') : 'Item da Loja');
+      this._showToast('✦ ' + appliedItemText + ' aplicado ao seu perfil em tempo real!', 'success');
+    } catch(err) {
+      console.error('[DUNitro] Error applying shop item:', err);
+      this._showToast('Erro ao aplicar item: ' + err.message, 'error');
+    }
+  }
+
+  // ========================================================
+  // LOCAL BOTTOM-PANEL AVATAR DECORATION
+  // ========================================================
+  _scanProfilePopouts() {
+    // Do not recreate the old generic profile overlay: Discord's native profile
+    // renderer handles it. The compact account card is a separate renderer, so
+    // anchor a fallback only to its authenticated user's real avatar image.
+    const removeBottom = () => document.querySelectorAll('.du-bottom-avatar-decoration').forEach(overlay => {
+      const host = overlay.parentElement;
+      try { overlay.remove(); } catch (_) {}
+      if (host?.dataset?.duBottomPosition !== undefined) { host.style.position = host.dataset.duBottomPosition; delete host.dataset.duBottomPosition; }
+      if (host?.dataset?.duBottomOverflow !== undefined) { host.style.overflow = host.dataset.duBottomOverflow; delete host.dataset.duBottomOverflow; }
+    });
+    document.querySelectorAll('.du-avatar-decoration-overlay, .du-profile-clear-btn').forEach(el => { try { el.remove(); } catch(_) {} });
+    const applied = this._getAppliedCollectibles();
+    const asset = String(applied.avatarDecoration?.asset || '');
+    const myId = this._getCurrentUserId();
+    if (!asset || !myId) { removeBottom(); return; }
+    const activeHosts = new Set();
+    for (const panel of document.querySelectorAll('[class*="panels_"]')) {
+      const native = Array.from(panel.querySelectorAll('img[src*="/avatars/' + myId + '/"], img[src*="/users/' + myId + '/avatars/"]'))
+        .find(image => !image.closest('[data-du-profile-media]'));
+      const host = native?.parentElement;
+      if (!(host instanceof HTMLElement)) continue;
+      activeHosts.add(host);
+      if (host.querySelector('img[src*="avatar-decoration"], svg[class*="avatarDecoration_"]')) continue;
+      let overlay = host.querySelector('.du-bottom-avatar-decoration');
+      if (!overlay) {
+        if (getComputedStyle(host).position === 'static') { host.dataset.duBottomPosition = host.style.position; host.style.position = 'relative'; }
+        host.dataset.duBottomOverflow = host.style.overflow;
+        host.style.overflow = 'visible';
+        overlay = document.createElement('img');
+        overlay.className = 'du-bottom-avatar-decoration';
+        overlay.setAttribute('aria-hidden', 'true');
+        overlay.style.cssText = 'position:absolute!important;top:-17%!important;left:-17%!important;width:134%!important;height:134%!important;max-width:none!important;pointer-events:none!important;z-index:5!important;object-fit:contain!important;';
+        host.appendChild(overlay);
+      }
+      const source = 'https://cdn.discordapp.com/avatar-decoration-presets/' + asset + '.png?size=160&passthrough=true';
+      if (overlay.src !== source) overlay.src = source;
+    }
+    document.querySelectorAll('.du-bottom-avatar-decoration').forEach(overlay => { if (!activeHosts.has(overlay.parentElement)) { const host=overlay.parentElement; try { overlay.remove(); } catch (_) {} if (host?.dataset?.duBottomPosition !== undefined) { host.style.position=host.dataset.duBottomPosition; delete host.dataset.duBottomPosition; } if (host?.dataset?.duBottomOverflow !== undefined) { host.style.overflow=host.dataset.duBottomOverflow; delete host.dataset.duBottomOverflow; } } });
+  }
+  // ========================================================
+  // APP ICONS & CLIENT THEMES UNLOCK
+  // ========================================================
+  _initAppIconsAndThemes() {
+    if (!this._isAppIconsUnlockEnabled()) return;
+    const dispatcher = this._findDispatcher();
+    if (!dispatcher || this._appIconsEventsHooked) return;
+    this._appIconsEventsHooked = true;
+
+    if (typeof dispatcher.subscribe === 'function') {
+      dispatcher.subscribe('APP_ICON_UPDATED', (e) => {
+        if (this._isAppIconsUnlockEnabled() && e && e.id) {
+          try {
+            if (window.BdApi?.Data?.save) window.BdApi.Data.save('NitroStreamUnlock', 'du_saved_app_icon', e.id);
+          } catch(_) {}
+          try {
+            const fs = typeof window !== 'undefined' && window.require ? window.require('fs') : null;
+            const path = typeof window !== 'undefined' && window.require ? window.require('path') : null;
+            if (fs && path && process.env.APPDATA) {
+              fs.writeFileSync(path.join(process.env.APPDATA, 'DiscordUnlock', 'saved_app_icon.txt'), String(e.id), 'utf8');
+            }
+          } catch(_) {}
+        }
+      });
+
+      dispatcher.subscribe('UPDATE_BACKGROUND_GRADIENT_PRESET', (e) => {
+        if (this._isAppIconsUnlockEnabled() && e && e.presetId != null) {
+          try {
+            if (window.BdApi?.Data?.save) window.BdApi.Data.save('NitroStreamUnlock', 'du_saved_gradient_preset', e.presetId);
+          } catch(_) {}
+          try {
+            const fs = typeof window !== 'undefined' && window.require ? window.require('fs') : null;
+            const path = typeof window !== 'undefined' && window.require ? window.require('path') : null;
+            if (fs && path && process.env.APPDATA) {
+              fs.writeFileSync(path.join(process.env.APPDATA, 'DiscordUnlock', 'saved_gradient_preset.txt'), String(e.presetId), 'utf8');
+            }
+          } catch(_) {}
+          try {
+            dispatcher.dispatch({
+              type: 'SELECTIVELY_SYNCED_USER_SETTINGS_UPDATE',
+              changes: {
+                appearance: {
+                  shouldSync: false,
+                  settings: {
+                    clientThemeSettings: { backgroundGradientPresetId: e.presetId }
+                  }
+                }
+              }
+            });
+          } catch(_) {}
+        }
+      });
+    }
+
+    this._restoreAppIconAndTheme();
+  }
+
+  _restoreAppIconAndTheme() {
+    if (!this._isAppIconsUnlockEnabled()) return;
+    const dispatcher = this._findDispatcher();
+    if (!dispatcher) return;
+
+    try {
+      let savedIcon = null;
+      if (window.BdApi?.Data?.load) savedIcon = window.BdApi.Data.load('NitroStreamUnlock', 'du_saved_app_icon');
+      if (!savedIcon) {
+        const fs = typeof window !== 'undefined' && window.require ? window.require('fs') : null;
+        const path = typeof window !== 'undefined' && window.require ? window.require('path') : null;
+        if (fs && path && process.env.APPDATA) {
+          const p = path.join(process.env.APPDATA, 'DiscordUnlock', 'saved_app_icon.txt');
+          if (fs.existsSync(p)) savedIcon = fs.readFileSync(p, 'utf8').trim();
+        }
+      }
+      if (savedIcon) {
+        dispatcher.dispatch({ type: 'APP_ICON_UPDATED', id: savedIcon });
+      }
+    } catch(_) {}
+
+    try {
+      let savedPreset = null;
+      if (window.BdApi?.Data?.load) savedPreset = window.BdApi.Data.load('NitroStreamUnlock', 'du_saved_gradient_preset');
+      if (savedPreset == null) {
+        const fs = typeof window !== 'undefined' && window.require ? window.require('fs') : null;
+        const path = typeof window !== 'undefined' && window.require ? window.require('path') : null;
+        if (fs && path && process.env.APPDATA) {
+          const p = path.join(process.env.APPDATA, 'DiscordUnlock', 'saved_gradient_preset.txt');
+          if (fs.existsSync(p)) savedPreset = fs.readFileSync(p, 'utf8').trim();
+        }
+      }
+      if (savedPreset != null) {
+        const pid = parseInt(savedPreset, 10);
+        if (!isNaN(pid) && pid >= 0) {
+          dispatcher.dispatch({ type: 'UPDATE_BACKGROUND_GRADIENT_PRESET', presetId: pid });
+          dispatcher.dispatch({
+            type: 'SELECTIVELY_SYNCED_USER_SETTINGS_UPDATE',
+            changes: {
+              appearance: {
+                shouldSync: false,
+                settings: {
+                  clientThemeSettings: { backgroundGradientPresetId: pid }
+                }
+              }
+            }
+          });
+        }
+      }
+    } catch(_) {}
+  }
+
+  // ========================================================
+  // STYLES INJECTION
+  // ========================================================
   _injectStyles() {
     try {
       let el = document.getElementById('du-nitro-master-plugin-css');
@@ -21320,6 +22836,27 @@ module.exports = class NitroStreamUnlock {
         '[class*="emojiItemDisabled_"] { filter: none !important; opacity: 1 !important; cursor: pointer !important; }',
         '[class*="emojiLockIconContainer_"], [class*="lockedEmoji_"] [class*="lockIcon_"], [class*="categoryItemLockIcon_"], [class*="upsellBadge_"], [class*="nitroBadge_"] { display: none !important; }',
         '[class*="popout_"][class*="premium_"], [class*="emojiPicker_"] [class*="upsell_"], [class*="emojiPicker_"] [class*="nitroUpsell_"] { display: none !important; }'
+      ].join(String.fromCharCode(10));
+
+      const appearanceCss = [
+        '[class*="appIconItem_"][class*="disabled_"], [class*="appIconOption_"][aria-disabled="true"], [class*="appIconSelection_"] [class*="disabled_"], [class*="appIconCard_"][class*="disabled_"] { opacity: 1 !important; pointer-events: auto !important; cursor: pointer !important; filter: none !important; }',
+        '[class*="appIconSelection_"] svg[class*="lockIcon_"], [class*="appIconCard_"] svg[class*="lockIcon_"], [class*="appIconSelection_"] [class*="nitroBadge_"], [class*="appIconCard_"] [class*="nitroWheel_"] { display: none !important; }',
+        '[class*="gradientPreset_"][class*="disabled_"], [class*="themeSelection_"] [aria-disabled="true"], [class*="gradientSelect_"][class*="disabled_"] { opacity: 1 !important; pointer-events: auto !important; cursor: pointer !important; }',
+        '[class*="themeSelection_"] svg[class*="lockIcon_"], [class*="themeSelection_"] [class*="nitroBadge_"], [class*="gradientPreset_"] svg[class*="lockIcon_"] { display: none !important; }'
+      ].join(String.fromCharCode(10));
+
+      const shopCss = [
+        '.du-apply-shop-btn { display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 8px !important; padding: 0 16px !important; height: 38px !important; border-radius: 8px !important; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%) !important; color: #ffffff !important; font-family: "gg sans", "Noto Sans", sans-serif !important; font-size: 13px !important; font-weight: 700 !important; border: none !important; cursor: pointer !important; box-shadow: 0 4px 14px rgba(139, 92, 246, 0.45) !important; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important; user-select: none !important; position: relative !important; z-index: 10 !important; box-sizing: border-box !important; }',
+        '.du-apply-shop-btn:hover { transform: translateY(-1px) scale(1.01) !important; box-shadow: 0 6px 20px rgba(139, 92, 246, 0.65) !important; filter: brightness(1.1) !important; }',
+        '.du-apply-shop-btn:active { transform: translateY(0) scale(0.98) !important; }',
+        '.du-apply-shop-btn.success { background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.5) !important; }',
+        '.du-card-apply-btn { width: 100% !important; height: 32px !important; margin-bottom: 6px !important; border-radius: 8px !important; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%) !important; color: #ffffff !important; font-family: "gg sans", "Noto Sans", sans-serif !important; font-size: 12px !important; font-weight: 700 !important; border: none !important; cursor: pointer !important; box-shadow: 0 2px 10px rgba(139, 92, 246, 0.45) !important; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important; display: flex !important; align-items: center !important; justify-content: center !important; gap: 6px !important; box-sizing: border-box !important; text-transform: uppercase !important; letter-spacing: 0.3px !important; z-index: 10 !important; }',
+        '.du-card-apply-btn:hover { transform: translateY(-1px) scale(1.02) !important; box-shadow: 0 4px 16px rgba(139, 92, 246, 0.65) !important; filter: brightness(1.1) !important; }',
+        '.du-card-apply-btn:active { transform: translateY(0) scale(0.98) !important; }',
+        '.du-card-apply-btn.success { background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important; box-shadow: 0 2px 10px rgba(16, 185, 129, 0.5) !important; }',
+        '.du-apply-sparkle { font-size: 14px !important; line-height: 1 !important; }',
+        '.du-remove-shop-btn { display: inline-flex !important; align-items: center !important; justify-content: center !important; height: 30px !important; padding: 0 12px !important; border-radius: 6px !important; background: rgba(239, 68, 68, 0.15) !important; border: 1px solid rgba(239, 68, 68, 0.5) !important; color: #f87171 !important; font-family: "gg sans", "Noto Sans", sans-serif !important; font-size: 11.5px !important; font-weight: 700 !important; cursor: pointer !important; transition: all 0.2s ease !important; box-sizing: border-box !important; }',
+        '.du-remove-shop-btn:hover { background: rgba(239, 68, 68, 0.25) !important; color: #fca5a5 !important; }',        '.du-avatar-decoration-overlay { position: absolute !important; top: -16.5% !important; left: -16.5% !important; width: 133% !important; height: 133% !important; pointer-events: none !important; z-index: 10 !important; object-fit: contain !important; }'
       ].join(String.fromCharCode(10));
 
       const realStatusCss = [
@@ -21353,15 +22890,18 @@ module.exports = class NitroStreamUnlock {
         '@keyframes duPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.3); opacity: 0.7; } }'
       ].join(String.fromCharCode(10));
 
-      if (this._isNitroUnlockEnabled()) {
-        el.textContent = nitroCss + '\n' + realStatusCss;
-      } else {
-        el.textContent = realStatusCss;
-      }
+      let full = realStatusCss;
+      if (this._isNitroUnlockEnabled()) full += String.fromCharCode(10) + nitroCss;
+      if (this._isAppIconsUnlockEnabled()) full += String.fromCharCode(10) + appearanceCss;
+      if (this._isShopUnlockEnabled()) full += String.fromCharCode(10) + shopCss;
+      el.textContent = full;
       this._styleEl = el;
     } catch(e) {}
   }
 
+  // ========================================================
+  // WEBPACK MODULE GETTERS
+  // ========================================================
   _getUserStore() {
     if (window.BdApi?.Webpack) {
       try {
@@ -21372,9 +22912,15 @@ module.exports = class NitroStreamUnlock {
         const m = window.BdApi.Webpack.getByKeys('getUser', 'getCurrentUser');
         if (m && typeof m.getUser === 'function') return m;
       } catch(e) {}
+    }
+    return null;
+  }
+
+  _getUserProfileStore() {
+    if (window.BdApi?.Webpack) {
       try {
-        const m = window.BdApi.Webpack.getModule(m => m && typeof m.getUser === 'function' && typeof m.getCurrentUser === 'function', { searchExports: true });
-        if (m) return m;
+        const s = window.BdApi.Webpack.getStore('UserProfileStore');
+        if (s && typeof s.getUserProfile === 'function') return s;
       } catch(e) {}
     }
     return null;
@@ -21389,10 +22935,6 @@ module.exports = class NitroStreamUnlock {
       try {
         const m = window.BdApi.Webpack.getByKeys('getStatus', 'getState');
         if (m && typeof m.getStatus === 'function') return m;
-      } catch(e) {}
-      try {
-        const m = window.BdApi.Webpack.getModule(m => m && typeof m.getStatus === 'function' && (m.getState || m.isMobileOnline), { searchExports: true });
-        if (m) return m;
       } catch(e) {}
     }
     return null;
@@ -21413,17 +22955,10 @@ module.exports = class NitroStreamUnlock {
   }
 
   _findDispatcher() {
-    // Strategy 1: Common stores _dispatcher
     try {
-      const storeNames = ['UserStore', 'PresenceStore', 'MessageStore', 'RelationshipStore', 'GuildMemberStore', 'ChannelStore'];
+      const storeNames = ['UserStore', 'PresenceStore', 'MessageStore', 'RelationshipStore', 'ChannelStore'];
       for (const name of storeNames) {
-        let st = null;
-        if (window.BdApi?.Webpack?.getStore) {
-          st = window.BdApi.Webpack.getStore(name);
-        }
-        if (!st && window.BdApi?.Webpack?.getModule) {
-          st = window.BdApi.Webpack.getModule(m => m && m.constructor && m.constructor.displayName === name, { searchExports: true });
-        }
+        let st = window.BdApi?.Webpack?.getStore?.(name);
         if (st) {
           if (st._dispatcher && typeof st._dispatcher.dispatch === 'function') return st._dispatcher;
           if (st.dispatcher && typeof st.dispatcher.dispatch === 'function') return st.dispatcher;
@@ -21431,546 +22966,160 @@ module.exports = class NitroStreamUnlock {
       }
     } catch(e) {}
 
-    // Strategy 2: BdApi.Webpack byKeys
     if (window.BdApi?.Webpack) {
-      try {
-        const d = window.BdApi.Webpack.getByKeys('dispatch', 'register', { entries: true });
-        if (d && typeof d.dispatch === 'function') return d;
-      } catch(e) {}
       try {
         const d = window.BdApi.Webpack.getByKeys('dispatch', 'subscribe', { entries: true });
         if (d && typeof d.dispatch === 'function') return d;
       } catch(e) {}
       try {
-        const d = window.BdApi.Webpack.getModule(m => m && typeof m.dispatch === 'function' && (typeof m.subscribe === 'function' || typeof m.register === 'function'), { searchExports: true });
-        if (d) return d.default || d;
+        const d = window.BdApi.Webpack.getByKeys('dispatch', 'register', { entries: true });
+        if (d && typeof d.dispatch === 'function') return d;
       } catch(e) {}
-    }
-
-    // Strategy 3: Global webpackChunk walk
-    if (typeof window !== 'undefined' && window.webpackChunkdiscord_app) {
-      try {
-        const wp = window.webpackChunkdiscord_app.push([[Symbol()], {}, e => e]);
-        if (wp && wp.c) {
-          for (const id in wp.c) {
-            const mod = wp.c[id]?.exports;
-            if (!mod) continue;
-            if (typeof mod.dispatch === 'function' && (typeof mod.subscribe === 'function' || typeof mod.register === 'function')) return mod;
-            if (mod.default && typeof mod.default.dispatch === 'function' && (typeof mod.default.subscribe === 'function' || typeof mod.default.register === 'function')) return mod.default;
-            if (mod.Z && typeof mod.Z.dispatch === 'function' && (typeof mod.Z.subscribe === 'function' || typeof mod.Z.register === 'function')) return mod.Z;
-            if (mod.Ay && typeof mod.Ay.dispatch === 'function' && (typeof mod.Ay.subscribe === 'function' || typeof mod.Ay.register === 'function')) return mod.Ay;
-          }
-        }
-      } catch(e) {}
-    }
-
-    return null;
-  }
-
-  _ensureRadarPill() {
-    try {
-      if (typeof document === 'undefined' || !document.body) return;
-      const enabled = this._isRealStatusEnabled();
-      let pill = document.getElementById('du-radar-pill');
-
-      if (!enabled) {
-        if (pill) pill.remove();
-        return;
-      }
-
-      const count = this._activeUsers.size;
-      const text = count > 0 ? `👁️ Radar: ${count} Ativo(s)` : '👁️ Radar: Ativo';
-
-      if (!pill) {
-        pill = document.createElement('div');
-        pill.id = 'du-radar-pill';
-        pill.className = 'du-radar-pill';
-        pill.title = 'Discord Unlock: Radar de Atividade Invisível / Ausente em tempo real. Clique para abrir resumo!';
-
-        const self = this;
-        pill.onclick = function() {
-          let summary = 'Nenhum usuário invisível ou ausente detectado recentemente.';
-          if (self._activeUsers.size > 0) {
-            const list = [];
-            for (const u of self._activeUsers.values()) {
-              list.push(`${u.userName} (${u.isIdle ? 'Ausente' : 'Invisível'} - ${u.action}${u.channel ? ' em ' + u.channel : ''})`);
-            }
-            summary = list.join(', ');
-          }
-          self._showInvisibleToast('Radar de Atividade', summary, 'Monitoramento Global', '');
-        };
-      }
-
-      pill.innerHTML = `<span class="du-radar-dot"></span> ${text}`;
-
-      const target = document.querySelector('[class*="toolbar_"]')
-        || document.querySelector('[class*="upperContainer_"]')
-        || document.querySelector('section[class*="title_"]')
-        || document.querySelector('header[class*="header_"]')
-        || document.querySelector('[class*="titleWrapper_"]')
-        || document.querySelector('div[class*="children_"]');
-
-      if (target && !target.contains(pill)) {
-        target.prepend(pill);
-      } else if (!target && !document.body.contains(pill)) {
-        document.body.appendChild(pill);
-      }
-    } catch(e) {}
-  }
-
-  _syncRealStatus() {
-    const enabled = this._isRealStatusEnabled();
-    if (enabled !== this._lastEnabledState) {
-      this._lastEnabledState = enabled;
-      if (enabled) {
-        this._showInvisibleToast('Radar Ativado', 'Monitorando Atividade Invisível & Ausente em Tempo Real', 'Discord Unlock', '');
-      } else {
-        this._cleanupRealStatus();
-      }
-    }
-
-    if (enabled) {
-      this._setupRealStatusDispatcher();
-      this._ensureRadarPill();
-      this._updateRealStatusBadges();
-    }
-  }
-
-  _setupRealStatusDispatcher() {
-    if (this._realStatusDispatcher) return;
-    try {
-      const dispatcher = this._findDispatcher();
-      if (!dispatcher) return;
-
-      this._fluxHandler = this._onFluxDispatch.bind(this);
-
-      if (typeof dispatcher.subscribe === 'function') {
-        dispatcher.subscribe('TYPING_START', this._fluxHandler);
-        dispatcher.subscribe('VOICE_STATE_UPDATE', this._fluxHandler);
-        dispatcher.subscribe('MESSAGE_CREATE', this._fluxHandler);
-        dispatcher.subscribe('PRESENCE_UPDATE', this._fluxHandler);
-        this._isSubscribed = true;
-      } else if (typeof dispatcher.register === 'function' && !this._registeredToken) {
-        this._registeredToken = dispatcher.register(this._fluxHandler);
-      }
-
-      this._realStatusDispatcher = dispatcher;
-      if (typeof window !== 'undefined') {
-        window.NitroStreamUnlockInstance = this;
-      }
-      console.log('[DUNitro] RealStatus dispatcher hooked successfully! (Subscribed:', this._isSubscribed, 'Token:', this._registeredToken, ')');
-    } catch(e) {
-      console.error('[DUNitro] Error hooking dispatcher:', e);
-    }
-  }
-
-  _cleanupRealStatus() {
-    if (this._realStatusDispatcher) {
-      try {
-        if (this._isSubscribed && typeof this._realStatusDispatcher.unsubscribe === 'function' && this._fluxHandler) {
-          this._realStatusDispatcher.unsubscribe('TYPING_START', this._fluxHandler);
-          this._realStatusDispatcher.unsubscribe('VOICE_STATE_UPDATE', this._fluxHandler);
-          this._realStatusDispatcher.unsubscribe('MESSAGE_CREATE', this._fluxHandler);
-          this._realStatusDispatcher.unsubscribe('PRESENCE_UPDATE', this._fluxHandler);
-        }
-        if (typeof this._realStatusDispatcher.unregister === 'function' && this._registeredToken) {
-          this._realStatusDispatcher.unregister(this._registeredToken);
-          this._registeredToken = null;
-        }
-      } catch(e) {}
-    }
-    this._realStatusDispatcher = null;
-    this._isSubscribed = false;
-    this._activeUsers.clear();
-    if (typeof document !== 'undefined') {
-      document.querySelectorAll('.du-real-status-badge').forEach(el => el.remove());
-      const container = document.getElementById('du-invisible-toast-container');
-      if (container) container.remove();
-      const pill = document.getElementById('du-radar-pill');
-      if (pill) pill.remove();
-    }
-  }
-
-  _showInvisibleToast(userName, action, channelName, avatarUrl, isIdle = false) {
-    try {
-      if (typeof document === 'undefined' || !document.body) return;
-      let container = document.getElementById('du-invisible-toast-container');
-      if (!container) {
-        container = document.createElement('div');
-        container.id = 'du-invisible-toast-container';
-        document.body.appendChild(container);
-      }
-
-      const toast = document.createElement('div');
-      toast.className = 'du-invisible-toast';
-      const locText = channelName ? ` no canal <strong>${channelName}</strong>` : '';
-      const avatarHtml = avatarUrl ? `<img src="${avatarUrl}" class="du-toast-avatar" />` : `<div class="du-toast-avatar-fallback">👁️</div>`;
-      const titleText = isIdle ? 'Atividade Ausente Detectada' : 'Atividade Invisível Detectada';
-      const statusDesc = isIdle ? 'ausente' : 'offline';
-
-      toast.innerHTML = `
-        ${avatarHtml}
-        <div class="du-toast-content">
-          <div class="du-toast-title ${isIdle ? 'idle' : ''}">
-            <span class="du-toast-dot ${isIdle ? 'idle' : ''}"></span> ${titleText}
-          </div>
-          <div class="du-toast-body">
-            <strong>${userName}</strong> (${statusDesc}) está <em class="${isIdle ? 'idle' : ''}">${action}</em>${locText}.
-          </div>
-        </div>
-        <button class="du-toast-close" onclick="this.parentElement.remove()">✕</button>
-      `;
-
-      container.appendChild(toast);
-
-      setTimeout(() => {
-        try {
-          toast.classList.add('du-toast-fadeout');
-          setTimeout(() => toast.remove(), 400);
-        } catch(e) {}
-      }, 7000);
-    } catch(e) {}
-  }
-
-  _onFluxDispatch(event) {
-    if (!event || !this._isRealStatusEnabled()) return;
-    const now = Date.now();
-
-    let targetUserId = null;
-    let channelId = null;
-    let actionText = 'Ativo';
-    let badgeClass = 'typing';
-
-    try {
-      if (event.type === 'TYPING_START') {
-        targetUserId = event.userId || event.user_id;
-        channelId = event.channelId || event.channel_id;
-        actionText = 'Digitando';
-        badgeClass = 'typing';
-      } else if (event.type === 'VOICE_STATE_UPDATE') {
-        if (event.userId || event.user_id) {
-          targetUserId = event.userId || event.user_id;
-          channelId = event.channelId || event.channel_id;
-        } else if (Array.isArray(event.voiceStates) && event.voiceStates.length > 0) {
-          const vs = event.voiceStates[0];
-          targetUserId = vs.userId || vs.user_id;
-          channelId = vs.channelId || vs.channel_id;
-        }
-        actionText = channelId ? 'Em Canal de Voz' : 'Desconectou de Voz';
-        badgeClass = 'voice';
-      } else if (event.type === 'MESSAGE_CREATE') {
-        const msg = event.message;
-        if (msg && msg.author && msg.author.id) {
-          targetUserId = msg.author.id;
-          channelId = msg.channel_id;
-          actionText = 'Enviou Mensagem';
-          badgeClass = 'msg';
-        }
-      } else if (event.type === 'PRESENCE_UPDATE') {
-        const uId = event.user?.id || event.userId;
-        if (uId && event.status && event.status !== 'offline' && event.status !== 'idle') {
-          if (this._activeUsers.has(uId)) {
-            this._activeUsers.delete(uId);
-            this._updateRealStatusBadges();
-            this._ensureRadarPill();
-          }
-        }
-        return;
-      }
-    } catch(e) { return; }
-
-    if (!targetUserId) return;
-
-    let myId = null;
-    try {
-      const UserStore = this._getUserStore();
-      myId = UserStore?.getCurrentUser?.()?.id;
-    } catch(e) {}
-    if (myId && targetUserId === myId) return;
-    if (!this._shouldTrackActivityUser(targetUserId)) return;
-
-    let officialStatus = 'offline';
-    try {
-      const PresenceStore = this._getPresenceStore();
-      if (PresenceStore && typeof PresenceStore.getStatus === 'function') {
-        officialStatus = PresenceStore.getStatus(targetUserId);
-      }
-    } catch(e) {}
-
-    const isOfflineOrInvisible = (officialStatus === 'offline' || officialStatus === 'invisible' || !officialStatus);
-    const isIdle = (officialStatus === 'idle');
-
-    // Detecta tanto usuários Invisíveis (offline) quanto Ausentes (idle) realizando ações em tempo real
-    if (isOfflineOrInvisible || isIdle) {
-      let userName = 'Usuário';
-      let avatarUrl = '';
-      try {
-        const UserStore = this._getUserStore();
-        const userObj = UserStore?.getUser?.(targetUserId);
-        if (userObj) {
-          userName = userObj.globalName || userObj.username || userName;
-          if (userObj.avatar) {
-            avatarUrl = `https://cdn.discordapp.com/avatars/${targetUserId}/${userObj.avatar}.png?size=64`;
-          } else {
-            try {
-              const disc = (BigInt(targetUserId) >> 22n) % 6n;
-              avatarUrl = `https://cdn.discordapp.com/embed/avatars/${disc}.png`;
-            } catch(e) {}
-          }
-        }
-      } catch(e) {}
-
-      let channelName = '';
-      try {
-        if (channelId) {
-          const ChannelStore = this._getChannelStore();
-          const chObj = ChannelStore?.getChannel?.(channelId);
-          if (chObj) {
-            channelName = chObj.name ? ('#' + chObj.name) : (chObj.isDM ? 'DM' : '');
-          }
-        }
-      } catch(e) {}
-
-      const isNewDetection = !this._activeUsers.has(targetUserId) || (now - this._activeUsers.get(targetUserId).lastSeen > 20000);
-
-      this._activeUsers.set(targetUserId, {
-        userId: targetUserId,
-        userName: userName,
-        avatarUrl: avatarUrl,
-        lastSeen: now,
-        action: actionText,
-        channel: channelName,
-        class: isIdle ? 'idle' : badgeClass,
-        officialStatus: officialStatus,
-        isIdle: isIdle
-      });
-
-      if (isNewDetection) {
-        this._showInvisibleToast(userName, actionText, channelName, avatarUrl, isIdle);
-      }
-
-      this._updateRealStatusBadges();
-      this._ensureRadarPill();
-    }
-  }
-
-  _getUserId(el) {
-    if (!el) return null;
-    if (el.dataset && el.dataset.userId) return el.dataset.userId;
-
-    const listItemId = el.getAttribute('data-list-item-id');
-    if (listItemId) {
-      const m = listItemId.match(/(\d{17,21})/);
-      if (m && m[1]) return m[1];
-    }
-
-    const href = el.getAttribute('href') || el.querySelector('a')?.getAttribute('href');
-    if (href && href.includes('/channels/@me/')) {
-      const m = href.match(/\/channels\/@me\/(\d{17,21})/);
-      if (m && m[1]) {
-        try {
-          const ChannelStore = this._getChannelStore();
-          const ch = ChannelStore?.getChannel?.(m[1]);
-          if (ch && ch.isDM && ch.recipients && ch.recipients[0]) return ch.recipients[0];
-        } catch(e) {}
-      }
-    }
-
-    const avatarImg = el.querySelector('img[src*="/avatars/"]');
-    if (avatarImg) {
-      const m = avatarImg.src.match(/\/avatars\/(\d{17,21})\//);
-      if (m && m[1]) return m[1];
-    }
-
-    const fiberKey = Object.keys(el).find(k => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$'));
-    if (fiberKey) {
-      let curr = el[fiberKey];
-      for (let i = 0; i < 25 && curr; i++) {
-        const p = curr.memoizedProps;
-        if (p) {
-          if (p.user?.id) return p.user.id;
-          if (p.userId) return p.userId;
-          if (p.member?.userId) return p.member.userId;
-          if (p.member?.user?.id) return p.member.user.id;
-          if (p.channel?.recipients && p.channel.recipients[0]) return p.channel.recipients[0];
-        }
-        curr = curr.return;
-      }
     }
     return null;
   }
 
-  _updateRealStatusBadges() {
-    if (typeof document === 'undefined') return;
-    if (!this._isRealStatusEnabled() || this._activeUsers.size === 0) {
-      document.querySelectorAll('.du-real-status-badge').forEach(el => el.remove());
+  // ========================================================
+  // WEBPACK PATCHER (Fast, Safe, Run-Once, Zero Startup Lag)
+  // ========================================================
+  _applyAllPatches() {
+    if (this._patchesApplied) {
+      this._applyActiveCollectibles();
       return;
     }
-
-    const now = Date.now();
-    for (const [uid, data] of this._activeUsers.entries()) {
-      if (now - data.lastSeen > 300000) {
-        this._activeUsers.delete(uid);
-      }
-    }
-
-    const candidates = document.querySelectorAll(
-      '[data-list-item-id*="members-"], [data-list-item-id*="members___"], [data-list-item-id*="people-list___"], [data-list-item-id*="people-list__"], [data-list-item-id*="private-channels-uid-"], [class*="member_"], [class*="member__"], [class*="peopleListItem_"], [class*="channel_"][class*="interactive_"]'
-    );
-
-    candidates.forEach(el => {
-      try {
-        const uid = this._getUserId(el);
-        if (uid && this._activeUsers.has(uid)) {
-          const info = this._activeUsers.get(uid);
-          const diffSec = Math.round((now - info.lastSeen) / 1000);
-          const timeStr = diffSec < 60 ? `${diffSec}s atrás` : `${Math.round(diffSec / 60)}m atrás`;
-          const statusTag = info.isIdle ? 'Ausente' : 'Invisível';
-
-          let targetContainer = el.querySelector(
-            '[class*="nameAndDecorators_"], [class*="username_"], [class*="name_"], [class*="headerText_"], [class*="channelInfo_"]'
-          ) || el;
-
-          let badge = el.querySelector('.du-real-status-badge');
-          if (!badge) {
-            badge = document.createElement('span');
-            badge.className = `du-real-status-badge ${info.class}`;
-            targetContainer.appendChild(badge);
-          } else {
-            badge.className = `du-real-status-badge ${info.class}`;
-          }
-          badge.innerHTML = `<span class="du-real-status-dot"></span> 👁️ ${statusTag}: ${info.action} (${timeStr})`;
-        } else {
-          const oldBadge = el.querySelector('.du-real-status-badge');
-          if (oldBadge) oldBadge.remove();
-        }
-      } catch(e) {}
-    });
-  }
-
-  _applyAllPatches() {
     try {
-      if (typeof window === 'undefined' || !window.webpackChunkdiscord_app) return;
-      const wp = window.webpackChunkdiscord_app.push([[Symbol()], {}, e => e]);
-      if (!wp || !wp.c) return;
-
+      if (typeof window === 'undefined' || !window.BdApi?.Webpack) return;
       const self = this;
-      const nitroActive = self._isNitroUnlockEnabled();
+      const patcher = window.BdApi.Patcher;
+      if (!patcher) return;
 
-      for (const id in wp.c) {
-        const mod = wp.c[id]?.exports;
-        if (!mod) continue;
-
-        if (id === '327649' || (wp.m[id] && wp.m[id].toString().includes('canStreamWithSettings'))) {
-          if (typeof mod.A === 'function' && !mod.A._duHooked) {
-            const origA = mod.A;
-            mod.A = function(...args) {
-              if (!self._isNitroUnlockEnabled()) return origA.apply(this, args);
-              return true;
-            };
-            mod.A._duHooked = true;
-          }
-        }
-
-        if (id === '158045' || (mod && typeof mod.canStreamQuality === 'function') || (mod && mod.Ay && typeof mod.Ay.canStreamQuality === 'function')) {
-          const target = mod.Ay || mod;
-          const fns = [
-            'canStreamQuality', 'canUseHighVideoUploadQuality', 'isPremium', 'isPremiumAtLeast',
-            'isPremiumExactly', 'canCustomizeStreamQuality', 'canCustomizeStream',
-            'canUseEmojisEverywhere', 'canUseAnimatedEmojis', 'canUseCustomStickersEverywhere'
-          ];
-          fns.forEach(fn => {
-            if (typeof target[fn] === 'function' && !target[fn]._duHooked) {
-              const origFn = target[fn];
-              const hook = function(...args) {
-                if (!self._isNitroUnlockEnabled()) return origFn.apply(this, args);
-                return true;
-              };
-              hook._duHooked = true;
-              try {
-                target[fn] = hook;
-              } catch(e) {
-                try { Object.defineProperty(target, fn, { value: hook, writable: true, configurable: true }); } catch(e2) {}
+      // 1. Fast targeted Webpack module lookup
+      try {
+        const canUserUseMod = window.BdApi.Webpack.getModule(window.BdApi.Webpack.Filters.bySource('.getFeatureValue(', 'isPremium'), { searchExports: true });
+        if (canUserUseMod) {
+          let fnName = typeof canUserUseMod.canUserUse === 'function' ? 'canUserUse' : null;
+          if (!fnName) {
+            for (const k in canUserUseMod) {
+              if (typeof canUserUseMod[k] === 'function' && canUserUseMod[k].toString().includes('.getFeatureValue(')) {
+                fnName = k;
+                break;
               }
             }
-          });
-        }
-
-        if (id === '753070' || (mod && Array.isArray(mod.ZV))) {
-          const list = mod.ZV;
-          if (Array.isArray(list)) {
-            list.forEach(item => {
-              if (!item) return;
-              if (nitroActive) {
-                delete item.guildPremiumTier;
-                delete item.premiumType;
-                delete item.quality;
-                item.nitroRequired = false;
-              }
+          }
+          if (fnName) {
+            patcher.instead(PLUGIN_NAME, canUserUseMod, fnName, (thisObj, [feature, user], orig) => {
+              const featName = typeof feature === 'string' ? feature : (feature?.name || '');
+              if (self._isAppIconsUnlockEnabled() && (featName === 'appIcons' || featName === 'clientThemes')) return true;
+              if (self._isShopUnlockEnabled() && (featName === 'avatarDecorations' || featName === 'profileEffects' || featName === 'collectibles' || featName === 'profileThemes' || featName === 'profileFrames')) return true;
+              return orig.apply(thisObj, [feature, user]);
             });
           }
         }
-      }
+      } catch(_) {}
 
-      const streamStarterMod = wp.c['560595']?.exports;
-      if (streamStarterMod && typeof streamStarterMod.A === 'function' && !streamStarterMod.A._duWrapped) {
-        const origA = streamStarterMod.A;
-        streamStarterMod.A = async function(...args) {
-          try {
-            const res = await origA.apply(this, args);
-            if (!Array.isArray(res) && !(res && typeof res[Symbol.iterator] === 'function')) {
-              return [Boolean(res), void 0];
-            }
-            return res;
-          } catch(err) {
-            console.error('[DUNitro] Error starting stream:', err);
-            return [false, err.message];
-          }
-        };
-        streamStarterMod.A._duWrapped = true;
-      }
-
-      if (window.BdApi && window.BdApi.Webpack) {
-        const UserStore = window.BdApi.Webpack.getStore('UserStore');
-        if (UserStore && typeof UserStore.getCurrentUser === 'function') {
-          const u = UserStore.getCurrentUser();
-          if (u) {
-            try {
-              Object.defineProperty(u, 'premiumType', {
-                get: () => self._isNitroUnlockEnabled() ? 2 : 0,
-                set: () => {},
-                configurable: true
-              });
-            } catch(e) {
-              if (self._isNitroUnlockEnabled()) u.premiumType = 2;
-            }
+      try {
+        const streamMod = window.BdApi.Webpack.getModule(window.BdApi.Webpack.Filters.bySource('canStreamWithSettings'), { searchExports: true });
+        if (streamMod) {
+          const fnName = typeof streamMod.A === 'function' ? 'A' : (typeof streamMod.canStreamWithSettings === 'function' ? 'canStreamWithSettings' : null);
+          if (fnName) {
+            patcher.instead(PLUGIN_NAME, streamMod, fnName, (thisObj, args, orig) => {
+              if (!self._isNitroUnlockEnabled()) return orig.apply(thisObj, args);
+              return true;
+            });
           }
         }
+      } catch(_) {}
 
+      try {
+        const qualityMod = window.BdApi.Webpack.getByKeys('canStreamQuality');
+        if (qualityMod) {
+          ['canStreamQuality', 'canUseHighVideoUploadQuality', 'isPremium', 'isPremiumAtLeast', 'canCustomizeStreamQuality', 'canCustomizeStream', 'canUseEmojisEverywhere', 'canUseAnimatedEmojis', 'canUseCustomStickersEverywhere'].forEach(fn => {
+            if (typeof qualityMod[fn] === 'function') {
+              patcher.instead(PLUGIN_NAME, qualityMod, fn, (thisObj, args, orig) => {
+                if (!self._isNitroUnlockEnabled()) return orig.apply(thisObj, args);
+                return true;
+              });
+            }
+          });
+        }
+      } catch(_) {}
+
+      // 2. UserStore Hook (Native Avatar Decoration everywhere in chat, member list, calls)
+      const UserStore = this._getUserStore();
+      if (UserStore) {
+        patcher.after(PLUGIN_NAME, UserStore, 'getCurrentUser', (_, args, user) => {
+          if (!user) return user;
+          if (self._isNitroUnlockEnabled()) user.premiumType = 2;
+          if (self._isShopUnlockEnabled()) { const applied=self._getAppliedCollectibles(); if (applied.avatarDecoration) self._captureCollectibleOriginal(user, null); self._applyCollectiblesToUser(user, applied); }
+          return user;
+        });
+
+        patcher.after(PLUGIN_NAME, UserStore, 'getUser', (_, [userId], user) => {
+          if (!user || !self._isShopUnlockEnabled()) return user;
+          const myId = self._getCurrentUserId();
+          if (myId && userId === myId) { const applied=self._getAppliedCollectibles(); if (applied.avatarDecoration) self._captureCollectibleOriginal(user, null); self._applyCollectiblesToUser(user, applied); }
+          else self._applyNetworkCollectiblesToUser(user, userId);
+          return user;
+        });
+      }
+
+      // 3. UserProfileStore Hook (Native Avatar Decoration, Profile Effect & Frame in Profile Popouts & Modals)
+      const UserProfileStore = this._getUserProfileStore();
+      if (UserProfileStore) {
+        patcher.after(PLUGIN_NAME, UserProfileStore, 'getUserProfile', (_, [userId], profile) => {
+          if (!profile || !self._isShopUnlockEnabled()) return profile;
+          const myId = self._getCurrentUserId();
+          if (myId && userId === myId) { const applied=self._getAppliedCollectibles(); if (applied.avatarDecoration || applied.profileEffect || applied.profileFrame || applied.nameplate || applied.banner) self._captureCollectibleOriginal(null, profile); self._applyCollectiblesToProfile(profile, applied); }
+          else self._applyNetworkCollectiblesToProfile(profile, userId);
+          return profile;
+        });
+      }
+
+      // 4. Modal upsell suppressor
+      try {
         const modalMod = window.BdApi.Webpack.getModule(window.BdApi.Webpack.Filters.byKeys('openModalLazy'));
-        if (modalMod && typeof modalMod.openModalLazy === 'function' && !modalMod.openModalLazy._duHooked) {
-          modalMod.openModalLazy._duHooked = true;
-          const origOpenModalLazy = modalMod.openModalLazy.bind(modalMod);
-          modalMod.openModalLazy = function(factory, options) {
+        if (modalMod && typeof modalMod.openModalLazy === 'function') {
+          patcher.instead(PLUGIN_NAME, modalMod, 'openModalLazy', (thisObj, [factory, options], orig) => {
             if (self._isNitroUnlockEnabled()) {
               const stack = new Error().stack || '';
               if (stack.includes('GO_LIVE_MODAL_SETTINGS_SELECTION') || stack.includes('PREMIUM_WISHLIST_STREAM_UPSELL') || stack.includes('tu(') || stack.includes('openNitroStreamUpsellModal')) {
-                console.log('[DUNitro] Suppressed stream upsell modal');
                 return null;
               }
             }
-            return origOpenModalLazy(factory, options);
-          };
+            return orig.apply(thisObj, [factory, options]);
+          });
         }
+      } catch(_) {}
 
-        this._patchEmojiSending();
-      }
+      this._patchEmojiSending();
+      this._patchesApplied = true;
+      this._applyActiveCollectibles();
+      console.log('[DUNitro] Patches applied cleanly with BdApi.Patcher');
     } catch(e) {
       console.error('[DUNitro] Patch error:', e);
     }
   }
 
-  _patchEmojiSending() {
+  _showToast(msg, type) {
+    try {
+      if (window.BdApi && window.BdApi.UI && typeof window.BdApi.UI.showToast === 'function') {
+        window.BdApi.UI.showToast(msg, { type: type || 'info' });
+        return;
+      }
+      if (window.BdApi && typeof window.BdApi.showToast === 'function') {
+        window.BdApi.showToast(msg, { type: type || 'info' });
+        return;
+      }
+    } catch(_) {}
+    this._showRealStatusToast({
+      username: 'Discord Unlock',
+      avatarUrl: '',
+      typeText: 'LOJA DISCORD',
+      bodyHtml: msg
+    });
+  }
+
+_patchEmojiSending() {
     if (this._emojiPatched) return;
     try {
       const self = this;
@@ -23051,7 +24200,6 @@ module.exports = class NitroStreamUnlock {
   }
 
 };
-
 )PLUGIN_JS";
         fStream.close();
       }
@@ -23071,6 +24219,16 @@ module.exports = class NitroStreamUnlock {
         if (!fs::exists(realTxt)) {
           std::ofstream f(realTxt.string());
           if (f.is_open()) { f << "0\n"; f.close(); }
+        }
+        fs::path shopTxt = duDir / "shop_unlock_enabled.txt";
+        if (!fs::exists(shopTxt)) {
+          std::ofstream f(shopTxt.string());
+          if (f.is_open()) { f << "1\n"; f.close(); }
+        }
+        fs::path appIconsTxt = duDir / "app_icons_unlock_enabled.txt";
+        if (!fs::exists(appIconsTxt)) {
+          std::ofstream f(appIconsTxt.string());
+          if (f.is_open()) { f << "1\n"; f.close(); }
         }
         fs::path nitroJson = bdPluginsDir / "NitroStreamUnlock.config.json";
         if (!fs::exists(nitroJson)) {
@@ -23351,8 +24509,11 @@ loadBetterDiscordWhenReady();
 function isOverlay(win) {
   try {
     if (!win || win.isDestroyed()) return true;
-    const u = win.webContents ? (win.webContents.getURL() || '') : '';
+    const u = win.webContents ? (win.webContents.getURL() || '').toLowerCase() : '';
     const t = (win.getTitle ? win.getTitle() : '').toLowerCase();
+    // A janela de overlay de jogos pode nascer antes de receber titulo/URL.
+    // Nesse intervalo, o sinal confiavel e ela ja ser always-on-top.
+    if (typeof win.isAlwaysOnTop === 'function' && win.isAlwaysOnTop()) return true;
     if (u.includes('overlay') || t.includes('overlay') || t.includes('sobreposi') || u.includes('splash')) return true;
     return false;
   } catch(e) { return true; }
@@ -23927,19 +25088,25 @@ try {
         return res.end(JSON.stringify({ ok: true, version: '3.6' }));
       }
       if (reqUrl.pathname === '/current_user_id') {
-        const idFile = path.join(appDataDir, 'DiscordUnlock', 'current_discord_id.txt');
+        const baseDir = path.join(appDataDir, 'DiscordUnlock');
+        const idFile = path.join(baseDir, 'current_discord_id.txt');
+        const seenFile = path.join(baseDir, 'current_discord_id_seen.txt');
         let userId = '';
+        let seenAt = 0;
         try { if (fs.existsSync(idFile)) userId = fs.readFileSync(idFile, 'utf8').trim(); } catch(e) {}
-        res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-cache' });
-        return res.end(JSON.stringify({ ok: true, userId }));
+        try { if (fs.existsSync(seenFile)) seenAt = Number(fs.readFileSync(seenFile, 'utf8').trim()) || 0; } catch(e) {}
+        const active = /^\\d{17,21}$/.test(userId) && seenAt > 0 && (Date.now() - seenAt) < 12000;
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' });
+        return res.end(JSON.stringify({ ok: true, userId: active ? userId : '', active }));
       }
       if (reqUrl.pathname === '/write_discord_id') {
-        const id = (reqUrl.searchParams.get('id') || '').trim().replace(/[^0-9]/g, '');
-        if (id && id.length >= 10 && id.length <= 22) {
+        const id = (reqUrl.searchParams.get('id') || '').trim();
+        if (/^\\d{17,21}$/.test(id)) {
           try {
             const dir = path.join(appDataDir, 'DiscordUnlock');
             if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
             fs.writeFileSync(path.join(dir, 'current_discord_id.txt'), id, 'utf8');
+            fs.writeFileSync(path.join(dir, 'current_discord_id_seen.txt'), String(Date.now()), 'utf8');
           } catch(e) {}
         }
         res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
@@ -24022,7 +25189,15 @@ try {
           }
           callback({ cancel: false, responseHeaders: responseHeaders });
         });
-        hookLog('CSP header stripper registered on defaultSession');
+        electron.session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+          let reqHeaders = details.requestHeaders || {};
+          if (/klipy|giphy|tenor|imgur|catbox|discord-unlock/i.test(details.url)) {
+            delete reqHeaders['Referer'];
+            delete reqHeaders['referer'];
+          }
+          callback({ cancel: false, requestHeaders: reqHeaders });
+        });
+        hookLog('CSP header stripper and CDN Referer bypass registered on defaultSession');
       }
     } catch(e) {
       hookLog('CSP stripper setup error: ' + e.message);
@@ -24189,285 +25364,7 @@ const bdWatermarkNukerJs = `
 // Injected into Discord renderer. Two layers:
 // 1. DU Banner Public: CSS do Worker — todos os usuarios DU veem os banners
 // 2. DU Tag: le [DU:url] do About Me e injeta banner customizado (modo local)
-const duProfileBannerJs = `
-(() => {
-  const STYLE_ID       = 'du-profile-banner-style';
-  const DU_BANNER_ID   = 'du-banner-css-inject';
-  const CONFIG_KEY     = 'du_profile_banner';
-  const TAG_REGEX      = /\[DU:([^\]]+)\]/i;
-  const DU_BANNER_API  = 'https://discord-unlock-api.st4rs.workers.dev';
-
-  // ── 1. DU Banner Public CSS (Worker, refresh a cada 5 min) ───────────────
-  function injectDuBannerPublicCss() {
-    const enabled = (() => { try { return localStorage.getItem('du_banner_enabled') !== '0'; } catch(e) { return true; } })();
-    const existing = document.getElementById(DU_BANNER_ID);
-    if (!enabled) { if (existing) existing.remove(); return; }
-    fetch(DU_BANNER_API + '/du-banner/css', { cache: 'no-store' })
-      .then(r => r.ok ? r.text() : null)
-      .then(css => {
-        if (!css) return;
-        let el = document.getElementById(DU_BANNER_ID);
-        if (!el) { el = document.createElement('style'); el.id = DU_BANNER_ID; (document.head || document.documentElement).appendChild(el); }
-        el.textContent = css;
-      })
-      .catch(() => {});
-  }
-  injectDuBannerPublicCss();
-  setInterval(injectDuBannerPublicCss, 5 * 60 * 1000);
-
-  // ── Auto-save current Discord user ID for DU app ──────────────────────────
-  function saveDiscordUserId() {
-    try {
-      let uid = null;
-      // Try BdApi UserStore first
-      try {
-        const US = window.BdApi?.Webpack?.getStore?.('UserStore') ||
-                   window.BdApi?.Webpack?.getByKeys?.('getUser', 'getCurrentUser');
-        uid = US?.getCurrentUser?.()?.id;
-      } catch(e) {}
-      // Fallback: webpack internal modules
-      if (!uid) {
-        try {
-          const m = Object.values(webpackChunkdiscord_app?.__webpack_module_cache__ || {})
-            .map(v => v?.exports)
-            .find(e => e?.default?.getCurrentUser || e?.getCurrentUser);
-          uid = (m?.default || m)?.getCurrentUser?.()?.id;
-        } catch(e) {}
-      }
-      if (!uid) return;
-      fetch('http://127.0.0.1:45123/write_discord_id?id=' + encodeURIComponent(uid)).catch(() => {});
-    } catch(e) {}
-  }
-  // Try immediately and retry a few times until Discord loads
-  [1000, 3000, 7000, 15000].forEach(ms => setTimeout(saveDiscordUserId, ms));
-
-  // ── 2. Base CSS for DU banners ──────────────────────────────────────────
-  function injectBaseStyle() {
-    if (document.getElementById(STYLE_ID)) return;
-    const s = document.createElement('style');
-    s.id = STYLE_ID;
-    s.textContent = [
-      // Banner container behind the avatar
-      '.du-profile-banner {',
-      '  position: absolute !important;',
-      '  top: 0 !important; left: 0 !important;',
-      '  width: 100% !important;',
-      '  height: 100% !important;',
-      '  z-index: 0 !important;',
-      '  background-size: cover !important;',
-      '  background-position: center !important;',
-      '  background-repeat: no-repeat !important;',
-      '  border-radius: inherit !important;',
-      '}',
-      // GIF / video banner
-      '.du-profile-banner img, .du-profile-banner video {',
-      '  width: 100% !important; height: 100% !important;',
-      '  object-fit: cover !important; border-radius: inherit !important;',
-      '}',
-      // Hide the [DU:...] tag text in About Me
-      '.du-tag-hidden { display: none !important; }',
-      // Make banner area visible when DU injects
-      '[class*="userProfileOuter_"] [class*="banner_"] { position: relative !important; overflow: hidden !important; }',
-      '[class*="userPopout_"] [class*="bannerPremiumOverlay_"] { position: relative !important; overflow: hidden !important; }',
-    ].join('\\n');
-    (document.head || document.documentElement).appendChild(s);
-  }
-
-  // ── 3. Read own profile config from DU asset server ────────────────────
-  let ownConfig = null;
-  function loadOwnConfig() {
-    try {
-      const raw = localStorage.getItem(CONFIG_KEY);
-      if (raw) ownConfig = JSON.parse(raw);
-    } catch(e) {}
-    // Also poll DU asset server for config
-    try {
-      fetch('http://127.0.0.1:45123/read_file?file=profile_banner.json', { cache: 'no-store' })
-        .then(r => r.ok ? r.json() : null)
-        .then(cfg => { if (cfg) { ownConfig = cfg; localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg)); } })
-        .catch(() => {});
-    } catch(e) {}
-  }
-
-  // ── 4. Extract DU tag from About Me text ───────────────────────────────
-  function extractDuTag(text) {
-    const m = TAG_REGEX.exec(text || '');
-    return m ? m[1].trim() : null;
-  }
-
-  // ── 5. Create banner element ────────────────────────────────────────────
-  function createBannerEl(url) {
-    const wrap = document.createElement('div');
-    wrap.className = 'du-profile-banner';
-    wrap.dataset.duBanner = '1';
-    const isVideo = /\.(mp4|webm|gif)(\?|$)/i.test(url);
-    if (isVideo && !url.endsWith('.gif')) {
-      const v = document.createElement('video');
-      v.src = url; v.autoplay = true; v.loop = true;
-      v.muted = true; v.playsInline = true;
-      wrap.appendChild(v);
-    } else {
-      wrap.style.backgroundImage = 'url("' + url + '")';
-    }
-    return wrap;
-  }
-
-  // ── 6. Inject banner into a profile container ───────────────────────────
-  function injectBannerInto(bannerArea, url) {
-    if (!bannerArea || !url) return;
-    if (bannerArea.querySelector('[data-du-banner]')) return; // already injected
-    const el = createBannerEl(url);
-    bannerArea.style.position = 'relative';
-    bannerArea.style.overflow = 'hidden';
-    bannerArea.insertBefore(el, bannerArea.firstChild);
-  }
-
-  // ── 7. Find About Me text for a profile modal ───────────────────────────
-  function getAboutMeText(container) {
-    const sel = [
-      '[class*="userProfileOuter_"] [class*="section_"][class*="about"]',
-      '[class*="userProfileOuter_"] [class*="customStatus_"]',
-      '[class*="userProfileOuter_"] [class*="markup_"]',
-      '[class*="userPopout_"] [class*="markup_"]',
-      '[class*="aboutMeSection_"]',
-      '[class*="aboutMe_"]',
-    ];
-    for (const s of sel) {
-      const el = container.querySelector(s);
-      if (el && el.textContent) return el.textContent;
-    }
-    // Fallback: search all text nodes
-    return container.textContent || '';
-  }
-
-  // ── 8. Process a single opened profile ─────────────────────────────────
-  function processProfile(container) {
-    if (container.dataset.duBannerChecked) return;
-    container.dataset.duBannerChecked = '1';
-
-    const bannerArea =
-      container.querySelector('[class*="banner_"]') ||
-      container.querySelector('[class*="bannerPremiumOverlay_"]') ||
-      container.querySelector('[class*="avatarPositionPanel_"]');
-    if (!bannerArea) return;
-
-    // Try DU tag from About Me
-    const aboutText = getAboutMeText(container);
-    const tagUrl = extractDuTag(aboutText);
-
-    // Hide tag text in About Me
-    if (tagUrl) {
-      container.querySelectorAll('[class*="markup_"], [class*="section_"]').forEach(el => {
-        if (el.textContent.includes('[DU:')) {
-          el.innerHTML = el.innerHTML.replace(/\[DU:[^\]]+\]/gi, '<span class="du-tag-hidden">[DU:...]</span>');
-        }
-      });
-      injectBannerInto(bannerArea, tagUrl);
-      return;
-    }
-
-    // Try own config (self-preview)
-    if (ownConfig && ownConfig.enabled && ownConfig.url) {
-      // Only inject on own profile: check if the username matches
-      // (we inject on all profiles if USRBG is off for simplicity)
-    }
-  }
-
-  // ── 9. MutationObserver: watch for profile modals opening ──────────────
-  function observeProfiles() {
-    const selectors = [
-      '[class*="userProfileOuter_"]',
-      '[class*="userProfileModal_"]',
-      '[class*="userPopout_"]',
-    ];
-
-    const checkNew = (nodes) => {
-      nodes.forEach(node => {
-        if (!(node instanceof HTMLElement)) return;
-        selectors.forEach(sel => {
-          if (node.matches && node.matches(sel)) processProfile(node);
-          node.querySelectorAll(sel).forEach(el => processProfile(el));
-        });
-      });
-    };
-
-    const mo = new MutationObserver(muts => {
-      muts.forEach(m => checkNew(Array.from(m.addedNodes)));
-    });
-    mo.observe(document.body || document.documentElement, { childList: true, subtree: true });
-
-    // Also scan existing
-    selectors.forEach(sel => document.querySelectorAll(sel).forEach(el => processProfile(el)));
-  }
-
-  // ── 10. Self-banner: inject on own profile popout via config ───────────
-  function applySelfBanner() {
-    if (ownConfig && ownConfig.avatarUrl) applySelfAvatar();
-    if (!ownConfig || !ownConfig.enabled || !ownConfig.url) return;
-    // Find own avatar in profile areas and inject
-    document.querySelectorAll('[class*="userProfileOuter_"], [class*="userPopout_"]').forEach(c => {
-      if (c.dataset.duBannerChecked) return; // let tag system handle
-      const bannerArea = c.querySelector('[class*="banner_"]');
-      if (bannerArea && !bannerArea.querySelector('[data-du-banner]')) {
-        injectBannerInto(bannerArea, ownConfig.url);
-      }
-    });
-  }
-
-  // ── 11. Self-avatar: inject on own user avatar elements via config ─────
-  const SELF_AVATAR_STYLE_ID = 'du-self-avatar-style';
-  function applySelfAvatar() {
-    if (!ownConfig || !ownConfig.avatarUrl) {
-      const ex = document.getElementById(SELF_AVATAR_STYLE_ID);
-      if (ex) ex.remove();
-      return;
-    }
-    let s = document.getElementById(SELF_AVATAR_STYLE_ID);
-    if (!s) {
-      s = document.createElement('style');
-      s.id = SELF_AVATAR_STYLE_ID;
-      (document.head || document.documentElement).appendChild(s);
-    }
-    const safeAvatar = ownConfig.avatarUrl.replace(/"/g, '%22');
-    let uid = null;
-    try {
-      const US = window.BdApi?.Webpack?.getStore?.('UserStore') ||
-                 window.BdApi?.Webpack?.getByKeys?.('getUser', 'getCurrentUser');
-      uid = US?.getCurrentUser?.()?.id;
-    } catch(e) {}
-    let css = '';
-    if (uid) {
-      css += 'img[src*="/avatars/' + uid + '/"],' +
-             '[data-user-id="' + uid + '"] img[class*="avatar_"],' +
-             '[data-userid="' + uid + '"] img[class*="avatar_"] {' +
-             '  content: url("' + safeAvatar + '") !important;' +
-             '  object-fit: cover !important;' +
-             '}\\n';
-    }
-    css += '[class*="accountProfileCard_"] img[class*="avatar_"] {' +
-           '  content: url("' + safeAvatar + '") !important;' +
-           '  object-fit: cover !important;' +
-           '}\\n';
-    s.textContent = css;
-  }
-
-  // ── Init ────────────────────────────────────────────────────────────────
-  function init() {
-    injectUsrbg();
-    injectBaseStyle();
-    loadOwnConfig();
-    observeProfiles();
-    setInterval(applySelfBanner, 2000);
-    setInterval(loadOwnConfig, 30000); // refresh config every 30s
-  }
-
-  if (document.body) {
-    init();
-  } else {
-    document.addEventListener('DOMContentLoaded', init);
-  }
-})();
-`;
+const duProfileBannerJs = "// Embedded into the Discord main-process hook by tools/sync_profile_renderer.cjs.\n(() => {\n  const VERSION = 'profile-dom-20260924-7';\n  const incoming = window.__DU_PROFILE_BANNER_CONFIG || null;\n  const previous = window.__duProfileBannerRuntime;\n  if (previous?.version === VERSION) { previous.update(incoming); return; }\n  if (previous?.dispose) previous.dispose();\n  else if (previous?.update) previous.update({enabled:false,bannerUrl:'',url:'',avatarUrl:''});\n\n  let config = incoming;\n  let disposed = false;\n  let pending = 0;\n  let applying = false;\n  let publicRequest = 0;\n  const changes = new Map();\n  const avatars = new Map();\n  const banners = new Map();\n  const ROOTS = '.user-profile-popout,.user-profile-modal,.user-profile-modal-v2,[class*=\"profileHeader_\"],[class*=\"userProfileOuter_\"],[class*=\"userProfileModal_\"],[class*=\"userPopoutOuter_\"],[class*=\"userPopout_\"],[class*=\"accountProfileCard_\"],[class*=\"profileCustomizationSection_\"]';\n  const MEDIA = '[data-du-profile-media]';\n  const API = 'https://discord-unlock-api.st4rs.workers.dev';\n  const numeric = (v, fallback, min, max) => Number.isFinite(Number(v)) && v !== undefined ? Math.min(max,Math.max(min,Number(v))) : fallback;\n  const validUrl = value => { try { const u=new URL(String(value||'')); return ['https:','http:','data:','blob:'].includes(u.protocol) ? u.href : ''; } catch (_) { return ''; } };\n  const videoUrl = value => { try { const u=new URL(String(value||'')); if(/\\.(mp4|webm|m4v|mov)$/i.test(u.pathname)) return true; const mime=decodeURIComponent(u.searchParams.get('mime')||'').toLowerCase(); return /^video\\/(mp4|webm|quicktime)$/i.test(mime)||(/(^|\\.)googlevideo\\.com$/i.test(u.hostname)&&/\\/videoplayback$/i.test(u.pathname)&&(u.searchParams.has('itag')||u.searchParams.has('mime'))); } catch (_) { return false; } };\n  const youtubeEmbedUrl = value => { try { const u=new URL(String(value||'')),h=u.hostname.toLowerCase(); let id=''; if((h==='youtube.com'||h==='www.youtube.com')&&u.pathname==='/watch') id=u.searchParams.get('v')||''; else if(h==='youtu.be') id=u.pathname.split('/').filter(Boolean)[0]||''; return /^[A-Za-z0-9_-]{11}$/.test(id) ? 'https://www.youtube-nocookie.com/embed/'+id+'?autoplay=1&mute=1&loop=1&playlist='+id+'&controls=0&playsinline=1&rel=0' : ''; } catch (_) { return ''; } };\n  function uid() {\n    try { const id=window.BdApi?.Webpack?.getStore?.('UserStore')?.getCurrentUser?.()?.id; if (id) return String(id); } catch (_) {}\n    const id=String(config?.duUserId||'');\n    return /^\\d{17,21}$/.test(id) ? id : '';\n  }\n  function set(el, property, value) {\n    let saved=changes.get(el);\n    if (!saved) { saved=new Map(); changes.set(el,saved); }\n    if (!saved.has(property)) saved.set(property,[el.style.getPropertyValue(property),el.style.getPropertyPriority(property)]);\n    if (el.style.getPropertyValue(property)!==value || el.style.getPropertyPriority(property)!=='important') el.style.setProperty(property,value,'important');\n  }\n  function restore(el) {\n    const saved=changes.get(el);\n    if (!saved) return;\n    for (const [property,[value,priority]] of saved) {\n      if (value) el.style.setProperty(property,value,priority); else el.style.removeProperty(property);\n    }\n    changes.delete(el);\n  }\n  function clearEntry(entry) {\n    entry.media?.remove();\n    if (entry.viewport) entry.viewport.remove();\n    for (const node of entry.changed) restore(node);\n    if (entry.synthetic) entry.host.remove();\n  }\n  function owned(root,id) {\n    if (!id) return false;\n    const explicit=root.getAttribute('data-user-id')||root.getAttribute('data-userid');\n    if (explicit) return explicit===id;\n    const first=root.querySelector('img[src*=\"/avatars/\"]:not('+MEDIA+')');\n    if (first) return first.getAttribute('src').includes('/avatars/'+id+'/');\n    try {\n      const key=Object.keys(root).find(k=>k.startsWith('__reactFiber$'));\n      for (let fiber=root[key],i=0;fiber&&i<15;fiber=fiber.return,i++) {\n        const user=fiber.memoizedProps?.user||fiber.memoizedProps?.currentUser;\n        if (user?.id) return String(user.id)===id;\n      }\n    } catch (_) {}\n    return root.matches('[class*=\"accountProfileCard_\"],[class*=\"profileCustomizationSection_\"]');\n  }\n  function pruneOwnPublicCss() {\n    if (!config) return;\n    const id=uid();\n    if (!id) return;\n    // The public stylesheet uses content:url(), which changes an image's intrinsic\n    // aspect ratio. Local configuration is authoritative, including explicit removal.\n    const style=document.getElementById('du-banner-css-inject');\n    try {\n      const sheet=style?.sheet;\n      if (sheet) for (let i=sheet.cssRules.length-1;i>=0;i--) {\n        if ((sheet.cssRules[i].selectorText||'').includes(id)) sheet.deleteRule(i);\n      }\n    } catch (_) {}\n  }\n  async function refreshPublicCss() {\n    const request=++publicRequest;\n    try {\n      if (localStorage.getItem('du_banner_enabled')==='0') { document.getElementById('du-banner-css-inject')?.remove(); return; }\n      const response=await fetch(API+'/du-banner/css',{cache:'no-store'});\n      if (!response.ok) return;\n      const css=await response.text();\n      if (disposed||request!==publicRequest) return;\n      let style=document.getElementById('du-banner-css-inject');\n      if (!style) { style=document.createElement('style'); style.id='du-banner-css-inject'; (document.head||document.documentElement).appendChild(style); }\n      if (style.textContent!==css) style.textContent=css;\n      pruneOwnPublicCss();\n    } catch (_) {}\n  }\n  function syncLocalAvatarCss(id,url) {\n    let style=document.getElementById('du-local-avatar-css');\n    if (!id || !url) { style?.remove(); return; }\n    if (!style) { style=document.createElement('style');style.id='du-local-avatar-css';(document.head||document.documentElement).appendChild(style); }\n    // content:url() altera somente a pintura da imagem: sem nós novos e sem reflow nas DMs.\n    const safe=String(url).replace(/\"/g,'%22');\n    const css='img[src*=\"/avatars/'+id+'/\"],img[src*=\"/users/'+id+'/avatars/\"]{content:url(\"'+safe+'\")!important;object-fit:cover!important;}';\n    if (style.textContent!==css) style.textContent=css;\n  }  function mediaFor(entry,url) {\n    if (entry.url===url && entry.media?.isConnected) return entry.media;\n    entry.media?.remove();\n    const youtube=youtubeEmbedUrl(url);\n    const video=videoUrl(url);\n    const media=document.createElement(youtube?'iframe':video?'video':'img');\n    media.setAttribute('data-du-profile-media','1');\n    media.setAttribute('referrerpolicy','no-referrer');\n    media.setAttribute('aria-hidden','true');\n    if (youtube) media.setAttribute('allow','autoplay; encrypted-media; picture-in-picture');\n    else if (video) { media.autoplay=true;media.muted=true;media.loop=true;media.playsInline=true; }\n    media.style.cssText='position:absolute!important;inset:0!important;display:block!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;margin:0!important;object-fit:cover!important;pointer-events:none!important;';\n    media.src=youtube||url;\n    (entry.viewport||entry.host).appendChild(media);\n    entry.url=url;entry.media=media;\n    if (video) media.play().catch(()=>{});\n    return media;\n  }\n  function applyAvatar(native,url) {\n    // Use the square HTML stack inside Discord's foreignObject. Its SVG mask\n    // retains the status cutout; viewport measurements never use the GIF's ratio.\n    const host=native.parentElement;\n    if (!(host instanceof HTMLElement)) return;\n    const rect=host.getBoundingClientRect();\n    if (!rect.width||!rect.height) return;\n    let entry=avatars.get(native);\n    if (entry && entry.host!==host) { clearEntry(entry);avatars.delete(native);entry=null; }\n    if (!entry) {\n      const viewport=document.createElement('span');\n      viewport.setAttribute('data-du-profile-avatar','1');\n      viewport.style.cssText='position:absolute!important;left:0!important;top:0!important;display:block!important;overflow:hidden!important;border-radius:50%!important;pointer-events:none!important;z-index:1!important;';\n      host.appendChild(viewport);\n      entry={host,viewport,changed:[native,host]};avatars.set(native,entry);\n    }\n    if (getComputedStyle(host).position==='static') set(host,'position','relative');\n    const side=Math.min(host.clientWidth||rect.width,host.clientHeight||rect.height);\n    entry.viewport.style.setProperty('width',side+'px','important');\n    entry.viewport.style.setProperty('height',side+'px','important');\n    set(native,'opacity','0');\n    set(native,'width','100%');set(native,'height','100%');set(native,'object-fit','cover');\n    const x=numeric(config.avatarPosX,50,0,100),y=numeric(config.avatarPosY,50,0,100);\n    const zoom=Math.max(numeric(config.avatarSize,72,40,220)/72,1);\n    const media=mediaFor(entry,url);\n    media.style.setProperty('opacity',String(numeric(config.avatarOpacity,100,0,100)/100),'important');\n    // object-position moves the crop inside Discord's native circular mask.\n    // This matches what X/Y mean in the editor and avoids drifting the whole\n    // avatar away from the status cutout when the banner height changes.\n    media.style.setProperty('object-position',x+'% '+y+'%','important');\n    media.style.setProperty('transform','scale('+zoom+')','important');\n    media.style.setProperty('transform-origin','center center','important');\n  }\n  function bannerArea(root) {\n    const candidates=Array.from(root.querySelectorAll('div[class*=\"banner_\"],div[class*=\"profileBanner\"],div[class*=\"bannerWrapper_\"],div[style*=\"background-image\"]'))\n      .filter(el=>{const r=el.getBoundingClientRect();return r.width>120&&r.height>35&&r.height<420&&!el.closest('[data-du-profile-avatar]');});\n    // Prefer the native painted layer. Its CSS mask already cuts around the avatar.\n    const painted=candidates.find(el=>el.style.backgroundImage && !el.closest('[data-du-profile-avatar]'));\n    if (painted) {\n      const parent=painted.parentElement;\n      return {host:painted,sizing:parent&&/banner/.test(String(parent.className))?parent:painted};\n    }\n    const html=candidates.find(el=>el.getBoundingClientRect().width>120&&!el.closest('svg'));\n    if (html) return {host:html,sizing:html};\n    const svg=root.querySelector('svg[class*=\"bannerSVGWrapper\"],svg[class*=\"banner_\"]');\n    if (svg) {\n      const foreign=svg.querySelector('foreignObject');\n      const htmlChild=foreign?.firstElementChild;\n      if (htmlChild instanceof HTMLElement) return {host:htmlChild,sizing:svg};\n    }\n    // A known profile with no banner still gets a dedicated HTML area, never an\n    // invalid DIV inserted directly into SVG or over the whole profile card.\n    const inner=root.querySelector('[class*=\"inner_\"],[class*=\"userProfileInner_\"]')||root;\n    let host=inner.querySelector(':scope > [data-du-profile-banner-fallback]');\n    if (!host) { host=document.createElement('div');host.setAttribute('data-du-profile-banner-fallback','1');inner.prepend(host); }\n    return {host,sizing:host,synthetic:true};\n  }\n  function rootFromAvatar(native) {\n    for (let root=native.parentElement,depth=0;root&&depth<14;root=root.parentElement,depth++) {\n      const r=root.getBoundingClientRect();\n      if (r.width<120||r.width>900||r.height<100||r.height>950) continue;\n      const banner=root.querySelector('div[class*=\"banner_\"],div[class*=\"profileBanner\"],div[class*=\"bannerWrapper_\"],div[style*=\"background-image\"]');\n      if (banner&&banner!==native.parentElement&&!banner.contains(native)) return root;\n    }\n    return null;\n  }\n  function isAllowedOwnAvatar(native,id) {\n    if (!(native instanceof HTMLImageElement) || native.matches(MEDIA) || native.closest(MEDIA)) return false;\n    // Chat/DM history has virtualized avatar nodes. Replacing them causes a\n    // layout pass while scrolling and can move a minimized Discord back up.\n    if (native.closest('[class*=\"message_\"],[class*=\"messageListItem_\"],[class*=\"messagesWrapper_\"],[class*=\"chatContent_\"],[class*=\"privateChannels_\"]')) return false;\n    if (native.closest('[class*=\"panels_\"]')) return true;\n    const root=rootFromAvatar(native);\n    return !!(root&&owned(root,id));\n  }\n  function applyBanner(root,url) {\n    let entry=banners.get(root);\n    if (entry && !entry.host.isConnected) { clearEntry(entry);banners.delete(root);entry=null; }\n    if (!entry) { const info=bannerArea(root);entry={...info,changed:Array.from(new Set([info.host,info.sizing])),layout:[]};banners.set(root,entry); }\n    const {host,sizing}=entry;\n    // Discord positions the avatar/status with fixed top offsets, but the\n    // banner cutout follows its height. Measure the native layout each time so\n    // resizing neither leaves the avatar behind nor accumulates translation.\n    for (const node of entry.layout) restore(node);\n    entry.layout=[];\n    restore(sizing);\n    const originalHeight=sizing.getBoundingClientRect().height;\n    const height=numeric(config.height,120,80,400);\n    const delta=height-originalHeight;\n    const anchors=[];\n    const id=uid();\n    for (const native of root.querySelectorAll('img[src*=\"/avatars/'+id+'/\"],img[src*=\"/users/'+id+'/avatars/\"]')) {\n      if (native.matches(MEDIA)||host.contains(native)) continue;\n      let anchor=null;\n      for (let node=native.parentElement;node&&node!==root;node=node.parentElement) {\n        if (node instanceof HTMLElement&&getComputedStyle(node).position==='absolute') anchor=node;\n      }\n      if (!anchor||anchors.some(a=>a.node===anchor)) continue;\n      const parent=anchor.offsetParent;\n      if (!(parent instanceof HTMLElement)||!parent.contains(sizing)) continue;\n      const top=parseFloat(getComputedStyle(anchor).top);\n      if (!Number.isFinite(top)) continue;\n      anchors.push({node:anchor,parent,top,parentHeight:parent.getBoundingClientRect().height});\n    }\n    const layoutSet=(node,property,value)=>{\n      if (!entry.layout.includes(node)) entry.layout.push(node);\n      if (!entry.changed.includes(node)) entry.changed.push(node);\n      set(node,property,value);\n    };\n    for (const anchor of anchors) {\n      // Move the entire avatar (mask, status and decorations) and the nearby\n      // status bubble, not the GIF inside the native avatar mask.\n      for (const node of anchor.parent.querySelectorAll('*')) {\n        if (!(node instanceof HTMLElement)||host.contains(node)||node===sizing||node.contains(sizing)) continue;\n        if (node.offsetParent!==anchor.parent||getComputedStyle(node).position!=='absolute') continue;\n        const top=parseFloat(getComputedStyle(node).top);\n        if (Number.isFinite(top)&&top>=anchor.top-1) layoutSet(node,'top',(top+delta)+'px');\n      }\n      if (/profileHeader|header_/i.test(anchor.parent.className)) {\n        layoutSet(anchor.parent,'height',Math.max(0,anchor.parentHeight+delta)+'px');\n      }\n    }\n    if (getComputedStyle(host).position==='static') set(host,'position','relative');\n    set(host,'overflow','hidden');\n    set(host,'background-image','none');\n    set(host,'background-color','transparent');\n    set(sizing,'height',height+'px');\n    if (host!==sizing) set(host,'height','100%');\n    const media=mediaFor(entry,url);\n    media.style.setProperty('opacity',String(numeric(config.opacity,85,0,100)/100),'important');\n    media.style.setProperty('object-position','center '+numeric(config.posY,50,0,100)+'%','important');\n  }\n  function apply() {\n    if (disposed||applying) return;\n    applying=true;\n    try {\n      pruneOwnPublicCss();\n      const id=uid();\n      const avatarUrl=config?.enabled ? validUrl(config.avatarUrl) : '';\n      const bannerUrl=config?.enabled ? validUrl(config.bannerUrl||config.url) : '';\n      syncLocalAvatarCss(id,avatarUrl);\n      const currentAvatars=new Set();\n      const ownNativeAvatars=id\n        ? Array.from(document.querySelectorAll('img[src*=\"/avatars/'+id+'/\"],img[src*=\"/users/'+id+'/avatars/\"]'))\n            .filter(native=>isAllowedOwnAvatar(native,id))\n        : [];\n      if (avatarUrl) {\n        ownNativeAvatars.forEach(native=>{\n          if (native.matches(MEDIA)||native.closest(MEDIA)) return;\n          currentAvatars.add(native);applyAvatar(native,avatarUrl);\n        });\n      }\n      for (const [native,entry] of avatars) if (!currentAvatars.has(native)) {clearEntry(entry);avatars.delete(native);}\n      const roots=Array.from(document.querySelectorAll(ROOTS)).filter(root=>owned(root,id));\n      // Discord's full profile view uses unrelated generated class names. Derive\n      // its root from the authenticated user's native avatar and nearby banner.\n      for (const native of ownNativeAvatars) {\n        const root=rootFromAvatar(native);\n        if (root&&!roots.includes(root)) roots.push(root);\n      }\n      const currentBanners=new Set();\n      if (bannerUrl) for (const root of roots) {\n        if (roots.some(other=>other!==root&&root.contains(other))) continue;\n        currentBanners.add(root);applyBanner(root,bannerUrl);\n      }\n      for (const [root,entry] of banners) if (!currentBanners.has(root)) {clearEntry(entry);banners.delete(root);}\n    } catch (error) { console.error('[DiscordUnlock profile]',error); }\n    finally {applying=false;}\n  }\n  function schedule() {\n    if (disposed||pending) return;\n    pending=setTimeout(()=>{pending=0;apply();},40);\n  }\n  const observer=new MutationObserver(records=>{\n    if (records.some(record=>{\n      const element=record.target instanceof Element ? record.target : record.target.parentElement;\n      if (element?.closest(MEDIA+', [data-du-profile-avatar]')) return false;\n      if (element?.closest('[class*=\"message_\"],[class*=\"messageListItem_\"],[class*=\"messagesWrapper_\"]') && !element.closest(ROOTS+', [class*=\"panels_\"]')) return false;\n      if (record.type==='attributes') return true;\n      return [...record.addedNodes,...record.removedNodes].some(node=>node.nodeType===1&&!node.matches?.(MEDIA+', [data-du-profile-avatar]'));\n    })) schedule();\n  });\n  observer.observe(document.body||document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['src','class']});\n  const poll=setInterval(apply,1500);\n  const publicPoll=setInterval(refreshPublicCss,45000);\n  window.addEventListener('resize',schedule);\n  window.__duProfileBannerRuntime={\n    version:VERSION,\n    update(next) {\n      config=next&&typeof next==='object'?next:null;\n      window.__DU_PROFILE_BANNER_CONFIG=config;\n      try { if(config)localStorage.setItem('du_profile_banner',JSON.stringify(config));else localStorage.removeItem('du_profile_banner'); } catch (_) {}\n      apply();\n      return {version:VERSION,avatars:avatars.size,banners:banners.size};\n    },\n    diagnostics() {return {version:VERSION,userId:uid(),avatars:avatars.size,banners:banners.size,config};},\n    dispose() {\n      disposed=true;publicRequest++;observer.disconnect();clearTimeout(pending);clearInterval(poll);clearInterval(publicPoll);window.removeEventListener('resize',schedule);document.getElementById('du-local-avatar-css')?.remove();\n      for(const entry of avatars.values())clearEntry(entry);\n      for(const entry of banners.values())clearEntry(entry);\n      for(const el of changes.keys())restore(el);\n    }\n  };\n  apply();\n  refreshPublicCss();\n})();\n";
 
 function getThemePaths() {
   const userData = electron.app.getPath('userData');
@@ -24492,6 +25389,26 @@ function getThemePaths() {
 
   return { themePath, wpPath };
 }
+function getProfileBannerConfig() {
+  try {
+    const configPath = path.join(appDataDir, 'DiscordUnlock', 'profile_banner.json');
+    if (!fs.existsSync(configPath)) return null;
+    let raw = fs.readFileSync(configPath, 'utf8');
+    if (raw.charCodeAt(0) === 0xFEFF) raw = raw.slice(1);
+    const config = JSON.parse(raw);
+    try {
+      const idPath = path.join(appDataDir, 'DiscordUnlock', 'current_discord_id.txt');
+      if (fs.existsSync(idPath)) {
+        const id = fs.readFileSync(idPath, 'utf8').trim();
+        if (/^\d{17,21}$/.test(id)) config.duUserId = id;
+      }
+    } catch (_) {}
+    return config;
+  } catch (e) {
+    hookLog('profile config read error: ' + e.message);
+    return null;
+  }
+}
 
 function injectTheme(win) {
   try {
@@ -24502,7 +25419,10 @@ function injectTheme(win) {
       if (win.webContents && typeof win.webContents.setFrameRate === 'function') win.webContents.setFrameRate(60);
     } catch (_) {}
     win.webContents.executeJavaScript(bdWatermarkNukerJs).catch(() => {});
-    win.webContents.executeJavaScript(duProfileBannerJs).catch(() => {});
+    const profileConfig = getProfileBannerConfig();
+    const profileBootstrap = 'window.__DU_PROFILE_BANNER_CONFIG = ' + JSON.stringify(profileConfig) + ';';
+    win.webContents.executeJavaScript(profileBootstrap + duProfileBannerJs)
+      .catch(e => hookLog('profile hook inject error [' + win.webContents.getURL() + ']: ' + e.message));
     if (nitroStreamUnlockJs) win.webContents.executeJavaScript(nitroStreamUnlockJs).catch(() => {});
 
     const { themePath, wpPath } = getThemePaths();
@@ -24719,7 +25639,84 @@ try {
   };
   if (themePath) { fs.watchFile(themePath, { interval: 1000 }, reloadAll); }
   if (wpPath) { fs.watchFile(wpPath, { interval: 1000 }, reloadAll); }
+  const profileConfigPath = path.join(appDataDir, 'DiscordUnlock', 'profile_banner.json');
+  let profilePushTimer = null;
+  let lastProfilePayload = '';
+  const pushProfileConfigToWindows = () => {
+    try {
+      const profileConfig = getProfileBannerConfig();
+      const payload = JSON.stringify(profileConfig);
+      if (payload === lastProfilePayload) return;
+      lastProfilePayload = payload;
+      const script = '(() => { const config = ' + payload + '; window.__DU_PROFILE_BANNER_CONFIG = config; if (window.__duProfileBannerRuntime && typeof window.__duProfileBannerRuntime.update === "function") { window.__duProfileBannerRuntime.update(config); return true; } return false; })();';
+      const wins = electron.BrowserWindow ? electron.BrowserWindow.getAllWindows() : [];
+      let delivered = 0;
+      for (const w of wins) {
+        if (isOverlay(w) || !w.webContents || w.webContents.isDestroyed()) continue;
+        delivered++;
+        w.webContents.executeJavaScript(script)
+          .then(updated => { if (!updated) injectTheme(w); })
+          .catch(e => hookLog('profile live update error: ' + e.message));
+      }
+      hookLog('profile config pushed to ' + delivered + ' window(s)');
+    } catch(e) {
+      hookLog('profile live update error: ' + e.message);
+    }
+  };
+  const scheduleProfilePush = () => {
+    if (profilePushTimer) clearTimeout(profilePushTimer);
+    profilePushTimer = setTimeout(pushProfileConfigToWindows, 120);
+  };
+  // watchFile cobre gravacoes normais; fs.watch do diretorio cobre substituicao
+  // atomica do JSON por outro arquivo, comum durante o auto-save.
+  fs.watchFile(profileConfigPath, { interval: 300 }, scheduleProfilePush);
+  try {
+    const profileConfigDir = path.dirname(profileConfigPath);
+    if (fs.existsSync(profileConfigDir)) {
+      fs.watch(profileConfigDir, (eventType, filename) => {
+        if (!filename || String(filename).toLowerCase() === 'profile_banner.json') scheduleProfilePush();
+      });
+    }
+  } catch(e) {
+    hookLog('profile directory watcher error: ' + e.message);
+  }
 } catch(e) {}
+
+// Read the authenticated account from live Discord renderer windows in the Electron main process.
+try {
+  let duDiscordIdSyncBusy = false;
+  const syncActiveDiscordId = async () => {
+    if (duDiscordIdSyncBusy) return;
+    duDiscordIdSyncBusy = true;
+    try {
+      const wins = electron.BrowserWindow ? electron.BrowserWindow.getAllWindows() : [];
+      const targets = wins.filter(w => {
+        try {
+          if (!w.webContents || w.webContents.isDestroyed() || isOverlay(w)) return false;
+          return /^https:\/\/(www\.)?discord(app)?\.com\//i.test(w.webContents.getURL() || '');
+        } catch(e) { return false; }
+      });
+      for (const w of targets) {
+        try {
+          const rendererCode = '(function(){' +
+            'const valid=value=>typeof value==="string"&&/^\\d{17,21}$/.test(value);' +
+            'try{const store=window.BdApi?.Webpack?.getStore?.("UserStore")||window.BdApi?.Webpack?.getByKeys?.("getUser","getCurrentUser");const id=store?.getCurrentUser?.()?.id;if(valid(id))return id;}catch(e){}' +
+            'try{const modules=Object.values(window.webpackChunkdiscord_app?.__webpack_module_cache__||{});const mod=modules.map(x=>x?.exports).find(x=>x?.default?.getCurrentUser||x?.getCurrentUser);const id=(mod?.default||mod)?.getCurrentUser?.()?.id;if(valid(id))return id;}catch(e){}' +
+            'return "";})()';
+          const uid = await w.webContents.executeJavaScript(rendererCode, true);
+          if (!/^\d{17,21}$/.test(String(uid || ''))) continue;
+          const dir = path.join(appDataDir, 'DiscordUnlock');
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+          fs.writeFileSync(path.join(dir, 'current_discord_id.txt'), String(uid), 'utf8');
+          fs.writeFileSync(path.join(dir, 'current_discord_id_seen.txt'), String(Date.now()), 'utf8');
+          return;
+        } catch(e) {}
+      }
+    } finally { duDiscordIdSyncBusy = false; }
+  };
+  syncActiveDiscordId();
+  setInterval(syncActiveDiscordId, 3000);
+} catch(e) { hookLog('Discord account ID sync error: ' + e.message); }
 
 // Real-time IPC trigger file watcher
 try {
@@ -27449,6 +28446,106 @@ bool isRealStatusDetectorEnabled() {
   return false;
 }
 
+bool isShopUnlockEnabled() {
+  wchar_t appData[MAX_PATH];
+  if (GetEnvironmentVariableW(L"APPDATA", appData, MAX_PATH) > 0) {
+    fs::path pTxt = fs::path(appData) / "DiscordUnlock" / "shop_unlock_enabled.txt";
+    std::error_code ec;
+    if (fs::exists(pTxt, ec)) {
+      std::ifstream in(pTxt.string());
+      if (in.is_open()) {
+        std::string s;
+        in >> s;
+        in.close();
+        if (s == "0" || s == "false") return false;
+        if (s == "1" || s == "true") return true;
+      }
+    }
+    fs::path pCfg = fs::path(appData) / "BetterDiscord" / "plugins" / "NitroStreamUnlock.config.json";
+    if (fs::exists(pCfg, ec)) {
+      std::ifstream in(pCfg.string());
+      if (in.is_open()) {
+        std::string c((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        in.close();
+        if (c.find("\"shopUnlock\": false") != std::string::npos || c.find("\"shopUnlock\":false") != std::string::npos) return false;
+      }
+    }
+  }
+  return true;
+}
+
+bool isAppIconsUnlockEnabled() {
+  wchar_t appData[MAX_PATH];
+  if (GetEnvironmentVariableW(L"APPDATA", appData, MAX_PATH) > 0) {
+    fs::path pTxt = fs::path(appData) / "DiscordUnlock" / "app_icons_unlock_enabled.txt";
+    std::error_code ec;
+    if (fs::exists(pTxt, ec)) {
+      std::ifstream in(pTxt.string());
+      if (in.is_open()) {
+        std::string s;
+        in >> s;
+        in.close();
+        if (s == "0" || s == "false") return false;
+        if (s == "1" || s == "true") return true;
+      }
+    }
+    fs::path pCfg = fs::path(appData) / "BetterDiscord" / "plugins" / "NitroStreamUnlock.config.json";
+    if (fs::exists(pCfg, ec)) {
+      std::ifstream in(pCfg.string());
+      if (in.is_open()) {
+        std::string c((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        in.close();
+        if (c.find("\"appIconsUnlock\": false") != std::string::npos || c.find("\"appIconsUnlock\":false") != std::string::npos) return false;
+      }
+    }
+  }
+  return true;
+}
+
+void setShopUnlockEnabled(bool enabled) {
+  wchar_t appData[MAX_PATH];
+  if (GetEnvironmentVariableW(L"APPDATA", appData, MAX_PATH) > 0) {
+    fs::path cfgDir = fs::path(appData) / "DiscordUnlock";
+    std::error_code ec;
+    if (!fs::exists(cfgDir, ec)) fs::create_directories(cfgDir, ec);
+    std::ofstream fCfg((cfgDir / "shop_unlock_enabled.txt").string());
+    if (fCfg.is_open()) { fCfg << (enabled ? "1" : "0"); fCfg.close(); }
+
+    std::vector<fs::path> targetPluginDirs = {
+      fs::path(appData) / "BetterDiscord" / "plugins",
+      fs::path(appData) / "dcunlock plugins",
+      fs::path(appData) / "Vencord" / "plugins"
+    };
+    for (const auto &bdPlugins : targetPluginDirs) {
+      if (fs::exists(bdPlugins, ec)) {
+        updateNitroConfigFile(bdPlugins / "NitroStreamUnlock.config.json", "shopUnlock", enabled);
+      }
+    }
+  }
+}
+
+void setAppIconsUnlockEnabled(bool enabled) {
+  wchar_t appData[MAX_PATH];
+  if (GetEnvironmentVariableW(L"APPDATA", appData, MAX_PATH) > 0) {
+    fs::path cfgDir = fs::path(appData) / "DiscordUnlock";
+    std::error_code ec;
+    if (!fs::exists(cfgDir, ec)) fs::create_directories(cfgDir, ec);
+    std::ofstream fCfg((cfgDir / "app_icons_unlock_enabled.txt").string());
+    if (fCfg.is_open()) { fCfg << (enabled ? "1" : "0"); fCfg.close(); }
+
+    std::vector<fs::path> targetPluginDirs = {
+      fs::path(appData) / "BetterDiscord" / "plugins",
+      fs::path(appData) / "dcunlock plugins",
+      fs::path(appData) / "Vencord" / "plugins"
+    };
+    for (const auto &bdPlugins : targetPluginDirs) {
+      if (fs::exists(bdPlugins, ec)) {
+        updateNitroConfigFile(bdPlugins / "NitroStreamUnlock.config.json", "appIconsUnlock", enabled);
+      }
+    }
+  }
+}
+
 void notifyDiscordRealStatus(bool enabled) {
   try {
     HINTERNET hSession = WinHttpOpen(L"DiscordUnlock/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
@@ -28584,7 +29681,7 @@ void sendFeedbackWebhook(const std::string &type, const std::string &message, co
     }
 
     fs::remove(tempArgsJson, ec);
-    postJsonToUI("{\"type\":\"feedback_sent\",\"success\":" + std::string(sent ? "true" : "false") + "}");
+    postJsonToUI("{\"type\":\"feedback_sent\",\"success\":" + std::string(sent ? "true" : "false") + ",\"message\":\"" + escapeJsonString(sent ? "Relatório enviado com diagnóstico anexado." : "Não foi possível enviar o relatório agora. Verifique a conexão e tente novamente.") + "\"}");
   }).detach();
 }
 
@@ -30831,6 +31928,9 @@ static void syncNativeSoundboardHotkeys(const std::string &json) {
       binding.name = extractJsonField(item, "name");
       binding.fileName = extractJsonField(item, "fileName");
       binding.keybind = normalizeNativeHotkey(extractJsonField(item, "keybind"));
+      if (binding.keybind == "P" || binding.keybind.length() == 1) {
+        binding.keybind = "";
+      }
       try { binding.gain = std::stof(extractJsonField(item, "gain")); } catch (...) {}
       binding.gain = (std::max)(0.0f, (std::min)(1.0f, binding.gain));
       if (!binding.id.empty() && !binding.keybind.empty() && !binding.fileName.empty()) bindings.push_back(std::move(binding));
@@ -30846,8 +31946,8 @@ static void syncNativeSoundboardHotkeys(const std::string &json) {
     g_nativeSoundboardBindings = std::move(bindings);
     const std::string stopKey = normalizeNativeHotkey(extractJsonField(json, "stopKey"));
     const std::string voiceKey = normalizeNativeHotkey(extractJsonField(json, "voiceKey"));
-    if (!stopKey.empty() || extractJsonField(json, "stopKey") == "") g_nativeStopAllHotkey = stopKey;
-    if (!voiceKey.empty() || extractJsonField(json, "voiceKey") == "") g_nativeVoiceToggleHotkey = voiceKey;
+    if (!stopKey.empty() || extractJsonField(json, "stopKey") == "") g_nativeStopAllHotkey = (stopKey == "P" ? "" : stopKey);
+    if (!voiceKey.empty() || extractJsonField(json, "voiceKey") == "") g_nativeVoiceToggleHotkey = (voiceKey == "P" ? "" : voiceKey);
     if (!voicePreset.empty()) g_nativeVoicePreset = voicePreset;
   }
   if (!enabled.empty()) g_nativeSoundboardEnabled.store(enabled == "true" || enabled == "1");
@@ -30934,7 +32034,19 @@ LRESULT CALLBACK SoundboardKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 
       if (!keyName.empty()) {
         // Sons, parar e voz sao executados nativamente para continuar imediatos com a WebView minimizada.
-        if (executeNativeSoundboardHotkey(keyName)) return 1;
+        bool isTypingKey = (p->vkCode >= 'A' && p->vkCode <= 'Z') ||
+                           (p->vkCode >= '0' && p->vkCode <= '9') ||
+                           (p->vkCode >= VK_OEM_1 && p->vkCode <= VK_OEM_8) ||
+                           p->vkCode == VK_SPACE || p->vkCode == VK_RETURN || p->vkCode == VK_TAB || p->vkCode == VK_BACK;
+        bool hasModifier = isCtrl || isAlt;
+
+        if (executeNativeSoundboardHotkey(keyName)) {
+          // NUNCA engolir teclas comuns de digitação no Windows quando pressionadas sem Ctrl ou Alt,
+          // garantindo que letras normais como 'P' nunca sejam bloqueadas no SO.
+          if (!isTypingKey || hasModifier) {
+            return 1;
+          }
+        }
         postJsonToUI("{\"type\":\"global_key_pressed\",\"key\":\"" + keyName + "\",\"vk\":" + std::to_string(p->vkCode) + "}");
       }
     }
@@ -32979,7 +34091,7 @@ void watchdogLoop() {
     if (!g_watchdogEnabled || g_isSwitching || !g_serverRoutingEnabled) continue;
 
     // An offline route fails over immediately. High latency must persist for
-    // three checks and an alternative must save at least 120 ms.
+    // three checks and an alternative must save at least 90 ms.
     const auto &profiles = getServerProfiles();
     if (g_currentProxyIndex >= profiles.size() || profiles[g_currentProxyIndex].isDirect) continue;
     const int currentLatency = testSocks5Handshake(profiles[g_currentProxyIndex].endpoint, 2000);
@@ -33003,7 +34115,7 @@ void watchdogLoop() {
       g_routeDegradedSamples.store(0);
       continue;
     }
-    const bool veryLaggy = currentLatency >= 350 && currentLatency >= reference + 120;
+    const bool veryLaggy = currentLatency >= 350 && currentLatency >= reference + 90;
     if (!veryLaggy) {
       g_routeDegradedSamples.store(0);
       continue;
@@ -33026,7 +34138,7 @@ void watchdogLoop() {
     }
     g_lastAutoRouteOptimizationAt.store(now);
     g_routeDegradedSamples.store(0);
-    if (bestIndex != g_currentProxyIndex && currentLatency - bestLatency >= 120) {
+    if (bestIndex != g_currentProxyIndex && currentLatency - bestLatency >= 90) {
       performProxySwitch(bestIndex);
       g_routeReferenceLatency.store(bestLatency);
       postJsonToUI("{\"type\":\"toast\",\"message\":\"Rota estava lenta por 3 medições. Otimização automática selecionou " + escapeJsonString(profiles[bestIndex].name) + " (" + std::to_string(bestLatency) + "ms).\"}");
@@ -33486,6 +34598,7 @@ void startDiscordUnlockActivities() {
   if (!g_activitiesStarted.compare_exchange_strong(expected, true)) {
     return; // Already started
   }
+  startDuNetworkVisualSyncWatch();
 
   std::thread([]() {
     try {
@@ -33688,6 +34801,8 @@ void sendInitialStateToUI() {
     postJsonToUI(initJson);
     postJsonToUI(std::string("{\"type\":\"startup_status\",\"enabled\":") + (isAutoStartupEnabled() ? "true" : "false") + "}");
     postJsonToUI(std::string("{\"type\":\"real_status_state\",\"enabled\":") + (isRealStatusDetectorEnabled() ? "true" : "false") + "}");
+    postJsonToUI(std::string("{\"type\":\"shop_unlock_state\",\"enabled\":") + (isShopUnlockEnabled() ? "true" : "false") + "}");
+    postJsonToUI(std::string("{\"type\":\"app_icons_unlock_state\",\"enabled\":") + (isAppIconsUnlockEnabled() ? "true" : "false") + "}");
 
     loadHotkeysConfig();
     broadcastHotkeysConfig();
@@ -35147,29 +36262,83 @@ static void runSystemDiagnosticsAsync() {
       bool diskOk = GetDiskFreeSpaceExW(dataDir.root_path().wstring().c_str(), &freeBytes, &totalBytes, nullptr) != FALSE;
       const unsigned long long freeGb = diskOk ? freeBytes.QuadPart / (1024ull * 1024ull * 1024ull) : 0ull;
       const bool discordRunning = isDiscordProcessRunningForDiagnostics();
-      const bool soundFolder = fs::exists(getExeDir() / "sons", ec);
+      const fs::path soundPath = getExeDir() / "sons";
+      const bool soundFolder = fs::exists(soundPath, ec);
+      const fs::path profileConfig = dataDir / "profile_banner.json";
+      bool profileConfigOk = true;
+      if (fs::exists(profileConfig, ec)) {
+        std::ifstream input(profileConfig, std::ios::binary);
+        std::string raw((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+        const auto firstNonSpace = raw.find_first_not_of(" \t\r\n");
+        const auto lastNonSpace = raw.find_last_not_of(" \t\r\n");
+        profileConfigOk = firstNonSpace != std::string::npos && lastNonSpace != std::string::npos && raw[firstNonSpace] == '{' && raw[lastNonSpace] == '}';
+      }
       const std::string remoteVersion = getLatestUpdateVersionFromAllSources();
       const bool updateSourcesOk = !remoteVersion.empty();
       std::ostringstream response;
       response << "{\"type\":\"diagnostics_result\",\"summary\":\""
                << "Verificação concluída. Disco livre: " << freeGb << " GB.\""
                << ",\"items\":[";
-      auto item = [&](const char *label, bool ok, const std::string &detail, bool &first) {
+      auto item = [&](const char *label, bool ok, const std::string &detail, const char *repairAction, const char *repairLabel, bool &first) {
         if (!first) response << ",";
         first = false;
         response << "{\"label\":\"" << escapeJsonString(label) << "\",\"ok\":" << (ok ? "true" : "false")
-                 << ",\"detail\":\"" << escapeJsonString(detail) << "\"}";
+                 << ",\"detail\":\"" << escapeJsonString(detail) << "\"";
+        if (!ok && repairAction && *repairAction) {
+          response << ",\"repairAction\":\"" << escapeJsonString(repairAction) << "\",\"repairLabel\":\"" << escapeJsonString(repairLabel ? repairLabel : "Reparar") << "\"";
+        }
+        response << "}";
       };
       bool first = true;
-      item("Discord", discordRunning, discordRunning ? "Processo do Discord detectado." : "Discord não está aberto agora; isso é normal se você não estiver usando.", first);
-      item("Gravação e arquivos", diskOk && freeGb >= 2, diskOk ? (std::to_string(freeGb) + " GB livres no disco.") : "Não foi possível consultar o espaço livre.", first);
-      item("Soundpad local", soundFolder, soundFolder ? "Pasta de sons disponível para o motor nativo." : "Pasta de sons ainda não foi criada.", first);
-      item("Atualizações", updateSourcesOk, updateSourcesOk ? ("Manifesto disponível; versão remota " + remoteVersion + ".") : "Não foi possível consultar as fontes agora.", first);
-      item("Proteção de dados", true, "Backups excluem chaves, tokens e arquivos pessoais.", first);
+      item("Discord", discordRunning, discordRunning ? "Processo do Discord detectado." : "Discord não está aberto agora; isso é normal se você não estiver usando.", "", "", first);
+      item("Gravação e arquivos", diskOk && freeGb >= 2, diskOk ? (std::to_string(freeGb) + " GB livres no disco.") : "Não foi possível consultar o espaço livre.", "", "", first);
+      item("Soundpad local", soundFolder, soundFolder ? "Pasta de sons disponível para o motor nativo." : "Pasta de sons ainda não foi criada.", "create_sound_folder", "Criar pasta de sons", first);
+      item("Perfil local", profileConfigOk, profileConfigOk ? "Configuração de banner e avatar íntegra." : "A configuração local do perfil está corrompida.", "reset_profile_config", "Recuperar configuração", first);
+      item("Atualizações", updateSourcesOk, updateSourcesOk ? ("Manifesto disponível; versão remota " + remoteVersion + ".") : "Não foi possível consultar as fontes agora.", "", "", first);
+      item("Proteção de dados", true, "Backups excluem chaves, tokens e arquivos pessoais.", "", "", first);
       response << "]}";
       postJsonToUI(response.str());
     } catch (...) {
       postJsonToUI("{\"type\":\"diagnostics_result\",\"summary\":\"A verificação encontrou uma falha inesperada.\",\"items\":[]}");
+    }
+  }).detach();
+}
+
+static void repairSystemDiagnosticsAsync(const std::string repair) {
+  std::thread([repair]() {
+    try {
+      const fs::path dataDir = getDiscordUnlockUserDataDir();
+      std::error_code ec;
+      fs::create_directories(dataDir, ec);
+      std::vector<std::string> repaired;
+      if (repair == "all" || repair == "create_sound_folder") {
+        const fs::path soundPath = getExeDir() / "sons";
+        if (!fs::exists(soundPath, ec) && fs::create_directories(soundPath, ec)) repaired.push_back("pasta de sons criada");
+      }
+      if (repair == "all" || repair == "reset_profile_config") {
+        const fs::path profileConfig = dataDir / "profile_banner.json";
+        bool corrupt = false;
+        if (fs::exists(profileConfig, ec)) {
+          std::ifstream input(profileConfig, std::ios::binary);
+          std::string raw((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+          const auto firstNonSpace = raw.find_first_not_of(" \t\r\n");
+          const auto lastNonSpace = raw.find_last_not_of(" \t\r\n");
+          corrupt = firstNonSpace == std::string::npos || lastNonSpace == std::string::npos || raw[firstNonSpace] != '{' || raw[lastNonSpace] != '}';
+        }
+        if (corrupt) {
+          fs::path backup = profileConfig;
+          backup += ".corrupt-backup";
+          fs::copy_file(profileConfig, backup, fs::copy_options::overwrite_existing, ec);
+          std::ofstream output(profileConfig, std::ios::trunc);
+          output << "{\"enabled\":false,\"bannerUrl\":\"\",\"avatarUrl\":\"\"}\n";
+          if (output.good()) repaired.push_back("configuração de perfil recuperada (cópia preservada)");
+        }
+      }
+      std::string message = repaired.empty() ? "Nenhum reparo era necessário neste computador." : "Auto-reparo concluído: ";
+      for (size_t i = 0; i < repaired.size(); ++i) { if (i) message += ", "; message += repaired[i]; }
+      postJsonToUI("{\"type\":\"diagnostics_repair_result\",\"success\":true,\"message\":\"" + escapeJsonString(message) + "\"}");
+    } catch (...) {
+      postJsonToUI(R"({"type":"diagnostics_repair_result","success":false,"message":"Não foi possível concluir o auto-reparo local."})");
     }
   }).detach();
 }
@@ -35609,6 +36778,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                                   runSystemDiagnosticsAsync();
                                   return S_OK;
                                 }
+                                if (action == "repair_system_diagnostics") {
+                                  repairSystemDiagnosticsAsync(extractJsonField(json, "repair"));
+                                  return S_OK;
+                                }
                                 if (action == "create_config_backup") {
                                   createConfigurationBackupAsync();
                                   return S_OK;
@@ -35796,20 +36969,89 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                                   std::thread([cfgContent]() {
                                     saveDMTypographyConfig(cfgContent);
                                   }).detach();
-                                } else if (action == "set_profile_banner") {
+                                } else if (action == "detect_discord_id") {
+                                  std::thread([]() {
+                                    std::string userId;
+                                    bool fresh = false;
+                                    try {
+                                      const char* appData = getenv("APPDATA");
+                                      if (appData) {
+                                        fs::path idPath = fs::path(appData) / "DiscordUnlock" / "current_discord_id.txt";
+                                        if (fs::exists(idPath)) {
+                                          std::ifstream input(idPath);
+                                          std::getline(input, userId);
+                                          while (!userId.empty() && (userId.back() == '\r' || userId.back() == '\n' || userId.back() == ' ' || userId.back() == '\t')) userId.pop_back();
+                                          const auto age = fs::file_time_type::clock::now() - fs::last_write_time(idPath);
+                                          fresh = age < std::chrono::seconds(15);
+                                        }
+                                      }
+                                    } catch (...) {}
+                                    const bool valid = fresh && std::regex_match(userId, std::regex("^[0-9]{17,21}$"));
+                                    if (valid) {
+                                      postJsonToUI("{\"type\":\"discord_id_detected\",\"userId\":\"" + escapeJsonString(userId) + "\",\"source\":\"cache local\"}");
+                                    } else {
+                                      postJsonToUI("{\"type\":\"discord_id_detected\",\"userId\":\"\",\"message\":\"⚠️ Não encontrei uma sessão ativa. Abra o Discord, aguarde alguns segundos e tente novamente.\"}");
+                                    }
+                                  }).detach();                                } else if (action == "get_shop_collectibles") {
+                                  std::thread([]() {
+                                    std::string config = "{}";
+                                    try {
+                                      const char* appData = getenv("APPDATA");
+                                      if (appData) {
+                                        fs::path path = fs::path(appData) / "DiscordUnlock" / "applied_collectibles.json";
+                                        if (fs::exists(path) && fs::file_size(path) <= 8192) {
+                                          std::ifstream input(path, std::ios::binary);
+                                          std::string candidate((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+                                          if (candidate.size() >= 2 && candidate.front() == '{' && candidate.back() == '}') config = candidate;
+                                        }
+                                      }
+                                    } catch (...) {}
+                                    postJsonToUI("{\"type\":\"shop_collectibles_data\",\"configB64\":\"" + base64Encode(config) + "\"}");
+                                  }).detach();                                } else if (action == "set_profile_banner") {
                                   // Save profile banner config to %AppData%\DiscordUnlock\profile_banner.json
-                                  std::string bannerData = extractJsonField(json, "data");
-                                  if (bannerData.empty()) bannerData = "{}";
-                                  std::thread([bannerData]() {
+                                  std::string b64 = extractJsonField(json, "b64");
+                                  if (b64.empty()) {
+                                    postJsonToUI("{\"type\":\"toast\",\"message\":\"Configuração do perfil rejeitada: transporte inválido.\",\"success\":false}");
+                                    return S_OK;
+                                  }
+                                  std::string bannerData = base64Decode(b64);
+                                  while (!bannerData.empty() && (bannerData.front() == ' ' || bannerData.front() == '\t' || bannerData.front() == '\r' || bannerData.front() == '\n')) bannerData.erase(bannerData.begin());
+                                  while (!bannerData.empty() && (bannerData.back() == ' ' || bannerData.back() == '\t' || bannerData.back() == '\r' || bannerData.back() == '\n')) bannerData.pop_back();
+                                  const bool profileJsonLooksValid = !bannerData.empty() && bannerData.front() == '{' && bannerData.back() == '}' &&
+                                    bannerData.find("\"enabled\"") != std::string::npos &&
+                                    bannerData.find("\"bannerUrl\"") != std::string::npos &&
+                                    bannerData.find("\"avatarUrl\"") != std::string::npos;
+                                  if (!profileJsonLooksValid) {
+                                    postJsonToUI("{\"type\":\"toast\",\"message\":\"Configuração do perfil rejeitada: JSON inválido.\",\"success\":false}");
+                                    return S_OK;
+                                  }
+                                  static std::atomic_uint64_t latestProfileBannerWrite{0};
+                                  const uint64_t writeSequence = ++latestProfileBannerWrite;
+                                  std::thread([bannerData, writeSequence]() {
+                                    fs::path tmpPath;
                                     try {
                                       const char* appData = getenv("APPDATA");
                                       if (!appData) return;
                                       fs::path dir = fs::path(appData) / "DiscordUnlock";
                                       if (!fs::exists(dir)) fs::create_directories(dir);
                                       fs::path cfgPath = dir / "profile_banner.json";
-                                      std::ofstream f(cfgPath.string());
-                                      if (f.is_open()) { f << bannerData; f.close(); }
-                                    } catch (...) {}
+                                      tmpPath = cfgPath;
+                                      tmpPath += ".tmp." + std::to_string(GetCurrentThreadId()) + "." + std::to_string(GetTickCount64());
+                                      {
+                                        std::ofstream f(tmpPath, std::ios::binary | std::ios::trunc);
+                                        if (!f.is_open()) return;
+                                        f.write(bannerData.data(), static_cast<std::streamsize>(bannerData.size()));
+                                        f.flush();
+                                        if (!f.good()) { f.close(); fs::remove(tmpPath); return; }
+                                      }
+                                      // Sliders may produce overlapping save threads; the newest state wins.
+                                      if (writeSequence != latestProfileBannerWrite.load()) { fs::remove(tmpPath); return; }
+                                      if (!MoveFileExW(tmpPath.c_str(), cfgPath.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+                                        fs::remove(tmpPath);
+                                      }
+                                    } catch (...) {
+                                      try { if (!tmpPath.empty()) fs::remove(tmpPath); } catch (...) {}
+                                    }
                                   }).detach();
                                  } else if (action == "open_external_url") {
                                   // Open URL in default Windows browser
@@ -35960,6 +37202,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                                   postJsonToUI(std::string("{\"type\":\"real_status_state\",\"enabled\":") + (isRealStatusDetectorEnabled() ? "true" : "false") + "}");
                                 } else if (action == "set_real_status_scope") {
                                   setRealStatusScope(extractJsonField(json, "scope"));
+                                } else if (action == "set_shop_unlock") {
+                                  std::string enabledStr = extractJsonField(json, "enabled");
+                                  bool en = (enabledStr == "true" || enabledStr == "1");
+                                  setShopUnlockEnabled(en);
+                                  postJsonToUI(std::string("{\"type\":\"shop_unlock_state\",\"enabled\":") + (en ? "true" : "false") + "}");
+                                } else if (action == "get_shop_unlock_state") {
+                                  postJsonToUI(std::string("{\"type\":\"shop_unlock_state\",\"enabled\":") + (isShopUnlockEnabled() ? "true" : "false") + "}");
+                                } else if (action == "set_app_icons_unlock") {
+                                  std::string enabledStr = extractJsonField(json, "enabled");
+                                  bool en = (enabledStr == "true" || enabledStr == "1");
+                                  setAppIconsUnlockEnabled(en);
+                                  postJsonToUI(std::string("{\"type\":\"app_icons_unlock_state\",\"enabled\":") + (en ? "true" : "false") + "}");
+                                } else if (action == "get_app_icons_unlock_state") {
+                                  postJsonToUI(std::string("{\"type\":\"app_icons_unlock_state\",\"enabled\":") + (isAppIconsUnlockEnabled() ? "true" : "false") + "}");
                                 } else if (action == "toggle_mod") {
                                    std::string mod = extractJsonField(json, "mod");
                                    std::string enabledStr = extractJsonField(json, "enabled");
@@ -35972,6 +37228,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                                       bool en = (enabledStr == "true" || enabledStr == "1");
                                       setRealStatusDetectorEnabled(en);
                                       postJsonToUI(std::string("{\"type\":\"real_status_state\",\"enabled\":") + (en ? "true" : "false") + "}");
+                                    }
+                                    if (mod == "shop_unlock") {
+                                      bool en = (enabledStr == "true" || enabledStr == "1");
+                                      setShopUnlockEnabled(en);
+                                      postJsonToUI(std::string("{\"type\":\"shop_unlock_state\",\"enabled\":") + (en ? "true" : "false") + "}");
+                                    }
+                                    if (mod == "app_icons_unlock") {
+                                      bool en = (enabledStr == "true" || enabledStr == "1");
+                                      setAppIconsUnlockEnabled(en);
+                                      postJsonToUI(std::string("{\"type\":\"app_icons_unlock_state\",\"enabled\":") + (en ? "true" : "false") + "}");
                                     }
                                     if (mod == "game_booster" || mod == "low_ram") {
                                       const bool enabled = (enabledStr == "true" || enabledStr == "1");
@@ -36549,6 +37815,25 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
   WSACleanup();
   return (int)msg.wParam;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

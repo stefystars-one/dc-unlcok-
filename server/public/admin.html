@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Painel ADM — Discord Unlock</title>
+  <link rel="stylesheet" href="/styles.css?v=9.2.0">
+</head>
+<body>
+  <header>
+    <div>
+      <span class="eyebrow">CENTRAL PRIVADA</span>
+      <h1>Discord Unlock <span>ADM</span></h1>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button id="header-gallery-config-toggle" type="button" class="button" aria-expanded="true" style="background:linear-gradient(135deg,#8b5cf6,#6366f1);color:#fff;text-decoration:none;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(139,92,246,0.35);border:0;cursor:pointer;">
+        🛍️ Ocultar configurações da Loja
+      </button>
+      <button id="refresh" class="secondary">Atualizar</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="dev-auth" class="panel dev-only">
+      <h2>Autenticação local</h2>
+      <p>Este campo só é usado durante testes locais. Em produção, o Cloudflare Access fará o login.</p>
+      <div class="row">
+        <input id="dev-token" type="password" autocomplete="off" placeholder="ADMIN_DEV_TOKEN">
+        <button id="save-token">Usar token local</button>
+      </div>
+    </section>
+
+    <div id="notice" role="status" aria-live="polite"></div>
+
+    <section class="stats" aria-label="Resumo">
+      <article><b id="total-profiles">—</b><span>Perfis</span></article>
+      <article><b id="total-devices">—</b><span>Dispositivos ativos</span></article>
+      <article><b id="total-requests">—</b><span>Solicitações</span></article>
+      <article><b id="total-messages">—</b><span>Mensagens no histórico</span></article>
+    </section>
+
+    <div class="columns">
+      <section class="panel">
+        <h2>Enviar mensagem da ADM</h2>
+        <label for="recipient">Destinatário</label>
+        <input id="recipient" list="recipient-list" maxlength="100" placeholder="Identificação, nome ou DC ID">
+        <datalist id="recipient-list"></datalist>
+        <p class="field-help">Pesquise pela identificação da licença, nome ou DC ID. A lista mostra os três dados.</p>
+        <label for="message">Mensagem</label>
+        <textarea id="message" maxlength="4000" rows="7" placeholder="Digite sua mensagem…"></textarea>
+        <button id="send-message">Enviar sem solicitação</button>
+      </section>
+
+      <section class="panel">
+        <h2>Criar licença</h2>
+        <label for="license-label">Identificação</label>
+        <input id="license-label" maxlength="80" placeholder="Cliente ou finalidade">
+        <label for="max-devices">Máximo de dispositivos</label>
+        <input id="max-devices" type="number" min="1" max="20" value="1">
+        <label for="license-expires-at">Expira em</label>
+        <input id="license-expires-at" type="datetime-local">
+        <p class="field-help">Deixe em branco para uma licença vitalícia.</p>
+        <button id="create-license">Gerar e cadastrar licença</button>
+        <div id="new-license" class="secret-result" hidden>
+          <small>A chave aparece somente agora:</small>
+          <code id="license-value"></code>
+          <button id="copy-license" class="secondary">Copiar chave</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- SEÇÃO DESTACADA: LOJA DE TEMAS & BANNERS (GALERIA DU) -->
+    <section class="panel" id="loja-temas" style="border: 2px solid #8b5cf6; background: radial-gradient(circle at top right, rgba(139, 92, 246, 0.15), transparent 70%), var(--card-bg, #111522); box-shadow: 0 8px 32px rgba(139, 92, 246, 0.2); margin-bottom: 24px;">
+      <div class="section-head">
+        <div>
+          <span class="eyebrow" style="color: #a78bfa; font-weight: 800;">CATÁLOGO &amp; MODERAÇÃO DA GALERIA</span>
+          <h2 style="font-size: 20px; color: #fff; display: flex; align-items: center; gap: 8px;">
+            🛍️ Loja de GIFs
+          </h2>
+          <p>Cadastre itens da loja e modere GIFs públicos ou privados. O nome de um GIF da comunidade pertence ao DCID que o enviou.</p>
+        </div>
+        <div class="row">
+          <button id="toggle-gallery-config" class="secondary" type="button" aria-expanded="true">⚙️ Ocultar configurações</button>
+          <button id="refresh-gallery" class="secondary" type="button">🔄 Atualizar lista</button>
+        </div>
+      </div>
+
+      <div id="gallery-store-content">
+      <div id="gallery-config-panels">
+      <div class="panel" style="margin:0 0 16px;padding:14px;background:rgba(0,0,0,.22);">
+        <strong>Controles da loja pública</strong>
+        <div class="row" style="margin-top:10px;flex-wrap:wrap">
+          <button id="gallery-store-toggle" class="secondary" type="button" role="switch" aria-checked="true" style="min-width:210px">🟢 Loja de GIFs: visível</button>
+          <label style="display:flex;align-items:center;gap:8px;margin:0"><input id="gallery-klipy-enabled" type="checkbox"> Ativar busca no KLIPY</label>
+          <input id="gallery-klipy-key" maxlength="120" placeholder="KLIPY App Key pública" style="min-width:280px;flex:1">
+          <button id="save-gallery-settings" type="button">Salvar controles</button>
+        </div>
+        <p class="field-help">A busca KLIPY usa a API oficial como fonte separada. Cole a App Key criada no painel do KLIPY; os resultados não são armazenados na galeria DU.</p>
+      </div>
+
+      <div class="panel" style="margin:0 0 16px;padding:14px;background:rgba(0,0,0,.22);">
+        <strong>Sites de mídia permitidos na galeria</strong>
+        <p class="field-help">Adicione domínios de sites que fornecem links HTTPS diretos para imagens, GIFs e vídeos. Isso permite cadastrar links desses domínios; busca automática exige uma API própria compatível.</p>
+        <div class="row" style="margin:10px 0;flex-wrap:wrap">
+          <input id="gallery-source-name" maxlength="60" placeholder="Nome do site (ex.: Meu site)" style="flex:1;min-width:180px">
+          <input id="gallery-source-domain" maxlength="253" placeholder="Domínio (ex.: media.exemplo.com)" style="flex:1;min-width:220px">
+          <button id="add-gallery-source" type="button">Adicionar site</button>
+        </div>
+        <div id="gallery-sources-list" style="display:grid;gap:8px"></div>
+      </div>
+
+      <div class="columns" style="display:grid; grid-template-columns:1.15fr 0.85fr; gap:20px; margin-bottom:14px; align-items:start;">
+        <div>
+          <label for="gallery-target">🎯 Onde aplicar no Discord (Destino):</label>
+          <select id="gallery-target" onchange="updateAdminGalleryPreview()">
+            <option value="both" selected>✨ Ambos (Banner de Fundo &amp; Foto de Perfil)</option>
+            <option value="banner">🖼️ Fundo / Capa de Perfil (Banner)</option>
+            <option value="avatar">👤 Foto de Perfil (Avatar Circular)</option>
+            <option value="theme">🎨 Tema / Wallpaper Geral do Discord</option>
+          </select>
+
+          <label for="gallery-name">Nome do Tema / GIF</label>
+          <input id="gallery-name" maxlength="80" placeholder="Ex: Anime Sunset Cyberpunk" oninput="updateAdminGalleryPreview()">
+
+          <label for="gallery-category">Categoria / Tags</label>
+          <input id="gallery-category" maxlength="50" placeholder="Ex: Anime, Games, Fofo, Cyberpunk" list="category-suggestions">
+          <datalist id="category-suggestions">
+            <option value="Anime">
+            <option value="Games">
+            <option value="Cyberpunk">
+            <option value="Aesthetic">
+            <option value="Fofo">
+            <option value="Memes">
+            <option value="Natureza">
+          </datalist>
+
+          <label for="gallery-url">🔗 Link direto do GIF ou Vídeo</label>
+          <div style="display:flex; gap:8px; align-items:center;">
+          <input id="gallery-url" placeholder="https://... (.gif, .png, .jpg, .mp4 ou .webm)" oninput="updateAdminGalleryPreview()" style="flex:1;">
+            <button type="button" id="paste-gallery-url" class="secondary" style="margin-top:0; white-space:nowrap; padding:11px 14px; font-size:12px; height:100%;" title="Colar link da área de transferência">📋 Colar Link</button>
+          </div>
+          <div class="field-help" style="line-height:1.5; background:rgba(0,0,0,0.28); padding:10px 12px; border-radius:7px; border:1px solid rgba(255,255,255,0.08); margin-top:8px; font-size:11.5px;">
+            <strong style="color:#cbd5e1;">💡 Como pegar o link correto:</strong><br>
+            • <strong>Klipy:</strong> Abra a página do GIF no Klipy, clique com o botão direito sobre o GIF e selecione <em>"Copiar endereço da imagem"</em>.<br>
+            • <strong>Giphy &amp; Imgur:</strong> Pode colar o link da página ou o link direto — o sistema normaliza automaticamente.<br>
+            • <strong>Tenor, Discord &amp; Catbox:</strong> Clique com o botão direito na animação e selecione <em>"Copiar endereço da imagem"</em>.
+            <br>• <strong>Vídeo:</strong> use o link HTTPS direto de um arquivo <strong>MP4</strong> ou <strong>WebM</strong>. O vídeo será reproduzido em loop, sem som.
+          </div>
+
+          <button id="add-gallery-item" type="button" style="margin-top:14px; width:100%; background:linear-gradient(135deg,#8b5cf6,#6366f1); font-weight:800; font-size:13.5px; padding:12px 18px; border:0; border-radius:9px; color:#fff; cursor:pointer; box-shadow:0 4px 16px rgba(139,92,246,0.35);">
+            ➕ Cadastrar na Loja / Galeria DU
+          </button>
+        </div>
+
+        <div>
+          <div class="preview-header-bar" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:7px;">
+            <label style="margin:0;">Pré-visualização no Perfil Discord</label>
+            <span id="preview-mode-badge" class="preview-mode-badge" style="font-size:10.5px; color:#a78bfa; background:rgba(139,92,246,0.18); padding:3px 9px; border-radius:12px; border:1px solid rgba(139,92,246,0.35); font-weight:600;">✨ Ambos</span>
+          </div>
+
+          <div id="gallery-preview-container" class="gallery-preview-container" style="background:#0c0f18; border:1px solid rgba(255,255,255,0.14); border-radius:14px; overflow:hidden; box-shadow:0 10px 32px rgba(0,0,0,0.5); width:100%;">
+            <!-- Banner Preview Box -->
+            <div id="preview-banner-box" class="preview-banner-box" style="width:100%; height:140px; min-height:140px; background:linear-gradient(135deg,#1e1b4b,#2e1065); position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+              <span id="gallery-preview-placeholder" class="preview-banner-placeholder" style="color:#94a3b8; font-size:11.5px; padding:12px; text-align:center; z-index:2;">Cole o link para ver a prévia em tempo real ✨</span>
+              <img id="gallery-preview-img" class="preview-banner-media" referrerpolicy="no-referrer" src="" alt="" style="width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0; display:none;">
+              <video id="gallery-preview-vid" class="preview-banner-media" referrerpolicy="no-referrer" src="" autoplay loop muted playsinline style="width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0; display:none;"></video>
+            </div>
+
+            <!-- Profile Info with Overlapping Avatar -->
+            <div class="preview-info-row" style="padding:0 14px 12px 14px; position:relative; background:#111522; display:flex; align-items:flex-end; gap:12px; min-height:55px;">
+              <div id="preview-avatar-circle" class="preview-avatar-circle" style="width:68px; height:68px; min-width:68px; min-height:68px; border-radius:50%; border:4px solid #111522; margin-top:-34px; position:relative; overflow:hidden; background:#1e293b; flex-shrink:0; box-shadow:0 4px 14px rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:5;">
+                <span id="preview-avatar-initial" style="font-size:24px;">👤</span>
+                <img id="gallery-preview-avatar-img" class="preview-avatar-media" referrerpolicy="no-referrer" src="" alt="" style="width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0; display:none;">
+                <video id="gallery-preview-avatar-vid" class="preview-avatar-media" referrerpolicy="no-referrer" src="" autoplay loop muted playsinline style="width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0; display:none;"></video>
+              </div>
+
+              <div style="flex:1; padding-bottom:4px; min-width:0;">
+                <div id="preview-item-name" class="preview-item-name" style="font-size:13px; font-weight:700; color:#f1f5f9; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Nome do Tema</div>
+                <div id="preview-target-desc" class="preview-target-desc" style="font-size:10.5px; color:#94a3b8;">Aplica no Banner &amp; Avatar</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:80px;">Prévia</th>
+              <th>Nome</th>
+              <th>Autor / DCID</th>
+              <th style="width:100px;">Visibilidade</th>
+              <th style="width:110px;">Destino</th>
+              <th>Categoria / Tags</th>
+              <th>URL Direta</th>
+              <th style="width:80px;">Ação</th>
+            </tr>
+          </thead>
+          <tbody id="gallery-table-body">
+            <tr><td colspan="8">Carregando temas…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head"><div><h2>Mensagem do dia</h2><p>O aviso é entregue imediatamente aos aplicativos conectados.</p></div></div>
+      <label for="motd">Mensagem exibida aos usuários</label>
+      <textarea id="motd" maxlength="4000" rows="8" placeholder="Digite a mensagem do dia…"></textarea>
+      <div class="row"><button id="save-motd" type="button">Salvar mensagem do dia</button><span id="motd-status" class="field-help"></span></div>
+    </section>
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <h2>Usuários cadastrados</h2>
+          <p>Busque por identificação da licença, nome ou DC ID.</p>
+        </div>
+        <div class="row search">
+          <input id="search" placeholder="Identificação, nome ou DC ID">
+          <button id="search-button" class="secondary">Buscar</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Identificação</th><th>Nome</th><th>DC ID</th><th>Função</th><th>Dispositivos</th><th>Ações</th></tr></thead>
+          <tbody id="profiles"><tr><td colspan="6">Carregando…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+    <div class="columns">
+      <section class="panel">
+        <div class="section-head"><div><h2>Computadores por chave</h2><p>Controle cada PC vinculado a uma chave compartilhada. O HWID aparece como impressão protegida: é único, copiável e não expõe o identificador bruto do computador.</p></div><button id="toggle-devices" class="secondary compact-toggle" type="button" hidden>Mostrar mais</button></div>
+        <div class="row compact-search" style="margin-bottom:12px"><input id="manual-hwid" maxlength="512" placeholder="HWID bruto para banir preventivamente"><input id="manual-hwid-reason" maxlength="160" placeholder="Motivo (opcional)"><button id="ban-manual-hwid" class="danger" type="button">Banir HWID</button><button id="unban-manual-hwid" class="secondary" type="button">Desbanir HWID</button></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Chave compartilhada</th><th>Usuário / PC</th><th>HWID protegido</th><th>Última atividade</th><th>Versão</th><th>Status</th><th>Ação</th></tr></thead>
+            <tbody id="devices"><tr><td colspan="7">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="section-head"><h2>Licenças cadastradas</h2><button id="toggle-licenses" class="secondary compact-toggle" type="button" hidden>Mostrar mais</button></div>
+        <div class="row search compact-search"><input id="license-search" placeholder="Identificação, nome ou DC ID"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Identificação</th><th>Expiração</th><th>Status</th><th>Uso</th><th>Ação</th></tr></thead>
+            <tbody id="licenses"><tr><td colspan="5">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+
+
+    <section class="panel">
+      <div class="section-head">
+        <div><h2>Histórico de mensagens</h2><p>Conversas separadas por usuário, como uma caixa de entrada.</p></div>
+        <div class="row"><button id="refresh-history" class="secondary" type="button">Atualizar</button><button id="clear-all-history" class="danger" type="button">Limpar histórico</button></div>
+      </div>
+      <div class="history-chat">
+        <aside id="history-conversations" class="history-conversations"><div class="history-empty">Carregando conversas…</div></aside>
+        <div class="history-thread">
+          <div class="history-thread-head"><div class="history-thread-identity"><strong id="history-thread-title">Selecione uma conversa</strong><small id="history-thread-id"></small></div><div class="history-thread-actions"><button id="reply-history" class="secondary" type="button">Responder</button><button id="clear-history-thread" class="danger" type="button" hidden>Limpar conversa</button></div></div>
+          <div id="history-messages" class="history-messages"><div class="history-empty">As mensagens desta conversa aparecerão aqui.</div></div>
+          <div id="history-reply" class="history-reply" hidden><textarea id="history-reply-text" maxlength="4000" rows="3" placeholder="Responder nesta conversa…"></textarea><div><small>Ctrl + Enter para enviar</small><button id="send-history-reply" type="button">Enviar resposta</button></div></div>
+        </div>
+      </div>
+    </section>
+  <dialog id="license-modal" class="modal">
+    <form id="license-form" method="dialog" class="panel modal-card">
+      <div class="section-head"><h2>Editar licença</h2><button id="close-license-modal" class="secondary" type="button">Fechar</button></div>
+      <p>A chave original é guardada somente como hash e não pode ser exibida. Caso o cliente a perca, gere uma substituta abaixo.</p>
+      <div class="license-recovery"><button id="replace-license-key" class="secondary" type="button">Gerar nova chave</button><div id="replacement-license-result" class="secret-result" hidden><small>Envie esta nova chave ao cliente. A anterior deixará de funcionar após salvar:</small><code id="replacement-license-value"></code><button id="copy-replacement-license" class="secondary" type="button">Copiar nova chave</button></div></div>
+      <input id="edit-license-id" type="hidden">
+      <label for="edit-license-label">Identificação</label>
+      <input id="edit-license-label" maxlength="80" placeholder="Cliente ou finalidade">
+      <label for="edit-license-max-devices">Máximo de dispositivos</label>
+      <input id="edit-license-max-devices" type="number" min="1" max="20">
+      <label for="edit-license-expires-at">Expira em</label>
+      <input id="edit-license-expires-at" type="datetime-local">
+      <p class="field-help">Deixe em branco para tornar a licença vitalícia.</p>
+      <label for="edit-license-status">Situação</label>
+      <select id="edit-license-status"><option value="active">Ativa</option><option value="revoked">Revogada</option></select>
+      <button id="save-license" type="button">Salvar alterações</button>
+    </form>
+  </dialog>
+
+  <!-- Modal de Edição de Tema / GIF da Galeria DU -->
+  <dialog id="gallery-edit-modal" class="modal">
+    <form id="gallery-edit-form" method="dialog" class="panel modal-card" style="max-width:520px;">
+      <div class="section-head">
+        <h2>✏️ Editar Tema / GIF da Galeria</h2>
+        <button id="close-gallery-edit-modal" class="secondary" type="button">Fechar</button>
+      </div>
+      <input id="edit-gallery-id" type="hidden">
+      
+      <label for="edit-gallery-name">Nome do Tema / GIF</label>
+      <input id="edit-gallery-name" maxlength="80" placeholder="Ex: Anime Sunset Cyberpunk">
+      <p id="edit-gallery-owner-note" class="field-help" hidden>🔒 Este nome pertence ao usuário identificado pelo DCID e só pode ser alterado por ele.</p>
+      
+      <label for="edit-gallery-target">Destino no Discord</label>
+      <select id="edit-gallery-target">
+        <option value="both">✨ Ambos (Banner &amp; Avatar)</option>
+        <option value="banner">🖼️ Fundo / Banner</option>
+        <option value="avatar">👤 Foto de Perfil (Avatar)</option>
+        <option value="theme">🎨 Tema Geral</option>
+      </select>
+      
+      <label for="edit-gallery-category">Categoria / Tags</label>
+      <input id="edit-gallery-category" maxlength="50" placeholder="Ex: Anime, Games, Comunidade">
+      
+      <label for="edit-gallery-url">URL Direta</label>
+      <input id="edit-gallery-url" placeholder="https://...">
+      
+      <div style="margin-top:14px; display:flex; gap:8px;">
+        <button id="save-gallery-edit" type="button" style="flex:1; background:linear-gradient(135deg,#8b5cf6,#6366f1); color:#fff; border:0; border-radius:8px; padding:10px 14px; font-weight:700; cursor:pointer;">💾 Salvar Alterações</button>
+        <button id="cancel-gallery-edit" type="button" class="secondary">Cancelar</button>
+      </div>
+    </form>
+  </dialog></main>
+  <script src="/admin.js?v=9.7.0" defer></script>
+</body>
+</html>
