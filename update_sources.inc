@@ -134,6 +134,16 @@ static bool downloadUpdateBinaryFromUrl(const std::wstring &url, const std::wstr
   }
 }
 
+static bool downloadUpdateBinaryWithFallback(const std::wstring &url, const std::wstring &targetFile) {
+  if (downloadUpdateBinaryFromUrl(url, targetFile)) return true;
+  std::error_code ec;
+  fs::remove(targetFile, ec);
+  DeleteUrlCacheEntryW(url.c_str());
+  const HRESULT result = URLDownloadToFileW(nullptr, url.c_str(), targetFile.c_str(),
+                                             BINDF_GETNEWESTVERSION | BINDF_NOWRITECACHE, nullptr);
+  return SUCCEEDED(result) && fs::exists(targetFile, ec) && !ec && fs::file_size(targetFile, ec) > 500000;
+}
+
 static bool parseUpdateManifest(const std::string &json, const std::wstring &filename,
                                 const std::string &source, UpdatePackage &out) {
   const std::string version = trimUpdateText(extractJsonField(json, "version"));

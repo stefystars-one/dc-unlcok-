@@ -1,6 +1,6 @@
 // Embedded into the Discord main-process hook by tools/sync_profile_renderer.cjs.
 (() => {
-  const VERSION = 'profile-dom-20260924-10';
+  const VERSION = 'profile-dom-20260925-11';
   const incoming = window.__DU_PROFILE_BANNER_CONFIG || null;
   const previous = window.__duProfileBannerRuntime;
   if (previous?.version === VERSION) { previous.update(incoming); return; }
@@ -15,6 +15,8 @@
   const changes = new Map();
   const avatars = new Map();
   const banners = new Map();
+  const publicBanners = new Map();
+  const publicProfiles = new Map();
   const ROOTS = '.user-profile-popout,.user-profile-modal,.user-profile-modal-v2,[class*="profileHeader_"],[class*="userProfileOuter_"],[class*="userProfileModal_"],[class*="userPopoutOuter_"],[class*="userPopout_"],[class*="accountProfileCard_"],[class*="profileCustomizationSection_"]';
   const MEDIA = '[data-du-profile-media]';
   const API = 'https://discord-unlock-api.st4rs.workers.dev';
@@ -62,6 +64,22 @@
       }
     } catch (_) {}
     return root.matches('[class*="accountProfileCard_"],[class*="profileCustomizationSection_"]');
+  }
+  function rootUserId(root) {
+    const explicit=String(root?.getAttribute?.('data-user-id')||root?.getAttribute?.('data-userid')||'');
+    if (/^\d{17,21}$/.test(explicit)) return explicit;
+    const avatar=root?.querySelector?.('img[src*="/avatars/"],img[src*="/users/"]');
+    const src=String(avatar?.getAttribute?.('src')||'');
+    const match=src.match(/\/avatars\/(\d{17,21})\//)||src.match(/\/users\/(\d{17,21})\/avatars\//);
+    if (match?.[1]) return match[1];
+    try {
+      const key=Object.keys(root||{}).find(k=>k.startsWith('__reactFiber$'));
+      for (let fiber=root?.[key],i=0;fiber&&i<18;fiber=fiber.return,i++) {
+        const user=fiber.memoizedProps?.user||fiber.memoizedProps?.currentUser||fiber.memoizedProps?.profile?.user;
+        if (/^\d{17,21}$/.test(String(user?.id||''))) return String(user.id);
+      }
+    } catch (_) {}
+    return '';
   }
   function pruneOwnPublicCss() {
     if (!config) return;
@@ -173,6 +191,56 @@
     if (!host) { host=document.createElement('div');host.setAttribute('data-du-profile-banner-fallback','1');inner.prepend(host); }
     return {host,sizing:host,synthetic:true};
   }
+  function clearPublicBanner(root) {
+    const entry=publicBanners.get(root);
+    if (!entry) return;
+    clearEntry(entry);
+    publicBanners.delete(root);
+  }
+  function applyPublicBanner(root,userId,url) {
+    if (!root?.isConnected||!url||userId===uid()) { clearPublicBanner(root); return; }
+    let entry=publicBanners.get(root);
+    if (entry&&(entry.userId!==userId||!entry.host.isConnected)) { clearPublicBanner(root);entry=null; }
+    if (!entry) {
+      const info=bannerArea(root);
+      entry={...info,userId,changed:Array.from(new Set([info.host,info.sizing]))};
+      publicBanners.set(root,entry);
+    }
+    if (getComputedStyle(entry.host).position==='static') set(entry.host,'position','relative');
+    set(entry.host,'overflow','hidden');
+    set(entry.host,'background-image','none');
+    set(entry.host,'background-color','transparent');
+    if (entry.synthetic) set(entry.sizing,'height','120px');
+    const media=mediaFor(entry,url);
+    media.style.setProperty('opacity','1','important');
+    media.style.setProperty('object-position','center center','important');
+  }
+  function requestPublicBanner(root,userId) {
+    if (!userId||userId===uid()) { clearPublicBanner(root); return; }
+    const now=Date.now();
+    let cached=publicProfiles.get(userId);
+    if (cached?.value&&now-cached.at<10000) { applyPublicBanner(root,userId,cached.value);return; }
+    if (cached?.missing&&now-cached.at<10000) { clearPublicBanner(root);return; }
+    if (!cached?.promise) {
+      const promise=fetch(API+'/du-banner/'+encodeURIComponent(userId),{cache:'no-store'})
+        .then(async response=>response.ok?response.json():null)
+        .then(payload=>{
+          const value=payload?.ok?validUrl(payload.bannerUrl||payload.url):'';
+          publicProfiles.set(userId,{value,missing:!value,at:Date.now()});
+          return value;
+        }).catch(()=>{
+          publicProfiles.set(userId,{value:'',missing:true,at:Date.now()});
+          return '';
+        });
+      cached={promise,at:now};publicProfiles.set(userId,cached);
+    }
+    cached.promise.then(value=>{if(!disposed&&root.isConnected&&rootUserId(root)===userId){if(value)applyPublicBanner(root,userId,value);else clearPublicBanner(root);}});
+  }
+  function syncPublicBanners(roots) {
+    const live=new Set(roots);
+    for (const root of roots) requestPublicBanner(root,rootUserId(root));
+    for (const root of [...publicBanners.keys()]) if(!live.has(root)||!root.isConnected)clearPublicBanner(root);
+  }
   function rootFromAvatar(native) {
     for (let root=native.parentElement,depth=0;root&&depth<14;root=root.parentElement,depth++) {
       const r=root.getBoundingClientRect();
@@ -269,7 +337,8 @@
         });
       }
       for (const [native,entry] of avatars) if (!currentAvatars.has(native)) {clearEntry(entry);avatars.delete(native);}
-      const roots=Array.from(document.querySelectorAll(ROOTS)).filter(root=>owned(root,id));
+      const allRoots=Array.from(document.querySelectorAll(ROOTS));
+      const roots=allRoots.filter(root=>owned(root,id));
       // Discord's full profile view uses unrelated generated class names. Derive
       // its root from the authenticated user's native avatar and nearby banner.
       for (const native of ownNativeAvatars) {
@@ -282,6 +351,7 @@
         currentBanners.add(root);applyBanner(root,bannerUrl);
       }
       for (const [root,entry] of banners) if (!currentBanners.has(root)) {clearEntry(entry);banners.delete(root);}
+      syncPublicBanners(allRoots);
     } catch (error) { console.error('[DiscordUnlock profile]',error); }
     finally {applying=false;}
   }
@@ -300,6 +370,7 @@
   });
   observer.observe(document.body||document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['src','class']});
   const poll=setInterval(apply,1500);
+  const publicCssPoll=setInterval(()=>{refreshPublicCss();publicProfiles.clear();schedule();try{window.NitroStreamUnlockInstance?._refreshNetworkCollectibles?.(true);}catch(_){}},10000);
   window.addEventListener('resize',schedule);
   window.__duProfileBannerRuntime={
     version:VERSION,
@@ -308,18 +379,19 @@
       config=next&&typeof next==='object'?next:null;
       window.__DU_PROFILE_BANNER_CONFIG=config;
       try { if(config)localStorage.setItem('du_profile_banner',JSON.stringify(config));else localStorage.removeItem('du_profile_banner'); } catch (_) {}
-      // A atualização chega pelo WebSocket autenticado do aplicativo. A única
-      // busca pública acontece ao iniciar ou quando o servidor avisa uma troca.
+      // O sinal autenticado do aplicativo aplica imediatamente. A verificação
+      // periódica acima recupera eventos perdidos sem reiniciar o Discord.
       if (Number(config?.networkRefreshNonce||0)>previousNetworkRefresh) refreshPublicCss();
       apply();
       return {version:VERSION,avatars:avatars.size,banners:banners.size};
     },
     refreshPublicCss,
-    diagnostics() {return {version:VERSION,userId:uid(),avatars:avatars.size,banners:banners.size,config};},
+    diagnostics() {return {version:VERSION,userId:uid(),avatars:avatars.size,banners:banners.size,publicBanners:publicBanners.size,config};},
     dispose() {
-      disposed=true;publicRequest++;observer.disconnect();clearTimeout(pending);clearInterval(poll);window.removeEventListener('resize',schedule);document.getElementById('du-local-avatar-css')?.remove();
+      disposed=true;publicRequest++;observer.disconnect();clearTimeout(pending);clearInterval(poll);clearInterval(publicCssPoll);window.removeEventListener('resize',schedule);document.getElementById('du-local-avatar-css')?.remove();
       for(const entry of avatars.values())clearEntry(entry);
       for(const entry of banners.values())clearEntry(entry);
+      for(const root of [...publicBanners.keys()])clearPublicBanner(root);
       for(const el of changes.keys())restore(el);
     }
   };

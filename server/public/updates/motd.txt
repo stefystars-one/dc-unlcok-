@@ -1,13 +1,11 @@
-🚀 Discord Unlock — Versão 11.0
+🚀 Discord Unlock — Versão 11.1
 
-Esta versão mantém a base visual estável da 10.9 e corrige exclusivamente a sincronização de banners, avatares e itens da Loja DU.
-
-✅ Sincronização parcial sem apagar campos não relacionados.
-✅ Atualizações em tempo real sem ciclo de reenvio.
-✅ Loja DU sem cartões duplicados ou links temporários quebrados.
-✅ Capas estáveis para links do YouTube.
-✅ Nomes da galeria editáveis somente pelo dono autenticado.
-✅ Botões dos temas alinhados.
-✅ Renderizador de perfil preservado exatamente como na 10.9.
+✅ Mudanças de outros usuários aparecem sem reiniciar o Discord.
+✅ O envio imediato continua usando o canal autenticado do servidor.
+✅ Uma verificação curta recupera automaticamente eventos perdidos.
+✅ Banners públicos agora aparecem também na miniatura do perfil.
+✅ Downloads usam arquivos versionados para impedir conflito de cache.
+✅ O atualizador possui uma segunda rota nativa de download.
+✅ Tamanho e posição do avatar e do banner local continuam iguais à base estável.
 
 — Stefy Stars ✨

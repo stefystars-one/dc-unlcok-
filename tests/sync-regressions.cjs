@@ -25,14 +25,21 @@ for (const source of [cpp, ui]) {
 const profileFile = fs.readFileSync(path.join(root, 'profile_renderer.js'), 'utf8');
 const taggedProfileFile = cp.execFileSync('git', ['show', 'v10.9:profile_renderer.js'], {cwd: root, encoding: 'utf8'});
 const normalized = value => value.replace(/\r\n/g, '\n');
-assert.equal(normalized(profileFile), normalized(taggedProfileFile), 'profile_renderer.js must stay text-equivalent to v10.9');
-const rendererSegment = source => source.slice(source.indexOf('const duProfileBannerJs = '), source.indexOf('function getThemePaths', source.indexOf('const duProfileBannerJs = ')));
-const taggedCpp = cp.execFileSync('git', ['show', 'v10.9:gui_main.cpp'], {cwd: root, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024});
-assert.equal(normalized(rendererSegment(cpp)), normalized(rendererSegment(taggedCpp)), 'embedded profile renderer must stay exactly as v10.9');
+const segment = (source, start, end) => source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start)));
+assert.equal(normalized(segment(profileFile, 'function applyAvatar(', 'function bannerArea(')), normalized(segment(taggedProfileFile, 'function applyAvatar(', 'function bannerArea(')), 'local avatar layout must stay equal to v10.9');
+assert.equal(normalized(segment(profileFile, 'function applyBanner(', 'function apply()')), normalized(segment(taggedProfileFile, 'function applyBanner(', 'function apply()')), 'local banner layout must stay equal to v10.9');
+assert.match(profileFile, /function applyPublicBanner\(/);
+assert.match(profileFile, /fetch\(API\+'\/du-banner\/'/);
+assert.match(profileFile, /const publicCssPoll=setInterval/);
+assert.match(profileFile, /_refreshNetworkCollectibles\?\.\(true\)/);
+const rendererStart=cpp.indexOf('const duProfileBannerJs = '),rendererEnd=cpp.indexOf(';\n\nfunction getThemePaths',rendererStart);
+const embeddedRenderer=JSON.parse(cpp.slice(rendererStart+'const duProfileBannerJs = '.length,rendererEnd));
+const voiceFile=fs.readFileSync(path.join(root,'voice_decoration_renderer.js'),'utf8');
+assert.equal(embeddedRenderer,profileFile+'\n'+voiceFile,'embedded renderers must match their source files');
 
 const embeddedHtml = cpp.split('R"raw_html(')[1].split(')raw_html"')[0];
 const scripts = [...embeddedHtml.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].map(match => match[1]);
 for (const script of scripts) new Function(script);
 for (const match of ui.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)) new Function(match[1]);
 
-console.log('PASS regressions: no theme clone, aligned actions, read-only realtime refresh, v10.9 profile renderer unchanged, UI syntax valid');
+console.log('PASS regressions: no theme clone, aligned actions, read-only realtime refresh, v10.9 local layout preserved, public banner fallback embedded, UI syntax valid');
