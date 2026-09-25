@@ -1,30 +1,30 @@
 {
   "schema": 1,
-  "version": "11.1",
+  "version": "11.2",
   "artifacts": {
     "DiscordUnlock.exe": {
-      "url": "https://github.com/stefystars-one/dc-unlcok-/releases/download/v11.1/DiscordUnlock.exe",
-      "sha256": "0879c8cf82b3df1b58b48fad1019b2412deb324b31345d9b42b9f8fa6f61df57"
+      "url": "https://github.com/stefystars-one/dc-unlcok-/releases/download/v11.2/DiscordUnlock.exe",
+      "sha256": "296b45ba924122a762767c74165c44507f47b6a4ebd36309950f7b76cec4573c"
     },
     "DiscordUnlock_Special.exe": {
-      "url": "https://github.com/stefystars-one/dc-unlcok-/releases/download/v11.1/DiscordUnlock_Special.exe",
-      "sha256": "a8317203db2ac5dc38390a7adfd7a4ededc37eeb8940f02809d8bd48ac02cebe"
+      "url": "https://github.com/stefystars-one/dc-unlcok-/releases/download/v11.2/DiscordUnlock_Special.exe",
+      "sha256": "8b0f3e43d1bb398b610b59da51baf9be5a81f5e8c2d40f23f2e39e0913d41d60"
     },
     "DiscordUnlock_Web.exe": {
-      "url": "https://github.com/stefystars-one/dc-unlcok-/releases/download/v11.1/DiscordUnlock.exe",
-      "sha256": "0879c8cf82b3df1b58b48fad1019b2412deb324b31345d9b42b9f8fa6f61df57"
+      "url": "https://github.com/stefystars-one/dc-unlcok-/releases/download/v11.2/DiscordUnlock.exe",
+      "sha256": "296b45ba924122a762767c74165c44507f47b6a4ebd36309950f7b76cec4573c"
     },
     "DiscordUnlock_Web_Special.exe": {
-      "url": "https://github.com/stefystars-one/dc-unlcok-/releases/download/v11.1/DiscordUnlock_Special.exe",
-      "sha256": "a8317203db2ac5dc38390a7adfd7a4ededc37eeb8940f02809d8bd48ac02cebe"
+      "url": "https://github.com/stefystars-one/dc-unlcok-/releases/download/v11.2/DiscordUnlock_Special.exe",
+      "sha256": "8b0f3e43d1bb398b610b59da51baf9be5a81f5e8c2d40f23f2e39e0913d41d60"
     },
     "DiscordUnlock_Chrome.exe": {
-      "url": "https://github.com/stefystars-one/dc-unlcok-/releases/download/v11.1/DiscordUnlock.exe",
-      "sha256": "0879c8cf82b3df1b58b48fad1019b2412deb324b31345d9b42b9f8fa6f61df57"
+      "url": "https://github.com/stefystars-one/dc-unlcok-/releases/download/v11.2/DiscordUnlock.exe",
+      "sha256": "296b45ba924122a762767c74165c44507f47b6a4ebd36309950f7b76cec4573c"
     },
     "DiscordUnlock_Chrome_Special.exe": {
-      "url": "https://github.com/stefystars-one/dc-unlcok-/releases/download/v11.1/DiscordUnlock_Special.exe",
-      "sha256": "a8317203db2ac5dc38390a7adfd7a4ededc37eeb8940f02809d8bd48ac02cebe"
+      "url": "https://github.com/stefystars-one/dc-unlcok-/releases/download/v11.2/DiscordUnlock_Special.exe",
+      "sha256": "8b0f3e43d1bb398b610b59da51baf9be5a81f5e8c2d40f23f2e39e0913d41d60"
     }
   }
 }

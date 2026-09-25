@@ -30,6 +30,9 @@ assert.equal(normalized(segment(profileFile, 'function applyAvatar(', 'function 
 assert.equal(normalized(segment(profileFile, 'function applyBanner(', 'function apply()')), normalized(segment(taggedProfileFile, 'function applyBanner(', 'function apply()')), 'local banner layout must stay equal to v10.9');
 assert.match(profileFile, /function applyPublicBanner\(/);
 assert.match(profileFile, /fetch\(API\+'\/du-banner\/'/);
+assert.match(profileFile, /function discoverProfileRoots\(/);
+assert.match(profileFile, /ver perfil completo\|view full profile/);
+assert.match(profileFile, /const allRoots=discoverProfileRoots\(\)/);
 assert.match(profileFile, /const publicCssPoll=setInterval/);
 assert.match(profileFile, /_refreshNetworkCollectibles\?\.\(true\)/);
 const rendererStart=cpp.indexOf('const duProfileBannerJs = '),rendererEnd=cpp.indexOf(';\n\nfunction getThemePaths',rendererStart);

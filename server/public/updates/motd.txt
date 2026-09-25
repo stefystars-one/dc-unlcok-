@@ -1,9 +1,11 @@
-🚀 Discord Unlock — Versão 11.1
+🚀 Discord Unlock — Versão 11.2
 
 ✅ Mudanças de outros usuários aparecem sem reiniciar o Discord.
 ✅ O envio imediato continua usando o canal autenticado do servidor.
 ✅ Uma verificação curta recupera automaticamente eventos perdidos.
-✅ Banners públicos agora aparecem também na miniatura do perfil.
+✅ O cartão de perfil minimizado é descoberto mesmo com as novas classes geradas do Discord.
+✅ Banners públicos agora aparecem no perfil minimizado e no perfil completo.
+✅ As rotas antigas de atualização continuam publicadas para clientes legados.
 ✅ Downloads usam arquivos versionados para impedir conflito de cache.
 ✅ O atualizador possui uma segunda rota nativa de download.
 ✅ Tamanho e posição do avatar e do banner local continuam iguais à base estável.

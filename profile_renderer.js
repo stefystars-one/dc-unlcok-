@@ -1,6 +1,6 @@
 // Embedded into the Discord main-process hook by tools/sync_profile_renderer.cjs.
 (() => {
-  const VERSION = 'profile-dom-20260925-11';
+  const VERSION = 'profile-dom-20260925-12';
   const incoming = window.__DU_PROFILE_BANNER_CONFIG || null;
   const previous = window.__duProfileBannerRuntime;
   if (previous?.version === VERSION) { previous.update(incoming); return; }
@@ -242,13 +242,30 @@
     for (const root of [...publicBanners.keys()]) if(!live.has(root)||!root.isConnected)clearPublicBanner(root);
   }
   function rootFromAvatar(native) {
+    let actionCandidate=null;
     for (let root=native.parentElement,depth=0;root&&depth<14;root=root.parentElement,depth++) {
       const r=root.getBoundingClientRect();
       if (r.width<120||r.width>900||r.height<100||r.height>950) continue;
       const banner=root.querySelector('div[class*="banner_"],div[class*="profileBanner"],div[class*="bannerWrapper_"],div[style*="background-image"]');
       if (banner&&banner!==native.parentElement&&!banner.contains(native)) return root;
+      if (!actionCandidate&&r.width>=220&&r.width<=720&&r.height>=260) {
+        const hasProfileAction=Array.from(root.querySelectorAll('button')).some(button=>/^(ver perfil completo|view full profile)$/i.test(String(button.textContent||'').trim()));
+        if (hasProfileAction) actionCandidate=root;
+      }
     }
-    return null;
+    return actionCandidate;
+  }
+  function discoverProfileRoots() {
+    const roots=Array.from(document.querySelectorAll(ROOTS));
+    const excluded='[class*="message_"],[class*="messageListItem_"],[class*="messagesWrapper_"],[class*="privateChannels_"],[class*="membersWrap_"],[class*="peopleList_"]';
+    for (const native of document.querySelectorAll('img[src*="/avatars/"],img[src*="/users/"]')) {
+      if (!(native instanceof HTMLImageElement)||native.matches(MEDIA)||native.closest(MEDIA)||native.closest(excluded)) continue;
+      const rect=native.getBoundingClientRect();
+      if (rect.width<32||rect.height<32||rect.bottom<=0||rect.right<=0) continue;
+      const root=rootFromAvatar(native);
+      if (root&&root.isConnected&&!roots.includes(root)) roots.push(root);
+    }
+    return roots;
   }
   function isAllowedOwnAvatar(native,id) {
     if (!(native instanceof HTMLImageElement) || native.matches(MEDIA) || native.closest(MEDIA)) return false;
@@ -337,7 +354,7 @@
         });
       }
       for (const [native,entry] of avatars) if (!currentAvatars.has(native)) {clearEntry(entry);avatars.delete(native);}
-      const allRoots=Array.from(document.querySelectorAll(ROOTS));
+      const allRoots=discoverProfileRoots();
       const roots=allRoots.filter(root=>owned(root,id));
       // Discord's full profile view uses unrelated generated class names. Derive
       // its root from the authenticated user's native avatar and nearby banner.
