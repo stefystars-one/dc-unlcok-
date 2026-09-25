@@ -1,11 +1,8 @@
-🚀 Discord Unlock — Versão 11.1
+🚀 Discord Unlock — Versão 11.4
 
-✅ Mudanças de outros usuários aparecem sem reiniciar o Discord.
-✅ O envio imediato continua usando o canal autenticado do servidor.
-✅ Uma verificação curta recupera automaticamente eventos perdidos.
-✅ Banners públicos agora aparecem também na miniatura do perfil.
-✅ Downloads usam arquivos versionados para impedir conflito de cache.
-✅ O atualizador possui uma segunda rota nativa de download.
-✅ Tamanho e posição do avatar e do banner local continuam iguais à base estável.
+✨ Versão 11.4 oficial e estável
+✨ Sincronização em tempo real global
+✨ Correções e estabilidade nativa
+✨ Suporte completo a decorações, temas e plugins
 
-— Stefy Stars ✨
+— Stefy Stars 🌟
