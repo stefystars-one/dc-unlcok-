@@ -1172,7 +1172,7 @@ async function getDuBannerCss(env: Env): Promise<Response> {
       const safeUrl = row.banner_url.replace(/"/g, '%22');
       // Discord muda as classes e nem sempre expõe data-user-id. :has() ancora
       // o banner no avatar nativo da pessoa, mantendo o banner visível a toda a rede.
-      const profileRoot = `:is([class*="userProfileOuter_"],[class*="userProfileModal_"],[class*="userPopout_"],[class*="user-profile-popout"],[class*="user-profile-modal"]):has(img[src*="/avatars/${row.discord_id}/"])`;
+      const profileRoot = `:is([class*="userProfileOuter_"],[class*="userProfileModal_"],[class*="userPopout_"],[class*="user-profile-popout"],[class*="user-profile-modal"],[class*="profileHeader_"]):has(img[src*="/avatars/${row.discord_id}/"],img[src*="/users/${row.discord_id}/avatars/"])`;
       css += `[data-userid="${row.discord_id}"] [class*="profileBanner"],` +
              `[data-userid="${row.discord_id}"] [class*="banner-"],` +
              `[data-userid="${row.discord_id}"] [class*="banner_"],` +
@@ -1180,12 +1180,12 @@ async function getDuBannerCss(env: Env): Promise<Response> {
              `[data-user-id="${row.discord_id}"] [class*="banner-"],` +
              `[data-user-id="${row.discord_id}"] [class*="banner_"],` +
              `[data-user-id="${row.discord_id}"] [class*="bannerPremium_"],` +
-             `${profileRoot} [class*="profileBanner"],${profileRoot} [class*="banner-"],${profileRoot} [class*="banner_"]{` +
+             `${profileRoot} [class*="profileBanner"],${profileRoot} [class*="banner-"],${profileRoot} [class*="banner_"],${profileRoot} [class*="banner"]{` +
              `background-image:url("${safeUrl}") !important;` +
              `background-size:cover !important;background-position:center !important;}\n`;
     }    if (row.avatar_url) {
       const safeAvatar = row.avatar_url.replace(/"/g, '%22');
-      css += `img[src*="/avatars/${row.discord_id}/"],` +
+      css += `img[src*="/avatars/${row.discord_id}/"],img[src*="/users/${row.discord_id}/avatars/"],` +
              `[data-user-id="${row.discord_id}"] img[class*="avatar_"],` +
              `[data-user-id="${row.discord_id}"] img[class*="avatar-"],` +
              `[data-userid="${row.discord_id}"] img[class*="avatar_"],` +
