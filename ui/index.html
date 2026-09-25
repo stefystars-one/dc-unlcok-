@@ -1679,6 +1679,18 @@
       background: var(--accent);
       color: #fff;
     }
+    .theme-action-row {
+      display: flex;
+      align-items: stretch;
+      gap: 6px;
+      width: 100%;
+      min-height: 36px;
+    }
+    .theme-action-row .btn-apply-theme {
+      margin-top: 0;
+      height: 36px;
+      padding: 0 12px;
+    }
 
     /* Plugin Card & Store Theme Card Hover Preview */
     .plugin-card,
@@ -9922,7 +9934,7 @@
             const isCurrent = (t.id === currentTheme && currentTheme !== 'default');
             const deleteBtn = (!t.isStatic && (theFn || rawId)) ? `<button class="btn-delete-theme" onclick="event.stopPropagation(); deleteThemeAsset('${t.id}', '${theFn}')" title="Excluir arquivo local">🗑️</button>` : '';
             actionButtonsHtml = `
-              <div style="display: flex; gap: 6px; width: 100%;">
+              <div class="theme-action-row">
                 <button class="btn-apply-theme ${isCurrent ? 'active-theme-btn' : ''}" onclick="event.stopPropagation(); applyTheme('${t.id}')">
                   ${isCurrent ? '✅ Tema Ativo' : '⚡ Aplicar Tema'}
                 </button>

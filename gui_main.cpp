@@ -1762,6 +1762,18 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       background: var(--accent);
       color: #fff;
     }
+    .theme-action-row {
+      display: flex;
+      align-items: stretch;
+      gap: 6px;
+      width: 100%;
+      min-height: 36px;
+    }
+    .theme-action-row .btn-apply-theme {
+      margin-top: 0;
+      height: 36px;
+      padding: 0 12px;
+    }
 
     /* Plugin Card & Store Theme Card Hover Preview */
     .plugin-card,
@@ -5932,11 +5944,11 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
           </div>
           <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
             <label style="flex:1;min-width:210px;display:flex;gap:8px;align-items:flex-start;padding:9px 11px;border:1px solid rgba(16,185,129,.38);background:rgba(16,185,129,.09);border-radius:8px;color:#a7f3d0;font-size:11px;cursor:pointer;">
-              <input type="radio" name="duGalleryVisibility" value="community" checked style="margin-top:2px;accent-color:#10b981;">
+              <input type="radio" name="duGalleryVisibility" value="community" checked onchange="localStorage.setItem('du_gallery_visibility',this.value);saveBannerConfig()" style="margin-top:2px;accent-color:#10b981;">
               <span><strong>Compartilhar com a comunidade</strong> <span style="color:#6ee7b7;">(recomendado)</span><br><span style="color:#94a3b8;">Todos podem ver e usar; só você pode renomear.</span></span>
             </label>
             <label style="flex:1;min-width:180px;display:flex;gap:8px;align-items:flex-start;padding:9px 11px;border:1px solid rgba(148,163,184,.25);background:rgba(148,163,184,.06);border-radius:8px;color:#cbd5e1;font-size:11px;cursor:pointer;">
-              <input type="radio" name="duGalleryVisibility" value="private" style="margin-top:2px;accent-color:#8b5cf6;">
+              <input type="radio" name="duGalleryVisibility" value="private" onchange="localStorage.setItem('du_gallery_visibility',this.value);saveBannerConfig()" style="margin-top:2px;accent-color:#8b5cf6;">
               <span><strong>Somente para mim</strong><br><span style="color:#94a3b8;">Não aparece na loja de outros usuários.</span></span>
             </label>
           </div>
@@ -9482,20 +9494,9 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       if (cloudUserMessagingEnabled) sendToCpp('get_cloud_requests');
     }
     function refreshNetworkVisualsFromServer() {
-      // O evento WebSocket não carrega mídia nem credenciais. Ele só altera um nonce
-      // local, que o processo do Discord observa e usa para buscar o estado público uma vez.
-      try {
-        let cfg = {};
-        try { cfg = JSON.parse(localStorage.getItem('du_profile_banner') || '{}'); } catch (_) {}
-        cfg.enabled = cfg.enabled === true;
-        cfg.url = String(cfg.url || cfg.bannerUrl || '');
-        cfg.bannerUrl = String(cfg.bannerUrl || cfg.url || '');
-        cfg.avatarUrl = String(cfg.avatarUrl || '');
-        cfg.networkRefreshNonce = Date.now();
-        const raw = JSON.stringify(cfg);
-        localStorage.setItem('du_profile_banner', raw);
-        persistProfileBannerConfig(raw);
-      } catch (_) {}
+      // Notificação de rede é somente leitura: nunca regrava o perfil local nem
+      // aciona o observador que envia alterações de volta ao servidor.
+      sendToCpp('refresh_network_visuals');
     }
     function scheduleCloudRealtimeRetry() {
       if (cloudRealtimeRetryTimer) return;
@@ -11484,7 +11485,23 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
           remoteThemesList = newRemoteThemes;
         }
 
-        // Exibe primeiro os wallpapers do servidor (Google Drive), depois os 5 temas de cor estáticos com desduplicação blindada
+        // Um download do catálogo também aparece na varredura de arquivos locais.
+        // Mantenha o cartão completo do catálogo e descarte somente essa cópia local.
+        const identityKeys = theme => {
+          const clean = value => String(value || '').toLocaleLowerCase('pt-BR')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/\.(mp4|webm|gif|png|jpe?g)$/i, '')
+            .replace(/^(custom_theme_|steam_theme_|theme_|local_custom_)/, '')
+            .replace(/[^a-z0-9]+/g, '');
+          return [...new Set([
+            clean(theme?.id),
+            clean(theme?.file_name || theme?.fileName),
+            clean(theme?.name)
+          ].filter(key => key.length > 3))];
+        };
+        const catalogThemeKeys = new Set([...remoteThemesList, ...HARDCODED_BASE_THEMES].flatMap(identityKeys));
+
+        // Preserva a ordem da 10.9 e elimina somente arquivos locais já representados pelo catálogo.
         const rawList = [...wallpaperEngineThemesList, ...customThemesList, ...remoteThemesList, ...HARDCODED_BASE_THEMES];
         const seenThemeIds = new Set();
         const seenThemeSources = new Set();
@@ -11493,6 +11510,7 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
 
         for (const t of rawList) {
           if (!t || !t.id) continue;
+          if (t.isCustom && identityKeys(t).some(key => catalogThemeKeys.has(key))) continue;
           const idKey = String(t.id).trim().toLowerCase();
           const driveId = String(t.drive_file_id || '').trim().toLowerCase();
           const fileKey = String(t.file_name || t.fileName || '').trim().toLowerCase();
@@ -11668,7 +11686,7 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
               `;
             } else {
               actionButtonsHtml = `
-                <div style="display: flex; align-items: center; gap: 6px; width: 100%;">
+                <div class="theme-action-row">
                   <button class="btn-apply-theme ${isCurrent ? 'active-theme-btn' : ''}" onclick="event.stopPropagation(); applyTheme('${t.id}')">
                     ${isCurrent ? '✅ Tema Ativo' : '⚡ Aplicar Tema'}
                   </button>
@@ -14612,6 +14630,7 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
         const avatarUrl = ((document.getElementById('avatarUrlInput') || {}).value || '').trim();
         const cfg = {
           enabled: !!(bannerUrl || avatarUrl),
+          shareWithCommunity: localStorage.getItem('du_gallery_visibility') === null ? undefined : localStorage.getItem('du_gallery_visibility') !== 'private',
           url: bannerUrl,
           bannerUrl: bannerUrl,
           avatarUrl: avatarUrl,
@@ -14645,6 +14664,7 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
 
       const cfg = {
         enabled: !!(bannerUrl || avatarUrl),
+        shareWithCommunity: localStorage.getItem('du_gallery_visibility') === null ? undefined : localStorage.getItem('du_gallery_visibility') !== 'private',
         url: bannerUrl,
         bannerUrl: bannerUrl,
         avatarUrl: avatarUrl,
@@ -14685,6 +14705,40 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
     let duKlipyRequestId = 0;
     let duGalleryAbort = null;
     let duGalleryRequestId = 0;
+
+    function normalizeDuGalleryItems(items) {
+      const seen = new Set();
+      const now = Math.floor(Date.now() / 1000);
+      const result = [];
+      for (const raw of Array.isArray(items) ? items : []) {
+        const item = raw && typeof raw === 'object' ? {...raw} : null;
+        if (!item) continue;
+        try {
+          const url = new URL(String(item.url || ''));
+          const host = url.hostname.toLowerCase();
+          // googlevideo/videoplayback é assinado e vinculado ao IP que o gerou.
+          // Mesmo antes do prazo ele costuma falhar em outro computador.
+          if (/(^|\.)googlevideo\.com$/.test(host) && /\/videoplayback$/i.test(url.pathname)) continue;
+          if (/(^|\.)discordapp\.(com|net)$/.test(host) && url.searchParams.has('ex')) {
+            const expires = parseInt(url.searchParams.get('ex') || '', 16);
+            if (Number.isFinite(expires) && expires <= now) continue;
+          }
+          const youtubePreview = getYouTubeThumbnailUrl(item.url);
+          let identity = '';
+          if (youtubePreview) {
+            identity = 'youtube:' + youtubePreview.split('/vi/')[1].split('/')[0];
+            item.thumbnail = youtubePreview;
+          } else {
+            url.hash = '';
+            identity = url.href;
+          }
+          if (seen.has(identity)) continue;
+          seen.add(identity);
+          result.push(item);
+        } catch (_) {}
+      }
+      return result;
+    }
 
     function getDuLicenseKey() {
       return (typeof window.g_savedKey === 'string' && window.g_savedKey) ? window.g_savedKey :
@@ -14737,11 +14791,22 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
     async function getLocalShopCustomizations() {
       return await new Promise(resolve => {
         let settled = false;
-        const finish = value => { if (!settled) { settled = true; clearTimeout(timer); window.__duShopCustomizationsReply = null; resolve(value && typeof value === 'object' ? value : {}); } };
-        const timer = setTimeout(() => finish({}), 900);
+        const finish = value => { if (!settled) { settled = true; clearTimeout(timer); window.__duShopCustomizationsReply = null; resolve(value && typeof value === 'object' ? value : null); } };
+        const timer = setTimeout(() => finish(null), 900);
         window.__duShopCustomizationsReply = finish;
-        if (!sendToCpp('get_shop_collectibles')) finish({});
+        if (!sendToCpp('get_shop_collectibles')) finish(null);
       });
+    }
+    async function requireProfileSyncProtocol(showError = true) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 8000);
+        const response = await fetch(DU_BANNER_API + '/du-banner/capabilities', { cache:'no-store', signal:controller.signal });
+        clearTimeout(timer);
+        if (response.ok && (await response.json()).profileSyncProtocol === 2) return true;
+      } catch (_) {}
+      if (showError) showToast('O servidor de sincronização ainda não está atualizado. Nenhuma alteração foi enviada.', false);
+      return false;
     }
     async function duBannerRegister() {
       const idEl = document.getElementById('duBannerDiscordId');
@@ -14757,8 +14822,9 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       const visibilityEl = document.querySelector('input[name="duGalleryVisibility"]:checked');
       const shareWithCommunity = !visibilityEl || visibilityEl.value !== 'private';
       if (!/^\d{17,21}$/.test(discordId)) { showToast('Informe seu ID do Discord (17 a 21 dígitos).', false); return; }
+      if (!await requireProfileSyncProtocol()) return;
       const customizations = await getLocalShopCustomizations();
-      if (!bannerUrl && !avatarUrl && !Object.keys(customizations).length) { showToast('Preencha uma URL ou aplique um visual da Loja para sincronizar.', false); return; }
+      if (!bannerUrl && !avatarUrl && (!customizations || !Object.keys(customizations).length)) { showToast(customizations === null ? 'Não foi possível ler os visuais locais. Tente novamente.' : 'Preencha uma URL ou aplique um visual da Loja para sincronizar.', false); return; }
       if (bannerUrl && !bannerUrl.startsWith('https://')) { showToast('Informe uma URL de banner segura (HTTPS direto para o arquivo).', false); return; }
       if (avatarUrl && !avatarUrl.startsWith('https://')) { showToast('Informe uma URL de avatar segura (HTTPS direto para o arquivo).', false); return; }
       const licenseKey = getDuLicenseKey();
@@ -14766,15 +14832,18 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       playSound('click');
       if (btn) { btn.disabled = true; btn.textContent = '⏳ Gravando na rede DU...'; }
       try {
+        const payload = { discordId, bannerUrl, avatarUrl, licenseKey, gifName, authorName, shareWithCommunity };
+        if (customizations !== null) payload.customizations = customizations;
         const r = await fetch(DU_BANNER_API + '/du-banner', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ discordId, bannerUrl, avatarUrl, licenseKey, gifName, authorName, shareWithCommunity, customizations, clearCustomizations: Object.keys(customizations).length === 0 })
+          body: JSON.stringify(payload)
         });
         const d = await r.json();
         if (r.ok && d.ok) {
           showToast('✅ ' + (d.message || 'Perfil atualizado na rede DU com sucesso!'));
           try { localStorage.setItem('du_banner_discord_id', discordId); } catch(e) {}
+          try { localStorage.setItem('du_gallery_visibility', shareWithCommunity ? 'community' : 'private'); } catch(e) {}
           try { localStorage.setItem('du_gallery_author_name', authorName === 'Anônimo' ? '' : authorName); } catch(e) {}
           saveBannerConfig();
           duBannerLoadStatus();
@@ -14814,6 +14883,8 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       let remoteError = '';
       if (!discordId || !licenseKey) {
         remoteError = 'O visual foi removido deste PC. Para removê-lo também da galeria online, detecte o ID e entre na conta licenciada.';
+      } else if (!await requireProfileSyncProtocol(false)) {
+        remoteError = 'O visual foi removido deste PC, mas o servidor de sincronização ainda não está atualizado.';
       } else {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 8000);
@@ -15022,7 +15093,7 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
           if (countEl) countEl.textContent = 'Loja temporariamente oculta';
           return;
         }
-        duBannerGalleryItems = Array.isArray(data.items) ? data.items : [];
+        duBannerGalleryItems = normalizeDuGalleryItems(data.items);
         renderDuBannerGallery();
         if (countEl) countEl.textContent = duBannerGalleryItems.length + ' GIFs disponíveis na loja';
         if (force) showToast('🔄 Loja de GIFs atualizada!');
@@ -15101,7 +15172,7 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
         const safeUrl = encodeInlineArg(item.url);
         const safeName = encodeInlineArg(item.name || 'Tema DU');
         const hasUsableMedia = /^https:\/\//i.test(item.url || '');
-        const previewUrl = item.thumbnail || item.url;
+        const previewUrl = getYouTubeThumbnailUrl(item.thumbnail) || getYouTubeThumbnailUrl(item.url) || item.thumbnail || item.url;
         const previewFallback = `<div style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;background:#06080e;color:#94a3b8;font-size:11px;">Prévia indisponível</div>`;
         const mediaHtml = !hasUsableMedia
           ? `<div style="height:110px;display:flex;align-items:center;justify-content:center;background:#06080e;color:#94a3b8;font-size:11px;">${item.type === 'ad' ? 'Conteúdo patrocinado' : 'Prévia indisponível'}</div>`
@@ -15136,7 +15207,7 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
                 <div style="font-size:11.5px;font-weight:700;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;" title="${escapeHtml(item.name || '')}">
                   ${escapeHtml(item.name || 'Tema DU')}
                 </div>
-                ${item.canEdit ? `<button type="button" onclick="renameDuGalleryItem(decodeURIComponent('${encodeInlineArg(item.id)}'), decodeURIComponent('${safeName}'), event)" style="border:none;background:transparent;cursor:pointer;color:#94a3b8;font-size:12px;padding:2px 4px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s;" onmouseover="this.style.color='#38bdf8';this.style.background='rgba(56,189,248,0.15)'" onmouseout="this.style.color='#94a3b8';this.style.background='transparent'" title="Editar o nome do seu GIF">✏️</button>` : ''}
+                ${item.canEdit === true ? `<button type="button" onclick="renameDuGalleryItem(decodeURIComponent('${encodeInlineArg(item.id)}'), decodeURIComponent('${safeName}'), event)" style="border:none;background:transparent;cursor:pointer;color:#94a3b8;font-size:12px;padding:2px 4px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s;" onmouseover="this.style.color='#38bdf8';this.style.background='rgba(56,189,248,0.15)'" onmouseout="this.style.color='#94a3b8';this.style.background='transparent'" title="Editar o nome do seu GIF">✏️</button>` : ''}
               </div>
               ${ownerLine}
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;">
@@ -15277,6 +15348,11 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
       try {
         const authorInput = document.getElementById('duGalleryAuthorName');
         const savedAuthor = localStorage.getItem('du_gallery_author_name') || '';
+        const savedVisibility = localStorage.getItem('du_gallery_visibility');
+        if (savedVisibility === 'private' || savedVisibility === 'community') {
+          const radio = document.querySelector('input[name="duGalleryVisibility"][value="' + savedVisibility + '"]');
+          if (radio) radio.checked = true;
+        }
         if (authorInput && !authorInput.value) authorInput.value = savedAuthor;
       } catch(e) {}
       // Load saved config
@@ -17093,25 +17169,10 @@ const char EMBEDDED_UI_HTML[] = R"raw_html(
         if (!updateThemeDownloadCard(msg.themeId)) renderThemesGallery();
       } else if (msg.type === 'theme_download_complete') {
         playSound('success');
-        const gridBeforeMove = document.getElementById('themesGrid');
-        const previousCard = Array.from(gridBeforeMove?.querySelectorAll('.theme-card') || []).find(card => card.dataset.theme === String(msg.themeId));
-        const previousIndex = previousCard ? Array.from(gridBeforeMove.children).indexOf(previousCard) : -1;
         delete themeDownloadProgressMap[msg.themeId];
         downloadedThemeFiles.add(msg.fileName);
         downloadedThemeFiles.add(msg.themeId);
         renderThemesGallery();
-        if (previousIndex >= 0) {
-          const gridAfterMove = document.getElementById('themesGrid');
-          const downloadedCard = Array.from(gridAfterMove?.querySelectorAll('.theme-card') || []).find(card => card.dataset.theme === String(msg.themeId));
-          if (downloadedCard) {
-            const movedNotice = downloadedCard.cloneNode(true);
-            movedNotice.style.cssText = 'opacity:.86;transition:opacity .35s ease,transform .35s ease;';
-            const action = movedNotice.querySelector('.theme-action-slot');
-            if (action) action.insertAdjacentHTML('afterbegin', '<div style="margin-bottom:8px;padding:8px;border:1px solid rgba(34,197,94,.45);border-radius:8px;background:rgba(34,197,94,.10);color:#bbf7d0;text-align:center;font-size:10.5px;font-weight:800;">✓ Tema baixado — também está no topo<br><button type="button" onclick="event.stopPropagation(); scrollThemesToTop()" style="margin-top:7px;padding:5px 10px;border:1px solid rgba(96,165,250,.52);border-radius:6px;background:rgba(30,41,59,.86);color:#dbeafe;font:800 10px var(--font-main);cursor:pointer;">↑ Ver no topo</button></div>');
-            gridAfterMove.insertBefore(movedNotice, gridAfterMove.children[previousIndex] || null);
-            setTimeout(() => { movedNotice.style.opacity = '0'; movedNotice.style.transform = 'scale(.98)'; setTimeout(() => movedNotice.remove(), 400); }, 30000);
-          }
-        }
         if (msg.animated === true) showToast('Animação importada e pronta para aplicar!');
         else if (msg.animated === false) showToast('Cena importada! Será renderizada em tempo real via WebGL.');
         else showToast('Tema baixado com sucesso!');
@@ -19508,7 +19569,7 @@ const char EMBEDDED_OVERLAY_HTML[] = R"raw_overlay_html(
 using namespace Microsoft::WRL;
 namespace fs = std::filesystem;
 
-const std::string CURRENT_VERSION = "10.9";
+const std::string CURRENT_VERSION = "11.0";
 const std::wstring CLOUD_API_HOST = L"discord-unlock-api.st4rs.workers.dev";
 const std::wstring THEMES_CATALOG_HOST = L"script.google.com";
 const std::wstring THEMES_CATALOG_PATH = L"/macros/s/AKfycbxJeT0t6WzljXxQH5FoyBhQkNad8oQWm7Wzf0aa40oh2fAO3XriJJWHmps3bLAtbpJgdA/exec";
@@ -21162,29 +21223,63 @@ static void syncDuNetworkVisualsOnce() {
     const bool hasCollectiblesState = fs::exists(collectiblesFile, stateEc);
     const std::string profile = readDuVisualStateFile(profileFile);
     std::string collectibles = readDuVisualStateFile(collectiblesFile, 16384);
-    if (collectibles.empty() || collectibles.find('{') == std::string::npos) collectibles = "{}";    std::string bannerUrl, avatarUrl;
-    if (profile.find("\"enabled\":false") == std::string::npos) {
+    const auto completeObject = [](const std::string &value) {
+      const size_t first = value.find_first_not_of(" \t\r\n");
+      const size_t last = value.find_last_not_of(" \t\r\n");
+      return first != std::string::npos && last != std::string::npos && value[first] == '{' && value[last] == '}';
+    };
+    const bool knownProfile = hasProfileState && completeObject(profile) &&
+      (profile.find("\"enabled\"") != std::string::npos || profile.find("\"bannerUrl\"") != std::string::npos || profile.find("\"avatarUrl\"") != std::string::npos);
+    const bool knownCollectibles = hasCollectiblesState && completeObject(collectibles);
+    if (!knownProfile && !knownCollectibles) return;
+    std::string bannerUrl, avatarUrl;
+    if (knownProfile && profile.find("\"enabled\":false") == std::string::npos) {
       bannerUrl = extractJsonField(profile, "bannerUrl");
       if (bannerUrl.empty()) bannerUrl = extractJsonField(profile, "url");
       avatarUrl = extractJsonField(profile, "avatarUrl");
     }
-    const std::string fingerprint = discordId + "\n" + profile + "\n" + collectibles;
+    const std::string sharing = knownProfile ? extractJsonField(profile, "shareWithCommunity") : "";
+    const std::string mediaFingerprint = bannerUrl + "\n" + avatarUrl + "\n" + sharing;
     static std::mutex fingerprintMutex;
-    static std::string syncedFingerprint;
-    { std::lock_guard<std::mutex> lock(fingerprintMutex); if (fingerprint == syncedFingerprint) return; }
-    const bool clearOnly = bannerUrl.empty() && avatarUrl.empty() && collectibles == "{}";
-    // Arquivo ausente é estado desconhecido, nunca um pedido implícito de remoção.
-    if (clearOnly && !hasProfileState && !hasCollectiblesState) return;
-    const std::string payload = "{\"discordId\":\"" + escapeJsonString(discordId) +
-      "\",\"bannerUrl\":\"" + escapeJsonString(bannerUrl) +
-      "\",\"avatarUrl\":\"" + escapeJsonString(avatarUrl) +
-      "\",\"licenseKey\":\"" + escapeJsonString(licenseKey) +
-      "\",\"customizations\":" + collectibles +
-      ",\"clearCustomizations\":" + (clearOnly ? "true" : "false") +
-      ",\"shareWithCommunity\":true}";
+    static std::string syncedId, syncedMedia, syncedCollectibles;
+    static bool mediaSynced = false, collectiblesSynced = false;
+    static auto nextAttempt = std::chrono::steady_clock::time_point{};
+    static int retrySeconds = 1;
+    static bool protocolReady = false;
+    std::lock_guard<std::mutex> lock(fingerprintMutex);
+    if (syncedId != discordId) {
+      syncedId = discordId;
+      mediaSynced = false;
+      collectiblesSynced = false;
+      nextAttempt = {};
+    }
+    const bool sendMedia = knownProfile && (!mediaSynced || syncedMedia != mediaFingerprint);
+    const bool sendCollectibles = knownCollectibles && (!collectiblesSynced || syncedCollectibles != collectibles);
+    if ((!sendMedia && !sendCollectibles) || std::chrono::steady_clock::now() < nextAttempt) return;
+    if (!protocolReady) {
+      const std::string capabilities = cloudApiRequest(L"GET", L"/du-banner/capabilities", "");
+      protocolReady = extractJsonField(capabilities, "profileSyncProtocol") == "2";
+      if (!protocolReady) {
+        nextAttempt = std::chrono::steady_clock::now() + std::chrono::seconds(60);
+        return;
+      }
+    }
+    std::string payload = "{\"discordId\":\"" + escapeJsonString(discordId) +
+      "\",\"licenseKey\":\"" + escapeJsonString(licenseKey) + "\",\"syncOnly\":true";
+    if (sendMedia) payload += ",\"bannerUrl\":\"" + escapeJsonString(bannerUrl) +
+      "\",\"avatarUrl\":\"" + escapeJsonString(avatarUrl) + "\"";
+    if (sendCollectibles) payload += ",\"customizations\":" + collectibles;
+    if (sendMedia && (sharing == "true" || sharing == "false")) payload += ",\"shareWithCommunity\":" + sharing;
+    payload += "}";
     const std::string reply = postJsonToCloudApi(L"/du-banner", payload);
     if (reply.find("\"ok\":true") != std::string::npos) {
-      std::lock_guard<std::mutex> lock(fingerprintMutex); syncedFingerprint = fingerprint;
+      if (sendMedia) { syncedMedia = mediaFingerprint; mediaSynced = true; }
+      if (sendCollectibles) { syncedCollectibles = collectibles; collectiblesSynced = true; }
+      retrySeconds = 1;
+      nextAttempt = {};
+    } else {
+      nextAttempt = std::chrono::steady_clock::now() + std::chrono::seconds(retrySeconds);
+      retrySeconds = (std::min)(60, retrySeconds * 2);
     }
   } catch (...) {}
 }
@@ -21954,6 +22049,11 @@ module.exports = class NitroStreamUnlock {
     this._networkCollectibles = new Map();
     this._networkCollectibleOriginal = { users: new Map(), profiles: new Map() };
     this._networkCollectiblesFetchedAt = 0;
+    this._networkFetching = false;
+    this._networkRefreshPending = false;
+    this._networkRetrySeconds = 1;
+    this._networkRetryTimer = null;
+    this._networkStopped = false;
     this._patchesApplied = false;
     this._appIconsEventsHooked = false;
     // removed
@@ -21968,6 +22068,7 @@ module.exports = class NitroStreamUnlock {
     if (typeof window !== 'undefined') {
       window.NitroStreamUnlockInstance = this;
     }
+    this._networkStopped = false;
     this._injectStyles();
     this._applyAllPatches();
     this._syncRealStatus();
@@ -21989,6 +22090,10 @@ module.exports = class NitroStreamUnlock {
   }
 
   stop() {
+    this._networkStopped = true;
+    clearTimeout(this._networkRetryTimer);
+    this._networkRetryTimer = null;
+    this._restoreNetworkCollectibleState();
     try {
       if (window.BdApi && window.BdApi.Patcher) {
         window.BdApi.Patcher.unpatchAll(PLUGIN_NAME);
@@ -22207,6 +22312,9 @@ module.exports = class NitroStreamUnlock {
   }
 
   _saveAppliedCollectibles(data) {
+    // Restaura o estado-base antes de capturar o próximo item. Sem isso, trocar
+    // de visual podia salvar como "original" o visual aplicado anteriormente.
+    this._restoreAppliedCollectibleState();
     try {
       if (typeof window !== 'undefined' && window.BdApi?.Data?.save) {
         window.BdApi.Data.save('NitroStreamUnlock', 'du_applied_collectibles', data);
@@ -22235,7 +22343,7 @@ module.exports = class NitroStreamUnlock {
     const visual = this._networkCollectibles?.get(String(userId || user?.id || ''));
     if (!user || !visual) return;
     const originals = this._networkCollectibleOriginal.users;
-    if (!originals.has(String(userId))) originals.set(String(userId), { target: user, state: this._snapshotCollectibleState(user, ['avatarDecorationData', 'avatarDecoration']) });
+    if (!originals.has(user)) originals.set(user, { id: String(userId || user.id), target: user, state: this._snapshotCollectibleState(user, ['avatarDecorationData', 'avatarDecoration']) });
     this._applyCollectiblesToUser(user, visual);
   }
 
@@ -22243,7 +22351,7 @@ module.exports = class NitroStreamUnlock {
     const visual = this._networkCollectibles?.get(String(userId || ''));
     if (!profile || !visual) return;
     const originals = this._networkCollectibleOriginal.profiles;
-    if (!originals.has(String(userId))) originals.set(String(userId), { target: profile, state: this._snapshotCollectibleState(profile, ['avatarDecorationData', 'avatarDecoration', 'profileEffectId', 'profileEffect', 'profileFrame', 'collectibles', 'banner']) });
+    if (!originals.has(profile)) originals.set(profile, { id: String(userId || ''), target: profile, state: this._snapshotCollectibleState(profile, ['avatarDecorationData', 'avatarDecoration', 'profileEffectId', 'profileEffect', 'profileFrame', 'collectibles', 'banner']) });
     this._applyCollectiblesToProfile(profile, visual);
   }
 
@@ -22262,28 +22370,62 @@ module.exports = class NitroStreamUnlock {
     }
   }
 
-  _refreshNetworkCollectibles(force = false) {
+  async _refreshNetworkCollectibles(force = false) {
+    if (this._networkStopped) return;
     const now = Date.now();
     // O WebSocket chama este método imediatamente após uma mudança. Isto é só
     // uma proteção contra conexão interrompida, não uma consulta frequente.
     if (!force && now - this._networkCollectiblesFetchedAt < 15 * 60 * 1000) return;
-    this._networkCollectiblesFetchedAt = now;
-    fetch('https://discord-unlock-api.st4rs.workers.dev/du-banner/customizations', { cache: 'no-store' })
-      .then(response => response.ok ? response.json() : null)
-      .then(payload => {
-        if (!payload?.ok || !Array.isArray(payload.items)) return;
-        const next = new Map();
-        for (const item of payload.items) {
-          const id = String(item?.discordId || '');
-          if (/^\d{17,21}$/.test(id) && item.customizations && typeof item.customizations === 'object') next.set(id, item.customizations);
+    this._networkRefreshPending = true;
+    if (this._networkFetching) return;
+    this._networkFetching = true;
+    try {
+      while (this._networkRefreshPending && !this._networkStopped) {
+        this._networkRefreshPending = false;
+        this._networkCollectiblesFetchedAt = Date.now();
+        try {
+          const response = await fetch('https://discord-unlock-api.st4rs.workers.dev/du-banner/customizations', { cache: 'no-store' });
+          const payload = response.ok ? await response.json() : null;
+          if (!payload?.ok || !Array.isArray(payload.items)) throw new Error('invalid network collectible response');
+          const next = new Map();
+          for (const item of payload.items) {
+            const id = String(item?.discordId || '');
+            if (/^\d{17,21}$/.test(id) && item.customizations && typeof item.customizations === 'object') next.set(id, item.customizations);
+          }
+          const previous = this._networkCollectibles;
+          const changed = new Set([...previous.keys(), ...next.keys()].filter(id => JSON.stringify(previous.get(id) || null) !== JSON.stringify(next.get(id) || null)));
+          const original = this._networkCollectibleOriginal;
+          const openProfiles = [];
+          for (const [target, entry] of [...original.users]) if (changed.has(entry.id)) {
+            this._restoreCollectibleSnapshot(entry.target, entry.state);
+            original.users.delete(target);
+          }
+          for (const [target, entry] of [...original.profiles]) if (changed.has(entry.id)) {
+            this._restoreCollectibleSnapshot(entry.target, entry.state);
+            original.profiles.delete(target);
+            openProfiles.push([entry.target, entry.id]);
+          }
+          this._networkCollectibles = next;
+          for (const [profile, id] of openProfiles) this._applyNetworkCollectiblesToProfile(profile, id);
+          this._applyNetworkCollectiblesToCachedUsers();
+          try { this._getUserStore()?.emitChange?.(); this._getUserProfileStore()?.emitChange?.(); } catch (_) {}
+          clearTimeout(this._networkRetryTimer);
+          this._networkRetryTimer = null;
+          this._networkRetrySeconds = 1;
+        } catch (_) {
+          clearTimeout(this._networkRetryTimer);
+          const retrySeconds = this._networkRetrySeconds;
+          this._networkRetrySeconds = Math.min(60, retrySeconds * 2);
+          this._networkRetryTimer = setTimeout(() => {
+            this._networkRetryTimer = null;
+            this._refreshNetworkCollectibles(true);
+          }, retrySeconds * 1000);
+          break;
         }
-        const original = this._networkCollectibleOriginal;
-        for (const [id, entry] of original.users) if (!next.has(id)) { this._restoreCollectibleSnapshot(entry.target, entry.state); original.users.delete(id); }
-        for (const [id, entry] of original.profiles) if (!next.has(id)) { this._restoreCollectibleSnapshot(entry.target, entry.state); original.profiles.delete(id); }
-        this._networkCollectibles = next;
-        this._applyNetworkCollectiblesToCachedUsers();
-        try { this._getUserStore()?.emitChange?.(); this._getUserProfileStore()?.emitChange?.(); } catch (_) {}
-      }).catch(() => {});
+      }
+    } finally {
+      this._networkFetching = false;
+    }
   }
   _snapshotCollectibleState(target, fields) {
     if (!target) return null;
@@ -25701,17 +25843,13 @@ try {
   const profileConfigPath = path.join(appDataDir, 'DiscordUnlock', 'profile_banner.json');
   let profilePushTimer = null;
   let lastProfilePayload = '';
-  let lastNetworkRefreshNonce = 0;
   const pushProfileConfigToWindows = () => {
     try {
       const profileConfig = getProfileBannerConfig();
       const payload = JSON.stringify(profileConfig);
       if (payload === lastProfilePayload) return;
       lastProfilePayload = payload;
-      const networkRefreshNonce = Number(profileConfig?.networkRefreshNonce || 0);
-      const refreshNetworkCollectibles = networkRefreshNonce > lastNetworkRefreshNonce;
-      if (refreshNetworkCollectibles) lastNetworkRefreshNonce = networkRefreshNonce;
-      const script = '(() => { const config = ' + payload + '; const networkRefresh = ' + (refreshNetworkCollectibles ? 'true' : 'false') + '; window.__DU_PROFILE_BANNER_CONFIG = config; let updated = false; if (window.__duProfileBannerRuntime && typeof window.__duProfileBannerRuntime.update === "function") { window.__duProfileBannerRuntime.update(config); updated = true; } if (networkRefresh) { try { window.NitroStreamUnlockInstance?._refreshNetworkCollectibles?.(true); } catch (_) {} } return updated; })();';
+      const script = '(() => { const config = ' + payload + '; window.__DU_PROFILE_BANNER_CONFIG = config; let updated = false; if (window.__duProfileBannerRuntime && typeof window.__duProfileBannerRuntime.update === "function") { window.__duProfileBannerRuntime.update(config); updated = true; } return updated; })();';
       const wins = electron.BrowserWindow ? electron.BrowserWindow.getAllWindows() : [];
       let delivered = 0;
       for (const w of wins) {
@@ -25743,6 +25881,27 @@ try {
   } catch(e) {
     hookLog('profile directory watcher error: ' + e.message);
   }
+  // Eventos vindos do servidor usam um arquivo separado. Assim, uma atualização
+  // remota jamais altera profile_banner.json nem volta para o servidor como escrita.
+  const networkVisualRefreshPath = path.join(appDataDir, 'DiscordUnlock', 'network_visual_refresh.txt');
+  let lastNetworkVisualRefresh = '';
+  const pushNetworkVisualRefreshToWindows = () => {
+    try {
+      if (!fs.existsSync(networkVisualRefreshPath)) return;
+      const marker = fs.readFileSync(networkVisualRefreshPath, 'utf8').trim();
+      if (!marker || marker === lastNetworkVisualRefresh) return;
+      lastNetworkVisualRefresh = marker;
+      const script = '(() => { try { window.__duProfileBannerRuntime?.refreshPublicCss?.(); } catch (_) {} try { window.NitroStreamUnlockInstance?._refreshNetworkCollectibles?.(true); } catch (_) {} })();';
+      const wins = electron.BrowserWindow ? electron.BrowserWindow.getAllWindows() : [];
+      for (const w of wins) {
+        if (isOverlay(w) || !w.webContents || w.webContents.isDestroyed()) continue;
+        w.webContents.executeJavaScript(script).catch(e => hookLog('network visual refresh error: ' + e.message));
+      }
+    } catch(e) {
+      hookLog('network visual refresh error: ' + e.message);
+    }
+  };
+  fs.watchFile(networkVisualRefreshPath, { interval: 300 }, pushNetworkVisualRefreshToWindows);
 } catch(e) {}
 
 // Read the authenticated account from live Discord renderer windows in the Electron main process.
@@ -37096,6 +37255,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
                                       }
                                     } catch (...) {}
                                     postJsonToUI("{\"type\":\"shop_collectibles_data\",\"configB64\":\"" + base64Encode(config) + "\"}");
+                                  }).detach();                                } else if (action == "refresh_network_visuals") {
+                                  std::thread([]() {
+                                    try {
+                                      const char* appData = getenv("APPDATA");
+                                      if (!appData) return;
+                                      const fs::path dir = fs::path(appData) / "DiscordUnlock";
+                                      fs::create_directories(dir);
+                                      std::ofstream output(dir / "network_visual_refresh.txt", std::ios::binary | std::ios::trunc);
+                                      if (output.is_open()) output << GetTickCount64();
+                                    } catch (...) {}
                                   }).detach();                                } else if (action == "set_profile_banner") {
                                   // Save profile banner config to %AppData%\DiscordUnlock\profile_banner.json
                                   std::string b64 = extractJsonField(json, "b64");

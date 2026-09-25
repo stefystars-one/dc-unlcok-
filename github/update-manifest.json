@@ -1,18 +1,30 @@
-﻿{
-  "version": "8.7",
-  "channel": "stable",
-  "date": "2026-09-22",
-  "notes": "v8.7 - Compatibilidade com Midnight Discord e outros temas BetterDiscord: wallpapers agora aparecem corretamente mesmo com temas BD ativos. Sem quebra de funcionalidades existentes.",
-  "files": {
+{
+  "schema": 1,
+  "version": "11.0",
+  "artifacts": {
     "DiscordUnlock.exe": {
       "url": "https://github.com/stefystars-one/dc-unlcok-/releases/latest/download/DiscordUnlock.exe",
-      "sha256": "31b4c60eba95bfb58c21959f5b4a791de915f06795a89fd32f118edaf055a3e8",
-      "size": 13734400
+      "sha256": "c0680c8bbf375acfbfac143c02dbf1d192a4639f8d8af5ee8123db762e47c367"
     },
     "DiscordUnlock_Special.exe": {
       "url": "https://github.com/stefystars-one/dc-unlcok-/releases/latest/download/DiscordUnlock_Special.exe",
-      "sha256": "530474a50c09aaeebd11158f79dca469e44ed9cff16af09e1eb6100a8ab35bea",
-      "size": 13540864
+      "sha256": "0be8ac5855b02f665dfdc7ea17eb4ef5f2526c0f0be5d16d4a40f4a850152ac5"
+    },
+    "DiscordUnlock_Web.exe": {
+      "url": "https://github.com/stefystars-one/dc-unlcok-/releases/latest/download/DiscordUnlock.exe",
+      "sha256": "c0680c8bbf375acfbfac143c02dbf1d192a4639f8d8af5ee8123db762e47c367"
+    },
+    "DiscordUnlock_Web_Special.exe": {
+      "url": "https://github.com/stefystars-one/dc-unlcok-/releases/latest/download/DiscordUnlock_Special.exe",
+      "sha256": "0be8ac5855b02f665dfdc7ea17eb4ef5f2526c0f0be5d16d4a40f4a850152ac5"
+    },
+    "DiscordUnlock_Chrome.exe": {
+      "url": "https://github.com/stefystars-one/dc-unlcok-/releases/latest/download/DiscordUnlock.exe",
+      "sha256": "c0680c8bbf375acfbfac143c02dbf1d192a4639f8d8af5ee8123db762e47c367"
+    },
+    "DiscordUnlock_Chrome_Special.exe": {
+      "url": "https://github.com/stefystars-one/dc-unlcok-/releases/latest/download/DiscordUnlock_Special.exe",
+      "sha256": "0be8ac5855b02f665dfdc7ea17eb4ef5f2526c0f0be5d16d4a40f4a850152ac5"
     }
   }
 }

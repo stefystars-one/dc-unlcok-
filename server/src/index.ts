@@ -1059,15 +1059,67 @@ async function sendGuestSupport(request: Request, url: URL, env: Env): Promise<R
 const BANNER_URL_MAX = 4096;
 const BANNER_DISCORD_ID_RE = /^\d{17,21}$/;
 
+function duYouTubeVideoId(value: string): string {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    let id = '';
+    if (['youtube.com','www.youtube.com','m.youtube.com'].includes(host) && url.pathname === '/watch') id = url.searchParams.get('v') || '';
+    else if (host === 'youtu.be') id = url.pathname.split('/').filter(Boolean)[0] || '';
+    else if (['youtube.com','www.youtube.com'].includes(host) && url.pathname.startsWith('/shorts/')) id = url.pathname.split('/').filter(Boolean)[1] || '';
+    return /^[A-Za-z0-9_-]{11}$/.test(id) ? id : '';
+  } catch { return ''; }
+}
+
+function isDuIpBoundMediaUrl(url: URL): boolean {
+  const host = url.hostname.toLowerCase();
+  return /(^|\.)googlevideo\.com$/.test(host) && /\/videoplayback$/i.test(url.pathname);
+}
+
+function isExpiredDuMediaUrl(url: URL): boolean {
+  const host = url.hostname.toLowerCase();
+  if (/(^|\.)discordapp\.(com|net)$/.test(host) && url.searchParams.has('ex')) {
+    const expires = parseInt(url.searchParams.get('ex') || '', 16);
+    return Number.isFinite(expires) && expires <= nowSeconds();
+  }
+  const expires = Number(url.searchParams.get('expire') || url.searchParams.get('expires') || 0);
+  return Number.isFinite(expires) && expires > 0 && expires <= nowSeconds();
+}
+
+function duGalleryMediaInfo(value: string): { available:boolean; key:string; thumbnail:string } {
+  try {
+    const url = new URL(value);
+    const youtubeId = duYouTubeVideoId(value);
+    if (youtubeId) return { available:true, key:'youtube:' + youtubeId, thumbnail:'https://i.ytimg.com/vi/' + youtubeId + '/hqdefault.jpg' };
+    url.hash = '';
+    return { available:!isDuIpBoundMediaUrl(url) && !isExpiredDuMediaUrl(url), key:url.href, thumbnail:'' };
+  } catch { return { available:false, key:'', thumbnail:'' }; }
+}
+
+function normalizeDuMediaUrl(value: unknown): string {
+  if (value === undefined || value === '') return '';
+  if (typeof value !== 'string') throw new HttpError(400, 'invalid_media', 'URL inválida.');
+  let url: URL;
+  try { url = new URL(value.trim()); } catch { throw new HttpError(400, 'invalid_media', 'URL inválida.'); }
+  url.hash = '';
+  const youtubeId = duYouTubeVideoId(url.href);
+  if (youtubeId) return 'https://i.ytimg.com/vi/' + youtubeId + '/hqdefault.jpg';
+  if (isExpiredDuMediaUrl(url)) throw new HttpError(400, 'expired_media', 'Este link expirou. Use uma URL permanente da mídia.');
+  if (isDuIpBoundMediaUrl(url) || (/(^|\.)discordapp\.(com|net)$/.test(url.hostname) && url.searchParams.has('ex')))
+    throw new HttpError(400, 'temporary_media', 'Este link é temporário. Use uma URL permanente ou escolha a mídia diretamente na Loja DU.');
+  return url.href;
+}
+
 // Gallery entries can be images, GIFs or direct video files. The host allowlist
 // and HTTPS requirement remain the same for every media type.
 async function isSafeMediaUrl(raw: string, env: Env): Promise<boolean> {
   try {
     const u = new URL(raw);
     if (u.protocol !== 'https:' || u.username || u.password || (u.port && u.port !== '443')) return false;
+    if (isDuIpBoundMediaUrl(u) || isExpiredDuMediaUrl(u) || (/(^|\.)discordapp\.(com|net)$/.test(u.hostname) && u.searchParams.has('ex'))) return false;
     const h = u.hostname.toLowerCase();
     // CDNs essenciais do Discord e dos hosts que o app já usava como armazenamento.
-    if (['discordapp.com','discordapp.net','postimg.cc','catbox.moe','pinimg.com','ibb.co','googlevideo.com','youtube.com','youtu.be','youtube-nocookie.com'].some(d => h === d || h.endsWith('.' + d))) return true;
+    if (['discordapp.com','discordapp.net','postimg.cc','catbox.moe','pinimg.com','ibb.co','ytimg.com','youtube.com','youtu.be','youtube-nocookie.com'].some(d => h === d || h.endsWith('.' + d))) return true;
     // Os demais hosts podem ser geridos no painel ADM e valem para o domínio e subdomínios.
     const sources = await env.DB.prepare('SELECT domain FROM du_gallery_sources WHERE enabled = 1').all<{domain:string}>();
     return sources.results.some(row => h === row.domain || h.endsWith('.' + row.domain));
@@ -1122,6 +1174,11 @@ async function ensureBannerTables(env: Env): Promise<void> {
   try {
     await env.DB.prepare("ALTER TABLE du_banners ADD COLUMN customization_json TEXT NOT NULL DEFAULT '{}'").run();
   } catch(e) {}
+  for (const column of ['banner_visibility', 'avatar_visibility']) {
+    try {
+      await env.DB.prepare("ALTER TABLE du_banners ADD COLUMN " + column + " TEXT NOT NULL DEFAULT 'community'").run();
+    } catch (_) {}
+  }
   try {
     await env.DB.prepare("ALTER TABLE du_banner_gallery ADD COLUMN target TEXT NOT NULL DEFAULT 'both'").run();
   } catch(e) {}
@@ -1137,6 +1194,13 @@ async function ensureBannerTables(env: Env): Promise<void> {
   try {
     await env.DB.prepare("ALTER TABLE du_banner_gallery ADD COLUMN visibility TEXT NOT NULL DEFAULT 'community'").run();
   } catch(e) {}
+  // A migração de privacidade precisa rodar depois de ambas as tabelas terem as
+  // colunas novas. Fora do ALTER, ela também conclui uma migração interrompida.
+  for (const [column, mediaColumn] of [['banner_visibility', 'banner_url'], ['avatar_visibility', 'avatar_url']]) {
+    try {
+      await env.DB.prepare("UPDATE du_banners SET " + column + "='private' WHERE EXISTS (SELECT 1 FROM du_banner_gallery g WHERE g.owner_discord_id=du_banners.discord_id AND g.url=du_banners." + mediaColumn + " AND g.visibility='private')").run();
+    } catch (_) {}
+  }
   // A comunidade tem um único cartão por URL. Itens privados continuam
   // isolados por dono e podem usar a mesma URL sem vazar para a comunidade.
   try {
@@ -1164,7 +1228,7 @@ async function ensureBannerTables(env: Env): Promise<void> {
 async function getDuBannerCss(env: Env): Promise<Response> {
   await ensureBannerTables(env);
   const rows = await env.DB.prepare(
-    'SELECT discord_id, banner_url, avatar_url FROM du_banners ORDER BY updated_at DESC LIMIT 5000'
+    "SELECT discord_id, CASE WHEN banner_visibility='private' THEN '' ELSE banner_url END AS banner_url, CASE WHEN avatar_visibility='private' THEN '' ELSE avatar_url END AS avatar_url FROM du_banners ORDER BY updated_at DESC LIMIT 5000"
   ).all<{ discord_id: string; banner_url: string; avatar_url: string | null }>();
   let css = '/* DiscordUnlock DU Banner & Avatar — auto-generated */\n';
   for (const row of rows.results) {
@@ -1207,7 +1271,7 @@ async function getDuBannerForUser(discordId: string, env: Env): Promise<Response
   if (!BANNER_DISCORD_ID_RE.test(discordId)) throw new HttpError(400, 'invalid_discord_id', 'ID Discord inválido.');
   await ensureBannerTables(env);
   const row = await env.DB.prepare(
-    'SELECT banner_url, avatar_url, updated_at FROM du_banners WHERE discord_id = ?'
+    "SELECT CASE WHEN banner_visibility='private' THEN '' ELSE banner_url END AS banner_url, CASE WHEN avatar_visibility='private' THEN '' ELSE avatar_url END AS avatar_url, updated_at FROM du_banners WHERE discord_id = ?"
   ).bind(discordId).first<{ banner_url: string; avatar_url: string | null; updated_at: number }>();
   if (!row) throw new HttpError(404, 'not_found', 'Perfil não cadastrado.');
   return json({ ok: true, discordId, url: row.banner_url, bannerUrl: row.banner_url, avatarUrl: row.avatar_url || '', updatedAt: row.updated_at });
@@ -1233,6 +1297,9 @@ function sanitizeDuCustomizations(value: unknown): Record<string, unknown> {
   const nameplate = source.nameplate as Record<string, unknown> | undefined;
   const nameplateSku = clean(nameplate?.skuId);
   if (nameplateSku) result.nameplate = { skuId: nameplateSku };
+  const banner = source.banner as Record<string, unknown> | undefined;
+  const bannerAsset = clean(banner?.asset);
+  if (bannerAsset) result.banner = { asset: bannerAsset, skuId: clean(banner?.skuId) || '1' };
   return result;
 }
 
@@ -1250,18 +1317,21 @@ async function registerDuBanner(request: Request, env: Env): Promise<Response> {
   requireConfiguredSecrets(env);
   const body = await readJson<{
     discordId?: string; bannerUrl?: string; avatarUrl?: string; licenseKey?: string;
-    gifName?: string; authorName?: string; shareWithCommunity?: boolean; customizations?: unknown; clearCustomizations?: boolean
+    gifName?: string; authorName?: string; shareWithCommunity?: boolean; customizations?: unknown; clearCustomizations?: boolean; syncOnly?: boolean
   }>(request);
   if (!body.discordId || !BANNER_DISCORD_ID_RE.test(body.discordId))
     throw new HttpError(400, 'invalid_discord_id', 'ID Discord inválido (17-21 dígitos numéricos).');
   
-  const bannerUrl = (body.bannerUrl || '').trim();
-  const avatarUrl = (body.avatarUrl || '').trim();
+  const hasBanner = Object.prototype.hasOwnProperty.call(body, 'bannerUrl');
+  const hasAvatar = Object.prototype.hasOwnProperty.call(body, 'avatarUrl');
+  const hasCustomizations = Object.prototype.hasOwnProperty.call(body, 'customizations') || body.clearCustomizations === true;
+  const bannerUrl = normalizeDuMediaUrl(body.bannerUrl);
+  const avatarUrl = normalizeDuMediaUrl(body.avatarUrl);
   const customizations = sanitizeDuCustomizations(body.customizations);
   const customizationsJson = JSON.stringify(customizations);
   const clearCustomizations = body.clearCustomizations === true;
 
-  if (!bannerUrl && !avatarUrl && Object.keys(customizations).length === 0 && !clearCustomizations)
+  if (!hasBanner && !hasAvatar && !hasCustomizations)
     throw new HttpError(400, 'missing_media', 'Preencha uma mídia ou aplique um visual da Loja para sincronizar.');
 
   if (bannerUrl) {
@@ -1290,19 +1360,21 @@ async function registerDuBanner(request: Request, env: Env): Promise<Response> {
   if (!license || license.status !== 'active' || (license.expires_at !== null && license.expires_at <= now))
     throw new HttpError(401, 'license_denied', 'Licença inválida, revogada ou expirada.');
   await ensureBannerTables(env);
-  // Permite limpar apenas os itens visuais sem apagar o banner/avatar já publicado.
-  if (clearCustomizations && !bannerUrl && !avatarUrl && Object.keys(customizations).length === 0) {
-    const existing = await env.DB.prepare('SELECT license_key_hash FROM du_banners WHERE discord_id = ?').bind(body.discordId).first<{license_key_hash:string}>();
-    if (!existing) return json({ ok: true, message: 'Nenhum visual remoto para limpar.' });
-    if (existing.license_key_hash !== keyHash) throw new HttpError(403, 'forbidden', 'Sem permissão para alterar este visual.');
-    await env.DB.prepare('UPDATE du_banners SET customization_json=?, updated_at=? WHERE discord_id=?').bind('{}', now, body.discordId).run();
-    await publishRealtime(env, null, { type: 'du_profile_changed', discordId: body.discordId });
-    return json({ ok: true, message: 'Visual personalizado removido da rede DU.' });
-  }
-  await env.DB.prepare(
-    'INSERT INTO du_banners (discord_id,banner_url,avatar_url,customization_json,license_key_hash,registered_at,updated_at) VALUES (?,?,?,?,?,?,?) ' +
-    'ON CONFLICT(discord_id) DO UPDATE SET banner_url=excluded.banner_url,avatar_url=excluded.avatar_url,customization_json=excluded.customization_json,license_key_hash=excluded.license_key_hash,updated_at=excluded.updated_at'
-  ).bind(body.discordId, bannerUrl, avatarUrl || null, customizationsJson, keyHash, now, now).run();
+  const saved = await env.DB.prepare(
+    'INSERT INTO du_banners (discord_id,banner_url,avatar_url,customization_json,license_key_hash,registered_at,updated_at,banner_visibility,avatar_visibility) VALUES (?,?,?,?,?,?,?,?,?) ' +
+    'ON CONFLICT(discord_id) DO UPDATE SET ' +
+    'banner_url=CASE WHEN ? THEN excluded.banner_url ELSE du_banners.banner_url END,' +
+    'avatar_url=CASE WHEN ? THEN excluded.avatar_url ELSE du_banners.avatar_url END,' +
+    'customization_json=CASE WHEN ? THEN excluded.customization_json ELSE du_banners.customization_json END,' +
+    'banner_visibility=CASE WHEN ? THEN excluded.banner_visibility ELSE du_banners.banner_visibility END,' +
+    'avatar_visibility=CASE WHEN ? THEN excluded.avatar_visibility ELSE du_banners.avatar_visibility END,' +
+    'updated_at=MAX(du_banners.updated_at+1,excluded.updated_at) WHERE du_banners.license_key_hash=excluded.license_key_hash'
+  ).bind(body.discordId, bannerUrl, avatarUrl || null, clearCustomizations ? '{}' : customizationsJson, keyHash, now, now,
+    body.shareWithCommunity === false ? 'private' : 'community', body.shareWithCommunity === false ? 'private' : 'community',
+    hasBanner ? 1 : 0, hasAvatar ? 1 : 0, hasCustomizations ? 1 : 0,
+    hasBanner && typeof body.shareWithCommunity === 'boolean' ? 1 : 0,
+    hasAvatar && typeof body.shareWithCommunity === 'boolean' ? 1 : 0).run();
+  if (!saved.meta.changes) throw new HttpError(403, 'forbidden', 'Sem permissão para alterar este perfil.');
 
   const galleryName = String(body.gifName || '').trim().slice(0, 80) || 'GIF da Comunidade';
   const authorName = String(body.authorName || '').trim().slice(0, 60) || 'Anônimo';
@@ -1312,7 +1384,7 @@ async function registerDuBanner(request: Request, env: Env): Promise<Response> {
   // comunidade só atualiza o perfil do usuário, sem criar outro cartão.
   // Privados são únicos apenas por dono e nunca entram no catálogo público.
   try {
-    const mediaUrls = [...new Set([bannerUrl, avatarUrl].filter(Boolean))];
+    const mediaUrls = body.syncOnly ? [] : [...new Set([bannerUrl, avatarUrl].filter(Boolean))];
     for (const mediaUrl of mediaUrls) {
       if (visibility === 'community') {
         const published = await env.DB.prepare(
@@ -1324,6 +1396,7 @@ async function registerDuBanner(request: Request, env: Env): Promise<Response> {
         ).bind(crypto.randomUUID(), galleryName, mediaUrl, mediaUrl, 'Comunidade', 'both', now,
           body.discordId, keyHash, authorName, 'community').run();
       } else {
+        await env.DB.prepare("DELETE FROM du_banner_gallery WHERE url=? AND owner_discord_id=? AND visibility='community'").bind(mediaUrl,body.discordId).run();
         const privateItem = await env.DB.prepare(
           "SELECT id FROM du_banner_gallery WHERE url=? AND owner_discord_id=? AND COALESCE(visibility,'community')='private' LIMIT 1"
         ).bind(mediaUrl, body.discordId).first<{id:string}>();
@@ -1341,7 +1414,7 @@ async function registerDuBanner(request: Request, env: Env): Promise<Response> {
     }
   } catch(e) {}
   await publishRealtime(env, null, { type: 'du_profile_changed', discordId: body.discordId });
-  const galleryMessage = visibility === 'community'
+  const galleryMessage = body.syncOnly ? 'Os campos locais foram sincronizados sem criar cartões na galeria.' : visibility === 'community'
     ? 'O GIF também foi compartilhado com a comunidade.'
     : 'O GIF ficou privado e só aparece para você.';
   return json({ ok: true, message: 'Perfil atualizado com sucesso! ' + galleryMessage });
@@ -1361,7 +1434,7 @@ async function deleteDuBanner(request: Request, env: Env): Promise<Response> {
   if (!row) throw new HttpError(404, 'not_found', 'Banner não encontrado.');
   if (row.license_key_hash !== keyHash) throw new HttpError(403, 'forbidden', 'Sem permissão para remover este banner.');
   await env.DB.batch([
-    env.DB.prepare('DELETE FROM du_banners WHERE discord_id = ?').bind(body.discordId),
+    env.DB.prepare("UPDATE du_banners SET banner_url='',avatar_url=NULL,updated_at=MAX(updated_at+1,?) WHERE discord_id=?").bind(nowSeconds(),body.discordId),
     env.DB.prepare('DELETE FROM du_banner_gallery WHERE owner_discord_id = ?').bind(body.discordId),
     env.DB.prepare("DELETE FROM du_banner_gallery WHERE owner_discord_id IS NULL AND name IN ('Banner da Comunidade DU','Avatar da Comunidade DU') AND url IN (?,?) AND NOT EXISTS (SELECT 1 FROM du_banners b WHERE b.discord_id <> ? AND (b.banner_url = du_banner_gallery.url OR b.avatar_url = du_banner_gallery.url))")
       .bind(row.banner_url, row.avatar_url || '', body.discordId)
@@ -1483,19 +1556,26 @@ async function getDuBannerGallery(
   const rows = ownerDiscordId && !includePrivate
     ? await statement.bind(ownerDiscordId).all<any>()
     : await statement.all<any>();
-  const items = rows.results.map(row => ({
-    id: row.id,
-    name: row.name,
-    url: row.url,
-    thumbnail: row.thumbnail,
-    category: row.category,
-    target: row.target,
-    ownerDiscordId: row.owner_discord_id || '',
-    authorName: row.author_name || 'Anônimo',
-    visibility: row.visibility || 'community',
-    canEdit: !!ownerDiscordId && row.owner_discord_id === ownerDiscordId &&
-      !!ownerKeyHash && row.owner_license_key_hash === ownerKeyHash
-  }));
+  const seen = new Set<string>();
+  const items = [];
+  for (const row of rows.results) {
+    const media = duGalleryMediaInfo(String(row.url || ''));
+    if (!includePrivate && (!media.available || !media.key || seen.has(media.key))) continue;
+    if (!includePrivate) seen.add(media.key);
+    items.push({
+      id: row.id,
+      name: row.name,
+      url: row.url,
+      thumbnail: media.thumbnail || row.thumbnail,
+      category: row.category,
+      target: row.target,
+      ownerDiscordId: row.owner_discord_id || '',
+      authorName: row.author_name || 'Anônimo',
+      visibility: row.visibility || 'community',
+      canEdit: !!ownerDiscordId && row.owner_discord_id === ownerDiscordId &&
+        !!ownerKeyHash && row.owner_license_key_hash === ownerKeyHash
+    });
+  }
   return json({ ok: true, storeEnabled: true, items }, 200);
 }
 
@@ -1704,6 +1784,7 @@ export default {
         return json({ ok: true, service: 'discord-unlock-api', storage: 'gofile', time: nowSeconds() });
       }
       // DU Banner — public routes (no auth)
+      if (url.pathname === '/du-banner/capabilities' && request.method === 'GET') return json({ok:true, profileSyncProtocol:2});
       if (url.pathname === '/du-banner/css' && request.method === 'GET') return await getDuBannerCss(env);
       if (url.pathname === '/du-banner/customizations' && request.method === 'GET') return await getDuNetworkCustomizations(env);
       if (url.pathname === '/du-banner/settings' && request.method === 'GET') return await publicDuBannerSettings(env);
