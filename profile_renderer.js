@@ -1,6 +1,6 @@
 // Embedded into the Discord main-process hook by tools/sync_profile_renderer.cjs.
 (() => {
-  const VERSION = 'profile-dom-20260924-11';
+  const VERSION = 'profile-dom-20260924-10';
   const incoming = window.__DU_PROFILE_BANNER_CONFIG || null;
   const previous = window.__duProfileBannerRuntime;
   if (previous?.version === VERSION) { previous.update(incoming); return; }
@@ -64,9 +64,18 @@
     return root.matches('[class*="accountProfileCard_"],[class*="profileCustomizationSection_"]');
   }
   function pruneOwnPublicCss() {
-    // O estado público também precisa permanecer visível no próprio cliente
-    // (inclusive banners de pacotes). As regras locais usam estilo inline ou um
-    // stylesheet posterior e continuam tendo prioridade quando configuradas.
+    if (!config) return;
+    const id=uid();
+    if (!id) return;
+    // The public stylesheet uses content:url(), which changes an image's intrinsic
+    // aspect ratio. Local configuration is authoritative, including explicit removal.
+    const style=document.getElementById('du-banner-css-inject');
+    try {
+      const sheet=style?.sheet;
+      if (sheet) for (let i=sheet.cssRules.length-1;i>=0;i--) {
+        if ((sheet.cssRules[i].selectorText||'').includes(id)) sheet.deleteRule(i);
+      }
+    } catch (_) {}
   }
   async function refreshPublicCss() {
     const request=++publicRequest;
@@ -87,7 +96,7 @@
     if (!style) { style=document.createElement('style');style.id='du-local-avatar-css';(document.head||document.documentElement).appendChild(style); }
     // content:url() altera somente a pintura da imagem: sem nós novos e sem reflow nas DMs.
     const safe=String(url).replace(/"/g,'%22');
-    const css='img[src*="/avatars/'+id+'/"],img[src*="/users/'+id+'/avatars/"]{content:url("'+safe+'")!important;display:block!important;width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;max-width:100%!important;max-height:100%!important;aspect-ratio:1/1!important;object-fit:cover!important;object-position:center!important;}';
+    const css='img[src*="/avatars/'+id+'/"],img[src*="/users/'+id+'/avatars/"]{content:url("'+safe+'")!important;object-fit:cover!important;}';
     if (style.textContent!==css) style.textContent=css;
   }  function mediaFor(entry,url) {
     if (entry.url===url && entry.media?.isConnected) return entry.media;

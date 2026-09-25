@@ -1164,19 +1164,12 @@ async function ensureBannerTables(env: Env): Promise<void> {
 async function getDuBannerCss(env: Env): Promise<Response> {
   await ensureBannerTables(env);
   const rows = await env.DB.prepare(
-    'SELECT discord_id, banner_url, avatar_url, customization_json FROM du_banners ORDER BY updated_at DESC LIMIT 5000'
-  ).all<{ discord_id: string; banner_url: string; avatar_url: string | null; customization_json: string }>();
+    'SELECT discord_id, banner_url, avatar_url FROM du_banners ORDER BY updated_at DESC LIMIT 5000'
+  ).all<{ discord_id: string; banner_url: string; avatar_url: string | null }>();
   let css = '/* DiscordUnlock DU Banner & Avatar — auto-generated */\n';
   for (const row of rows.results) {
-    let effectiveBannerUrl = row.banner_url;
-    if (!effectiveBannerUrl && row.customization_json) {
-      try {
-        const stored = sanitizeDuCustomizations(JSON.parse(row.customization_json));
-        effectiveBannerUrl = String((stored.banner as {url?:string} | undefined)?.url || '');
-      } catch (_) {}
-    }
-    if (effectiveBannerUrl) {
-      const safeUrl = effectiveBannerUrl.replace(/"/g, '%22');
+    if (row.banner_url) {
+      const safeUrl = row.banner_url.replace(/"/g, '%22');
       // Discord muda as classes e nem sempre expõe data-user-id. :has() ancora
       // o banner no avatar nativo da pessoa, mantendo o banner visível a toda a rede.
       const profileRoot = `:is([class*="userProfileOuter_"],[class*="userProfileModal_"],[class*="userPopout_"],[class*="user-profile-popout"],[class*="user-profile-modal"],[class*="profileHeader_"]):has(img[src*="/avatars/${row.discord_id}/"],img[src*="/users/${row.discord_id}/avatars/"])`;
@@ -1198,7 +1191,7 @@ async function getDuBannerCss(env: Env): Promise<Response> {
              `[data-userid="${row.discord_id}"] img[class*="avatar_"],` +
              `[data-userid="${row.discord_id}"] img[class*="avatar-"]{` +
              `content:url("${safeAvatar}") !important;` +
-             `display:block !important;width:100% !important;height:100% !important;min-width:0 !important;min-height:0 !important;max-width:100% !important;max-height:100% !important;aspect-ratio:1/1 !important;object-fit:cover !important;object-position:center !important;}\n`;
+             `object-fit:cover !important;}\n`;
     }
   }
   return new Response(css, {
@@ -1240,15 +1233,6 @@ function sanitizeDuCustomizations(value: unknown): Record<string, unknown> {
   const nameplate = source.nameplate as Record<string, unknown> | undefined;
   const nameplateSku = clean(nameplate?.skuId);
   if (nameplateSku) result.nameplate = { skuId: nameplateSku };
-  const banner = source.banner as Record<string, unknown> | undefined;
-  try {
-    const bannerUrl = String(banner?.url || banner?.asset || '').trim();
-    const parsed = new URL(bannerUrl);
-    const host = parsed.hostname.toLowerCase();
-    if (parsed.protocol === 'https:' && ['discordapp.com','discordapp.net'].some(domain => host === domain || host.endsWith('.' + domain))) {
-      result.banner = { url: parsed.href };
-    }
-  } catch (_) {}
   return result;
 }
 
@@ -1266,7 +1250,7 @@ async function registerDuBanner(request: Request, env: Env): Promise<Response> {
   requireConfiguredSecrets(env);
   const body = await readJson<{
     discordId?: string; bannerUrl?: string; avatarUrl?: string; licenseKey?: string;
-    gifName?: string; authorName?: string; shareWithCommunity?: boolean; customizations?: unknown; clearCustomizations?: boolean; preserveMedia?: boolean
+    gifName?: string; authorName?: string; shareWithCommunity?: boolean; customizations?: unknown; clearCustomizations?: boolean
   }>(request);
   if (!body.discordId || !BANNER_DISCORD_ID_RE.test(body.discordId))
     throw new HttpError(400, 'invalid_discord_id', 'ID Discord inválido (17-21 dígitos numéricos).');
@@ -1315,19 +1299,10 @@ async function registerDuBanner(request: Request, env: Env): Promise<Response> {
     await publishRealtime(env, null, { type: 'du_profile_changed', discordId: body.discordId });
     return json({ ok: true, message: 'Visual personalizado removido da rede DU.' });
   }
-  let persistedBannerUrl = bannerUrl;
-  let persistedAvatarUrl = avatarUrl;
-  if (body.preserveMedia === true && (!persistedBannerUrl || !persistedAvatarUrl)) {
-    const existingMedia = await env.DB.prepare('SELECT banner_url, avatar_url FROM du_banners WHERE discord_id=?').bind(body.discordId).first<{banner_url:string;avatar_url:string|null}>();
-    if (existingMedia) {
-      if (!persistedBannerUrl) persistedBannerUrl = existingMedia.banner_url || '';
-      if (!persistedAvatarUrl) persistedAvatarUrl = existingMedia.avatar_url || '';
-    }
-  }
   await env.DB.prepare(
     'INSERT INTO du_banners (discord_id,banner_url,avatar_url,customization_json,license_key_hash,registered_at,updated_at) VALUES (?,?,?,?,?,?,?) ' +
     'ON CONFLICT(discord_id) DO UPDATE SET banner_url=excluded.banner_url,avatar_url=excluded.avatar_url,customization_json=excluded.customization_json,license_key_hash=excluded.license_key_hash,updated_at=excluded.updated_at'
-  ).bind(body.discordId, persistedBannerUrl, persistedAvatarUrl || null, customizationsJson, keyHash, now, now).run();
+  ).bind(body.discordId, bannerUrl, avatarUrl || null, customizationsJson, keyHash, now, now).run();
 
   const galleryName = String(body.gifName || '').trim().slice(0, 80) || 'GIF da Comunidade';
   const authorName = String(body.authorName || '').trim().slice(0, 60) || 'Anônimo';
