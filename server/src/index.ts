@@ -1299,7 +1299,13 @@ function sanitizeDuCustomizations(value: unknown): Record<string, unknown> {
   if (nameplateSku) result.nameplate = { skuId: nameplateSku };
   const banner = source.banner as Record<string, unknown> | undefined;
   const bannerAsset = clean(banner?.asset);
-  if (bannerAsset) result.banner = { asset: bannerAsset, skuId: clean(banner?.skuId) || '1' };
+  let bannerUrl = '';
+  try { bannerUrl = normalizeDuMediaUrl(banner?.url); } catch (_) {}
+  if (bannerAsset || bannerUrl) result.banner = {
+    ...(bannerAsset ? { asset: bannerAsset } : {}),
+    ...(bannerUrl ? { url: bannerUrl } : {}),
+    skuId: clean(banner?.skuId) || '1'
+  };
   return result;
 }
 

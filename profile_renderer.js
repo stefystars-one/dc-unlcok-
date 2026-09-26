@@ -1,6 +1,6 @@
 // Embedded into the Discord main-process hook by tools/sync_profile_renderer.cjs.
 (() => {
-  const VERSION = 'profile-dom-20260925-12';
+  const VERSION = 'profile-dom-20260925-15';
   const incoming = window.__DU_PROFILE_BANNER_CONFIG || null;
   const previous = window.__duProfileBannerRuntime;
   if (previous?.version === VERSION) { previous.update(incoming); return; }
@@ -16,6 +16,7 @@
   const avatars = new Map();
   const banners = new Map();
   const publicBanners = new Map();
+  const publicAvatars = new Map();
   const publicProfiles = new Map();
   const ROOTS = '.user-profile-popout,.user-profile-modal,.user-profile-modal-v2,[class*="profileHeader_"],[class*="userProfileOuter_"],[class*="userProfileModal_"],[class*="userPopoutOuter_"],[class*="userPopout_"],[class*="accountProfileCard_"],[class*="profileCustomizationSection_"]';
   const MEDIA = '[data-du-profile-media]';
@@ -66,7 +67,7 @@
     return root.matches('[class*="accountProfileCard_"],[class*="profileCustomizationSection_"]');
   }
   function rootUserId(root) {
-    const explicit=String(root?.getAttribute?.('data-user-id')||root?.getAttribute?.('data-userid')||'');
+    const explicit=String(root?.getAttribute?.('data-du-profile-user-id')||root?.getAttribute?.('data-user-id')||root?.getAttribute?.('data-userid')||'');
     if (/^\d{17,21}$/.test(explicit)) return explicit;
     const avatar=root?.querySelector?.('img[src*="/avatars/"],img[src*="/users/"]');
     const src=String(avatar?.getAttribute?.('src')||'');
@@ -100,21 +101,39 @@
     try {
       const response=await fetch(API+'/du-banner/css',{cache:'no-store'});
       if (!response.ok) return;
-      const css=await response.text();
+      let css=await response.text();
       if (disposed||request!==publicRequest) return;
+      css=css.replace(/width\s*:\s*100%\s*!important\s*;/gi, '')
+             .replace(/height\s*:\s*100%\s*!important\s*;/gi, '')
+             .replace(/min-width\s*:\s*0\s*!important\s*;/gi, '')
+             .replace(/min-height\s*:\s*0\s*!important\s*;/gi, '')
+             .replace(/max-width\s*:\s*100%\s*!important\s*;/gi, '')
+             .replace(/max-height\s*:\s*100%\s*!important\s*;/gi, '');
       let style=document.getElementById('du-banner-css-inject');
       if (!style) { style=document.createElement('style'); style.id='du-banner-css-inject'; (document.head||document.documentElement).appendChild(style); }
       if (style.textContent!==css) style.textContent=css;
       pruneOwnPublicCss();
     } catch (_) {}
   }
+  function ensureAvatarSizingCss() {
+    let style=document.getElementById('du-avatar-sizing-fix');
+    if (!style) {
+      style=document.createElement('style');
+      style.id='du-avatar-sizing-fix';
+      (document.head||document.documentElement).appendChild(style);
+    }
+    const css=':is([class*="message_"],[class*="messageListItem_"],[class*="contents_"],[class*="chatContent_"]) img[class*="avatar_"]{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;max-width:40px!important;max-height:40px!important;aspect-ratio:1/1!important;border-radius:50%!important;object-fit:cover!important;object-position:center!important;}' +
+      ':is([class*="repliedMessage_"],[class*="compact_"],[class*="threadMessageAccessory_"]) img[class*="avatar_"]{width:16px!important;height:16px!important;min-width:16px!important;min-height:16px!important;max-width:16px!important;max-height:16px!important;aspect-ratio:1/1!important;border-radius:50%!important;object-fit:cover!important;object-position:center!important;}' +
+      ':is([class*="member_"],[class*="membersWrap_"],[class*="privateChannels_"],[class*="channel_"],[class*="panels_"]) img[class*="avatar_"]{width:32px!important;height:32px!important;min-width:32px!important;min-height:32px!important;max-width:32px!important;max-height:32px!important;aspect-ratio:1/1!important;border-radius:50%!important;object-fit:cover!important;object-position:center!important;}';
+    if (style.textContent!==css) style.textContent=css;
+  }
   function syncLocalAvatarCss(id,url) {
     let style=document.getElementById('du-local-avatar-css');
     if (!id || !url) { style?.remove(); return; }
     if (!style) { style=document.createElement('style');style.id='du-local-avatar-css';(document.head||document.documentElement).appendChild(style); }
-    // content:url() altera somente a pintura da imagem: sem nós novos e sem reflow nas DMs.
+    // content:url() altera somente a pintura da imagem: sem nos novos e sem reflow nas DMs.
     const safe=String(url).replace(/"/g,'%22');
-    const css='img[src*="/avatars/'+id+'/"],img[src*="/users/'+id+'/avatars/"]{content:url("'+safe+'")!important;object-fit:cover!important;}';
+    const css='img[src*="/avatars/'+id+'/"],img[src*="/users/'+id+'/avatars/"],[data-user-id="'+id+'"] img[class*="avatar_"],[data-user-id="'+id+'"] img[class*="avatar-"],[data-userid="'+id+'"] img[class*="avatar_"],[data-userid="'+id+'"] img[class*="avatar-"]{content:url("'+safe+'")!important;display:block!important;aspect-ratio:1/1!important;object-fit:cover!important;object-position:center!important;}';
     if (style.textContent!==css) style.textContent=css;
   }  function mediaFor(entry,url) {
     if (entry.url===url && entry.media?.isConnected) return entry.media;
@@ -164,7 +183,8 @@
     // This matches what X/Y mean in the editor and avoids drifting the whole
     // avatar away from the status cutout when the banner height changes.
     media.style.setProperty('object-position',x+'% '+y+'%','important');
-    media.style.setProperty('transform','scale('+zoom+')','important');
+    const translateX=(50-x)/2,translateY=(50-y)/2;
+    media.style.setProperty('transform','translate('+translateX+'%,'+translateY+'%) scale('+zoom+')','important');
     media.style.setProperty('transform-origin','center center','important');
   }
   function bannerArea(root) {
@@ -215,31 +235,85 @@
     media.style.setProperty('opacity','1','important');
     media.style.setProperty('object-position','center center','important');
   }
-  function requestPublicBanner(root,userId) {
-    if (!userId||userId===uid()) { clearPublicBanner(root); return; }
+  function clearPublicAvatar(root) {
+    const entry=publicAvatars.get(root);
+    if (!entry) return;
+    clearEntry(entry);
+    publicAvatars.delete(root);
+  }
+  function profileAvatar(root,userId) {
+    const selector='img[src*="/avatars/'+userId+'/"],img[src*="/users/'+userId+'/avatars/"]';
+    const exact=Array.from(root.querySelectorAll(selector)).find(image=>image instanceof HTMLImageElement&&!image.matches(MEDIA)&&!image.closest(MEDIA));
+    if (exact) return exact;
+    return Array.from(root.querySelectorAll('img[class*="avatar_"],img[class*="avatar-"]')).find(image=>{
+      if (!(image instanceof HTMLImageElement)||image.matches(MEDIA)||image.closest(MEDIA)||image.src.includes('avatar-decoration')) return false;
+      const rect=image.getBoundingClientRect();
+      return rect.width>=32&&rect.width<=192&&Math.abs(rect.width-rect.height)<3;
+    })||null;
+  }
+  function applyPublicAvatar(root,userId,url) {
+    if (!root?.isConnected||!url||userId===uid()) { clearPublicAvatar(root); return; }
+    const native=profileAvatar(root,userId);
+    const host=native?.parentElement;
+    if (!(native instanceof HTMLImageElement)||!(host instanceof HTMLElement)) { clearPublicAvatar(root); return; }
+    let entry=publicAvatars.get(root);
+    if (entry&&(entry.userId!==userId||entry.native!==native||entry.host!==host||!entry.host.isConnected)) { clearPublicAvatar(root);entry=null; }
+    if (!entry) {
+      const viewport=document.createElement('span');
+      viewport.setAttribute('data-du-public-profile-avatar','1');
+      viewport.style.cssText='position:absolute!important;left:0!important;top:0!important;display:block!important;overflow:hidden!important;border-radius:50%!important;pointer-events:none!important;z-index:1!important;';
+      host.appendChild(viewport);
+      entry={host,viewport,native,userId,changed:[native,host]};
+      publicAvatars.set(root,entry);
+    }
+    if (getComputedStyle(host).position==='static') set(host,'position','relative');
+    const rect=host.getBoundingClientRect();
+    const side=Math.min(host.clientWidth||rect.width,host.clientHeight||rect.height);
+    if (!side) return;
+    entry.viewport.style.setProperty('width',side+'px','important');
+    entry.viewport.style.setProperty('height',side+'px','important');
+    set(native,'opacity','0');
+    const media=mediaFor(entry,url);
+    media.style.setProperty('opacity','1','important');
+    media.style.setProperty('object-position','center center','important');
+    media.style.setProperty('transform','none','important');
+  }
+  function applyPublicProfile(root,userId,profile) {
+    if (!root?.isConnected||!userId||userId===uid()) { clearPublicBanner(root);clearPublicAvatar(root);return; }
+    root.setAttribute('data-du-profile-user-id',userId);
+    let shopBanner='';
+    try { shopBanner=validUrl(window.NitroStreamUnlockInstance?._networkCollectibles?.get?.(userId)?.banner?.url); } catch (_) {}
+    if (shopBanner||profile?.bannerUrl) applyPublicBanner(root,userId,shopBanner||profile.bannerUrl); else clearPublicBanner(root);
+    if (profile?.avatarUrl) applyPublicAvatar(root,userId,profile.avatarUrl); else clearPublicAvatar(root);
+  }
+  function requestPublicProfile(root,userId) {
+    if (!userId||userId===uid()) { clearPublicBanner(root);clearPublicAvatar(root);return; }
+    root.setAttribute('data-du-profile-user-id',userId);
     const now=Date.now();
     let cached=publicProfiles.get(userId);
-    if (cached?.value&&now-cached.at<10000) { applyPublicBanner(root,userId,cached.value);return; }
-    if (cached?.missing&&now-cached.at<10000) { clearPublicBanner(root);return; }
+    if (cached?.profile&&now-cached.at<10000) { applyPublicProfile(root,userId,cached.profile);return; }
+    if (cached?.missing&&now-cached.at<10000) { clearPublicBanner(root);clearPublicAvatar(root);return; }
     if (!cached?.promise) {
       const promise=fetch(API+'/du-banner/'+encodeURIComponent(userId),{cache:'no-store'})
         .then(async response=>response.ok?response.json():null)
         .then(payload=>{
-          const value=payload?.ok?validUrl(payload.bannerUrl||payload.url):'';
-          publicProfiles.set(userId,{value,missing:!value,at:Date.now()});
-          return value;
+          const profile=payload?.ok?{bannerUrl:validUrl(payload.bannerUrl||payload.url),avatarUrl:validUrl(payload.avatarUrl)}:null;
+          const missing=!profile||(!profile.bannerUrl&&!profile.avatarUrl);
+          publicProfiles.set(userId,{profile,missing,at:Date.now()});
+          return profile;
         }).catch(()=>{
-          publicProfiles.set(userId,{value:'',missing:true,at:Date.now()});
-          return '';
+          publicProfiles.set(userId,{profile:null,missing:true,at:Date.now()});
+          return null;
         });
       cached={promise,at:now};publicProfiles.set(userId,cached);
     }
-    cached.promise.then(value=>{if(!disposed&&root.isConnected&&rootUserId(root)===userId){if(value)applyPublicBanner(root,userId,value);else clearPublicBanner(root);}});
+    cached.promise.then(profile=>{if(!disposed&&root.isConnected&&rootUserId(root)===userId){if(profile)applyPublicProfile(root,userId,profile);else{clearPublicBanner(root);clearPublicAvatar(root);}}});
   }
-  function syncPublicBanners(roots) {
+  function syncPublicProfiles(roots) {
     const live=new Set(roots);
-    for (const root of roots) requestPublicBanner(root,rootUserId(root));
+    for (const root of roots) requestPublicProfile(root,rootUserId(root));
     for (const root of [...publicBanners.keys()]) if(!live.has(root)||!root.isConnected)clearPublicBanner(root);
+    for (const root of [...publicAvatars.keys()]) if(!live.has(root)||!root.isConnected)clearPublicAvatar(root);
   }
   function rootFromAvatar(native) {
     let actionCandidate=null;
@@ -337,10 +411,16 @@
     if (disposed||applying) return;
     applying=true;
     try {
+      ensureAvatarSizingCss();
       pruneOwnPublicCss();
       const id=uid();
       const avatarUrl=config?.enabled ? validUrl(config.avatarUrl) : '';
-      const bannerUrl=config?.enabled ? validUrl(config.bannerUrl||config.url) : '';
+      let shopBannerUrl='';
+      try {
+        const plugin=window.NitroStreamUnlockInstance;
+        if (plugin?._isShopUnlockEnabled?.()) shopBannerUrl=validUrl(plugin._getAppliedCollectibles?.()?.banner?.url);
+      } catch (_) {}
+      const bannerUrl=shopBannerUrl||(config?.enabled ? validUrl(config.bannerUrl||config.url) : '');
       syncLocalAvatarCss(id,avatarUrl);
       const currentAvatars=new Set();
       const ownNativeAvatars=id
@@ -368,7 +448,8 @@
         currentBanners.add(root);applyBanner(root,bannerUrl);
       }
       for (const [root,entry] of banners) if (!currentBanners.has(root)) {clearEntry(entry);banners.delete(root);}
-      syncPublicBanners(allRoots);
+      const publicRoots=allRoots.filter(root=>!allRoots.some(other=>other!==root&&root.contains(other)&&rootUserId(other)===rootUserId(root)));
+      syncPublicProfiles(publicRoots);
     } catch (error) { console.error('[DiscordUnlock profile]',error); }
     finally {applying=false;}
   }
@@ -403,12 +484,13 @@
       return {version:VERSION,avatars:avatars.size,banners:banners.size};
     },
     refreshPublicCss,
-    diagnostics() {return {version:VERSION,userId:uid(),avatars:avatars.size,banners:banners.size,publicBanners:publicBanners.size,config};},
+    diagnostics() {return {version:VERSION,userId:uid(),avatars:avatars.size,banners:banners.size,publicBanners:publicBanners.size,publicAvatars:publicAvatars.size,config};},
     dispose() {
-      disposed=true;publicRequest++;observer.disconnect();clearTimeout(pending);clearInterval(poll);clearInterval(publicCssPoll);window.removeEventListener('resize',schedule);document.getElementById('du-local-avatar-css')?.remove();
+      disposed=true;publicRequest++;observer.disconnect();clearTimeout(pending);clearInterval(poll);clearInterval(publicCssPoll);window.removeEventListener('resize',schedule);document.getElementById('du-local-avatar-css')?.remove();document.getElementById('du-avatar-sizing-fix')?.remove();
       for(const entry of avatars.values())clearEntry(entry);
       for(const entry of banners.values())clearEntry(entry);
       for(const root of [...publicBanners.keys()])clearPublicBanner(root);
+      for(const root of [...publicAvatars.keys()])clearPublicAvatar(root);
       for(const el of changes.keys())restore(el);
     }
   };

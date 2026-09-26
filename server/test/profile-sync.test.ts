@@ -36,9 +36,10 @@ describe('profile synchronization with actual SQLite statements',()=>{
  it('preserves unrelated media and shop fields, supports explicit clears and monotonically increasing revision',async()=>{
   await post({bannerUrl:'https://i.imgur.com/banner.gif',avatarUrl:'https://i.imgur.com/avatar.gif'});
   const before=row().updated_at;
-  await post({customizations:{avatarDecoration:{asset:'a_test'},banner:{asset:'shop_banner'}},syncOnly:true});
+  await post({customizations:{avatarDecoration:{asset:'a_test'},banner:{asset:'shop_banner',url:'https://cdn.discordapp.com/assets/shop.png'}},syncOnly:true});
   expect(row().banner_url).toBe('https://i.imgur.com/banner.gif');expect(row().avatar_url).toBe('https://i.imgur.com/avatar.gif');
-  expect(JSON.parse(row().customization_json).banner.asset).toBe('shop_banner');expect(row().updated_at).toBeGreaterThan(before);
+  const shopBanner=JSON.parse(row().customization_json).banner;
+  expect(shopBanner.asset).toBe('shop_banner');expect(shopBanner.url).toBe('https://cdn.discordapp.com/assets/shop.png');expect(row().updated_at).toBeGreaterThan(before);
   await post({avatarUrl:''});expect(row().avatar_url).toBeNull();expect(JSON.parse(row().customization_json).avatarDecoration.asset).toBe('a_test');
   await post({customizations:{}});expect(row().customization_json).toBe('{}');expect(row().banner_url).toContain('banner.gif');
  });

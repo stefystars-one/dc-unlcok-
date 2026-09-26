@@ -26,13 +26,21 @@ const profileFile = fs.readFileSync(path.join(root, 'profile_renderer.js'), 'utf
 const taggedProfileFile = cp.execFileSync('git', ['show', 'v10.9:profile_renderer.js'], {cwd: root, encoding: 'utf8'});
 const normalized = value => value.replace(/\r\n/g, '\n');
 const segment = (source, start, end) => source.slice(source.indexOf(start), source.indexOf(end, source.indexOf(start)));
-assert.equal(normalized(segment(profileFile, 'function applyAvatar(', 'function bannerArea(')), normalized(segment(taggedProfileFile, 'function applyAvatar(', 'function bannerArea(')), 'local avatar layout must stay equal to v10.9');
+const normalizeAvatarPan = value => normalized(value)
+  .replace(/    const translateX=.*\n/, '')
+  .replace("media.style.setProperty('transform','translate('+translateX+'%,'+translateY+'%) scale('+zoom+')','important');", "media.style.setProperty('transform','scale('+zoom+')','important');");
+assert.equal(normalizeAvatarPan(segment(profileFile, 'function applyAvatar(', 'function bannerArea(')), normalizeAvatarPan(segment(taggedProfileFile, 'function applyAvatar(', 'function bannerArea(')), 'local avatar layout must stay equal to v10.9 except for the requested visible X/Y pan');
 assert.equal(normalized(segment(profileFile, 'function applyBanner(', 'function apply()')), normalized(segment(taggedProfileFile, 'function applyBanner(', 'function apply()')), 'local banner layout must stay equal to v10.9');
 assert.match(profileFile, /function applyPublicBanner\(/);
+assert.match(profileFile, /function applyPublicAvatar\(/);
+assert.match(profileFile, /avatarUrl:validUrl\(payload\.avatarUrl\)/);
+assert.match(profileFile, /data-du-profile-user-id/);
+assert.match(profileFile, /translate\('\+translateX\+'%,/);
 assert.match(profileFile, /fetch\(API\+'\/du-banner\/'/);
 assert.match(profileFile, /function discoverProfileRoots\(/);
 assert.match(profileFile, /ver perfil completo\|view full profile/);
 assert.match(profileFile, /const allRoots=discoverProfileRoots\(\)/);
+assert.match(profileFile, /const publicRoots=allRoots\.filter/);
 assert.match(profileFile, /const publicCssPoll=setInterval/);
 assert.match(profileFile, /_refreshNetworkCollectibles\?\.\(true\)/);
 const rendererStart=cpp.indexOf('const duProfileBannerJs = '),rendererEnd=cpp.indexOf(';\n\nfunction getThemePaths',rendererStart);

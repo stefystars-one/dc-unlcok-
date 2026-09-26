@@ -1,38 +1,38 @@
-# HANDOFF - Discord Unlock (v9.0)
+# HANDOFF - Discord Unlock (v11.6)
 
 ## 1. Projeto
-Discord Unlock (`C:\DiscordUnlock` e ambiente de desenvolvimento `C:\unlock beta tester`).
+Discord Unlock (`C:\Dc unlock` e ambiente de desenvolvimento `C:\Users\Stefany\Videos\unlock beta tester\unlock beta tester`).
 Aplicação desktop de alta performance em C++20 nativo / WebView2 para desbloqueio, gravação e otimização do Discord.
 
 ## 2. Estado Atual
 - **Status Geral**: `[FUNCIONANDO / PRODUÇÃO]`
-- **Versão Atual**: `9.0` (Constante `CURRENT_VERSION = "9.0"`, `version.txt` = `9.0`, manifesto = `9.0`).
-- **Compilação**: `[FUNCIONANDO]` — MSVC C++20 via `C:\unlock beta tester\build.ps1` exit code 0.
-- **Deploy Cloudflare**: `[FUNCIONANDO]` — Publicado com sucesso via `publicar_cloudflare.ps1` (wrangler):
-  - API pública: `https://discord-unlock-api.st4rs.workers.dev` (manifesto, executáveis, hashes e MOTD atualizados).
-  - Painel administrativo: `https://discord-unlock-admin.st4rs.workers.dev/admin.html`
-- **Deploy Git**: `[FUNCIONANDO]` — Repositório `stefystars-one/dc-unlcok-` sincronizado na branch `main`.
+- **Versão Atual**: `11.6` (Constante `CURRENT_VERSION = "11.6"`, `version.txt` = `11.6`, manifesto = `11.6`).
+- **Compilação**: `[FUNCIONANDO]` — MSVC C++20 via `build.ps1` exit code 0.
+- **Deploy Cloudflare**: `[FUNCIONANDO / DEPLOY REALIZADO]` — Publicado com sucesso via `publicar_cloudflare.ps1` (wrangler):
+  - API pública: `https://discord-unlock-api.st4rs.workers.dev` (manifesto, executáveis 11.6, hashes e protocolo de sincronização 2 verificados externamente).
+  - Painel administrativo: `https://discord-unlock-admin.st4rs.workers.dev`
+- **Sincronização de Pastas**:
+  - `C:\Users\Stefany\Videos\unlock beta tester\unlock beta tester` é a pasta de trabalho oficial da v11.6.
 
-## 3. Principais Recursos e Alterações da Versão 9.0
-1. `[RESOLVIDO]` **Gravador DXGI por Hardware até 4K • 120 FPS e 150 Mbps**:
-   - Backend `recorder_engine.hpp` e `gui_main.cpp` atualizados para DXGI Desktop Duplication e Media Foundation.
-   - Suporte a 120 FPS Gamer e taxa de bits balanceada de até 150 Mbps (`150000000` bps).
-   - Modo de preset "Personalizado" (`#recCustomPanel`) com largura/altura customizada, seletor de FPS (15 a 120) e slider de bitrate contínuo (2 Mbps a 150 Mbps).
-   - Configuração salva em `%APPDATA%\DiscordUnlock\recorder_config.json`.
-2. `[RESOLVIDO]` **Replay Instantâneo em RAM**:
-   - Buffer contínuo na memória RAM configurável de 15s até 5min.
-   - Atalho de teclado global (<kbd>Ctrl + F10</kbd>) para exportar clipes instantaneamente sem impacto no jogo.
-3. `[RESOLVIDO]` **Editor Lossless de Clipes**:
-   - Corte direto sem recodificação (lossless trim) preservando a nitidez original.
-   - Rotação do vídeo (90°, 180°, 270°) com controles customizados externos que não invertem com a rotação CSS.
-4. `[RESOLVIDO]` **Galeria DU com Banners e Avatares Animados**:
-   - Loja pesquisável por texto e categorias/chips com botões dedicados `🖼️ Banner`, `👤 Avatar` e `✨ Ambos`.
-   - Painel administrativo no Cloudflare integrado para cadastro e moderação de novos assets.
-5. `[RESOLVIDO]` **Aba Guia & Sobre Atualizada**:
-   - Sub-aba dedicada `🎥 Gravador & Clipes (v9.0)` (`#sec-recorder`) com explicação do DXGI, 120 FPS, 150 Mbps, Replay e atalhos.
-   - Sub-aba `ℹ️ Sobre & Versão 9.0` (`#sec-about`) com changelog oficial, arquitetura e garantias de segurança client-side.
-   - Badges e navegação rápida sincronizados em `gui_main.cpp` e `ui/index.html`.
-6. `[RESOLVIDO]` **Aviso do Dia (`motd.txt`) e Manifesto de Atualizações**:
-   - `motd.txt` reformulado com o resumo oficial das novidades da versão 9.0.
-   - `version.txt` fixado em `9.0`.
-   - `update-manifest.json` com os novos hashes SHA-256 e tamanhos dos binários.
+## 3. Resumo da Correção Crítica (v11.6)
+1. `[RESOLVIDO]` **Avatar e banner DU sobre perfis Nitro oficiais**:
+   - A resposta pública já continha `avatarUrl`, mas o cliente 11.5 descartava esse campo; a 11.6 aplica avatar e banner em camadas próprias e preserva máscara, status e decoração oficiais.
+   - Perfis aninhados são consolidados para evitar duas camadas concorrendo no mesmo avatar/banner.
+2. `[RESOLVIDO]` **Posição X/Y do avatar**:
+   - X/Y agora produz deslocamento visível mesmo em imagem quadrada e tamanho abaixo de 72 px; editor e Discord usam a mesma transformação.
+3. `[RESOLVIDO]` **Itens da Loja sobre visuais Nitro**:
+   - Fundos salvos como `banner.url` são preservados pela rede e pintados sobre o banner oficial sem corromper o hash Nitro.
+   - Decorações/efeitos DU substituem temporariamente os oficiais e a remoção restaura o estado original.
+4. `[RESOLVIDO]` **Publicação e compatibilidade**:
+   - O publicador passou a usar a fonte oficial `server`, não a cópia histórica `teste de servidor`.
+   - `update-manifest.json`, hashes por artefato e `version_sha256.txt` foram validados contra downloads reais do CDN.
+
+## 4. Correção anterior preservada (v11.5)
+1. `[RESOLVIDO]` **Correção dos Avatares Gigantes em Mensagens do Chat**:
+   - Identificada a causa raiz: CSS de avatar (`img[src*="/avatars/..."]`) continha `width: 100% !important; height: 100% !important;`. No chat do Discord, isso forçava o avatar a assumir 100% da largura da linha da mensagem (~700px), transformando-o numa elipse/ovo gigante horizontal.
+   - Removido `width: 100% !important; height: 100% !important;` tanto do client local (`profile_renderer.js`) quanto da worker Cloudflare (`teste de servidor/src/index.ts`).
+   - Implementado sanitizador automático no cliente para limpar regras malformadas de terceiros antes de injetar na DOM.
+   - Adicionada blindagem CSS global (`ensureAvatarSizingCss`) forçando:
+     - Chat: 40px × 40px circular (`border-radius: 50% !important; aspect-ratio: 1/1 !important; object-fit: cover !important`).
+     - Respostas/compacto: 16px × 16px.
+     - Painéis e listas de amigos: 32px × 32px.
