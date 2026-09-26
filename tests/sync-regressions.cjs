@@ -43,6 +43,17 @@ assert.match(profileFile, /const allRoots=discoverProfileRoots\(\)/);
 assert.match(profileFile, /const publicRoots=allRoots\.filter/);
 assert.match(profileFile, /const publicCssPoll=setInterval/);
 assert.match(profileFile, /_refreshNetworkCollectibles\?\.\(true\)/);
+assert.doesNotMatch(profileFile, /const ROOTS\s*=.*profileHeader_/);
+assert.doesNotMatch(profileFile, /const ROOTS\s*=.*accountProfileCard_/);
+assert.doesNotMatch(profileFile, /querySelectorAll\([^\n]*div\[style\*="background-image"\]/);
+assert.match(profileFile, /if \(\/content\\s\*:\\s\*url\\\(\/i\.test\(body\)\) avatarRules\.push/);
+assert.match(cpp, /<body class="auth-locked">/);
+assert.match(cpp, /body\.auth-locked \.app-container > :not\(\.login-screen\)/);
+assert.match(cpp, /function setAuthLocked\(locked\)/);
+assert.match(cpp, /DiscordUnlock_LaunchGate_v1/);
+const singleInstance = cpp.slice(cpp.indexOf('HANDLE hMutex = CreateMutexW'), cpp.indexOf('WSADATA wsaData'));
+assert.match(singleInstance, /ERROR_ALREADY_EXISTS[\s\S]*Sleep\(100\)[\s\S]*return 0;/);
+assert.doesNotMatch(singleInstance, /TerminateProcess/);
 const rendererStart=cpp.indexOf('const duProfileBannerJs = '),rendererEnd=cpp.indexOf(';\n\nfunction getThemePaths',rendererStart);
 const embeddedRenderer=JSON.parse(cpp.slice(rendererStart+'const duProfileBannerJs = '.length,rendererEnd));
 const voiceFile=fs.readFileSync(path.join(root,'voice_decoration_renderer.js'),'utf8');
@@ -53,4 +64,4 @@ const scripts = [...embeddedHtml.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/scri
 for (const script of scripts) new Function(script);
 for (const match of ui.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)) new Function(match[1]);
 
-console.log('PASS regressions: no theme clone, aligned actions, read-only realtime refresh, v10.9 local layout preserved, public banner fallback embedded, UI syntax valid');
+console.log('PASS regressions: theme actions, realtime refresh, profile isolation, auth lock, single instance, embedded renderers and UI syntax valid');

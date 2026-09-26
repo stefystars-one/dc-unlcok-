@@ -1,6 +1,6 @@
 // Embedded into the Discord main-process hook by tools/sync_profile_renderer.cjs.
 (() => {
-  const VERSION = 'profile-dom-20260925-15';
+  const VERSION = 'profile-dom-20260925-16';
   const incoming = window.__DU_PROFILE_BANNER_CONFIG || null;
   const previous = window.__duProfileBannerRuntime;
   if (previous?.version === VERSION) { previous.update(incoming); return; }
@@ -18,7 +18,10 @@
   const publicBanners = new Map();
   const publicAvatars = new Map();
   const publicProfiles = new Map();
-  const ROOTS = '.user-profile-popout,.user-profile-modal,.user-profile-modal-v2,[class*="profileHeader_"],[class*="userProfileOuter_"],[class*="userProfileModal_"],[class*="userPopoutOuter_"],[class*="userPopout_"],[class*="accountProfileCard_"],[class*="profileCustomizationSection_"]';
+  // Generated Discord class fragments such as profileHeader_ and accountProfileCard_
+  // are reused outside profile popouts. Treating them as roots lets a banner spill
+  // into server pages, so only containers that identify an actual profile stay here.
+  const ROOTS = '.user-profile-popout,.user-profile-modal,.user-profile-modal-v2,[class*="userProfileOuter_"],[class*="userProfileModal_"],[class*="userPopoutOuter_"],[class*="userPopout_"]';
   const MEDIA = '[data-du-profile-media]';
   const API = 'https://discord-unlock-api.st4rs.workers.dev';
   const numeric = (v, fallback, min, max) => Number.isFinite(Number(v)) && v !== undefined ? Math.min(max,Math.max(min,Number(v))) : fallback;
@@ -109,6 +112,15 @@
              .replace(/min-height\s*:\s*0\s*!important\s*;/gi, '')
              .replace(/max-width\s*:\s*100%\s*!important\s*;/gi, '')
              .replace(/max-height\s*:\s*100%\s*!important\s*;/gi, '');
+      // Banners are applied to verified profile DOM roots below. Keep only the
+      // avatar content rules from the public stylesheet: server-side banner
+      // selectors may outlive Discord class changes and paint whole server views.
+      const avatarRules=[];
+      css.replace(/([^{}]+)\{([^{}]*)\}/g,(_,selectors,body)=>{
+        if (/content\s*:\s*url\(/i.test(body)) avatarRules.push(selectors+'{'+body+'}');
+        return '';
+      });
+      css=avatarRules.join('\n');
       let style=document.getElementById('du-banner-css-inject');
       if (!style) { style=document.createElement('style'); style.id='du-banner-css-inject'; (document.head||document.documentElement).appendChild(style); }
       if (style.textContent!==css) style.textContent=css;
@@ -188,7 +200,7 @@
     media.style.setProperty('transform-origin','center center','important');
   }
   function bannerArea(root) {
-    const candidates=Array.from(root.querySelectorAll('div[class*="banner_"],div[class*="profileBanner"],div[class*="bannerWrapper_"],div[style*="background-image"]'))
+    const candidates=Array.from(root.querySelectorAll('div[class*="banner_"],div[class*="profileBanner"],div[class*="bannerWrapper_"]'))
       .filter(el=>{const r=el.getBoundingClientRect();return r.width>120&&r.height>35&&r.height<420&&!el.closest('[data-du-profile-avatar]');});
     // Prefer the native painted layer. Its CSS mask already cuts around the avatar.
     const painted=candidates.find(el=>el.style.backgroundImage && !el.closest('[data-du-profile-avatar]'));
@@ -320,7 +332,7 @@
     for (let root=native.parentElement,depth=0;root&&depth<14;root=root.parentElement,depth++) {
       const r=root.getBoundingClientRect();
       if (r.width<120||r.width>900||r.height<100||r.height>950) continue;
-      const banner=root.querySelector('div[class*="banner_"],div[class*="profileBanner"],div[class*="bannerWrapper_"],div[style*="background-image"]');
+      const banner=root.querySelector('div[class*="banner_"],div[class*="profileBanner"],div[class*="bannerWrapper_"]');
       if (banner&&banner!==native.parentElement&&!banner.contains(native)) return root;
       if (!actionCandidate&&r.width>=220&&r.width<=720&&r.height>=260) {
         const hasProfileAction=Array.from(root.querySelectorAll('button')).some(button=>/^(ver perfil completo|view full profile)$/i.test(String(button.textContent||'').trim()));
